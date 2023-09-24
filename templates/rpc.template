@@ -1,0 +1,34 @@
+package main
+
+import "github.com/gin-gonic/gin"
+
+type Handler struct {
+  // TODO: implement Handler
+}
+
+func NewHandler() *Handler {
+  // TODO: implement Handler
+  return &Handler{}
+}
+
+{{range .Handlers}}
+// Handle{{.Name}} ...
+func (h *Handler) Handle{{.Name}}(ctx *gin.Context) {
+  // TODO: implement stub
+}
+{{end}}
+
+func Serve() error {
+  h := NewHandler()
+  g := gin.New()
+
+  {{range .Handlers}}
+  g.{{.Method}}("{{.Route}}", h.Handle{{.Name}})
+  {{end}}
+
+  return g.Run(":8080")
+}
+
+func main() {
+  Serve()
+}

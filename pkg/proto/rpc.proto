@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package boiler;
+
+option go_package = "pkg/proto";
+
+message Rpc {
+repeated Handler handlers = 1;
+}
+
+message Handler {
+  string name = 1;
+  string method = 2;
+  string route = 3;
+}

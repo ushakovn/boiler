@@ -1,0 +1,40 @@
+dirs {
+  name: "cmd"
+  nested {
+    name: "app"
+    files {
+      name: "main"
+      extension: "go"
+      template {
+        executable: false
+        path: "templates/main.template"
+      }
+    }
+  }
+}
+
+dirs {
+  name: "internal"
+  nested {
+    name: "app"
+  }
+  nested {
+    name: "pkg"
+  }
+}
+
+dirs {
+  name: "pkg"
+  nested {
+    name: "utils"
+    files {
+      name: "main"
+      extension: "go"
+      template {
+        executable: false
+        path: "templates/main.template"
+      }
+    }
+  }
+}
+

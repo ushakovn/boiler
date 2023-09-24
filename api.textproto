@@ -1,0 +1,25 @@
+handlers {
+  name: "Kurwa"
+  method: "GET"
+  route: "/kurwa"
+
+  request {
+    fields {
+      name: "entity_id"
+      type: "string"
+    }
+  }
+}
+
+handlers {
+  name: "Pshiek"
+  method: "POST"
+  route: "/pshiek"
+}
+
+handlers {
+  name: "Pierdole"
+  method: "PUT"
+  route: "/pierdole"
+}
+

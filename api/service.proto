@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+service Service {
+  rpc Ping(Request) returns (Response) {}
+}
+
+message Request {}
+
+message Response {}
