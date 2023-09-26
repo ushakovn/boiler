@@ -2,31 +2,26 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"text/template"
 
-	"github.com/ushakovn/boiler/internal/app/gen"
-	desc "github.com/ushakovn/boiler/pkg/proto"
-	"google.golang.org/protobuf/encoding/prototext"
+	"github.com/ushakovn/boiler/internal/boiler/gen"
+	"github.com/ushakovn/boiler/pkg/utils"
 )
 
 type rpc struct {
-	workDir string
-	rpcDir  string
-	rpcDesc *desc.Rpc
+	workDirPath string
+	rpcDirPath  string
+	rpcDesc     *rootDesc
 }
 
 type Config struct {
-	WorkDir string
-	RpcDir  string
+	RpcDir string
 }
 
 func (c *Config) Validate() error {
-	if c.WorkDir == "" {
-		log.Printf("boilder: use default working directory path")
-	}
 	if c.RpcDir == "" {
 		return fmt.Errorf("rpc directory not specfied")
 	}
@@ -37,9 +32,15 @@ func NewRpc(config Config) (gen.Generator, error) {
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("config.Validate: %w", err)
 	}
+	pwd, err := utils.Env("PWD")
+	if err != nil {
+		return nil, err
+	}
+	workDirPath := pwd + "/______out______" // TODO: clear prefix
+
 	return &rpc{
-		workDir: config.WorkDir,
-		rpcDir:  config.RpcDir,
+		rpcDirPath:  config.RpcDir,
+		workDirPath: workDirPath,
 	}, nil
 }
 
@@ -54,16 +55,16 @@ func (g *rpc) Generate(context.Context) error {
 }
 
 func (g *rpc) loadRpcDesc() error {
-	buf, err := os.ReadFile(g.rpcDir)
+	buf, err := os.ReadFile(g.rpcDirPath)
 	if err != nil {
 		return fmt.Errorf("os.ReadFile projectDir: %w", err)
 	}
-	proj := &desc.Rpc{}
+	rpc := &rootDesc{}
 
-	if err := prototext.Unmarshal(buf, proj); err != nil {
-		return fmt.Errorf("prototext.Unmarshal: %w", err)
+	if err := json.Unmarshal(buf, rpc); err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
 	}
-	g.rpcDesc = proj
+	g.rpcDesc = rpc
 
 	return nil
 }

@@ -1,0 +1,67 @@
+{
+  "root": {
+    "files": [
+      {
+        "name": "readme",
+        "extension": "md"
+      },
+      {
+        "name": "Makefile",
+        "extension": ""
+      }
+    ],
+
+    "dirs": [
+      {
+        "name": {
+          "value": "cmd"
+        },
+        "dirs": [
+          {
+            "name": {
+              "env": "PWD"
+            },
+            "files": [
+              {
+                "name": "main",
+                "extension": "go",
+                "template": {
+                  "path": "templates/main.template"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": {
+          "value": "internal"
+        },
+        "dirs": [
+          {
+            "name": {
+              "env": "PWD"
+            }
+          },
+          {
+            "name": {
+              "value": "pkg"
+            }
+          }
+        ]
+      },
+      {
+        "name": {
+          "value": "pkg"
+        },
+        "dirs": [
+          {
+            "name": {
+              "value": "utils"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

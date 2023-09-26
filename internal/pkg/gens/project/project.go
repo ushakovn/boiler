@@ -2,46 +2,40 @@ package project
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/ushakovn/boiler/internal/app/gen"
-	desc "github.com/ushakovn/boiler/pkg/proto"
-	"google.golang.org/protobuf/encoding/prototext"
+	"github.com/ushakovn/boiler/internal/boiler/gen"
+	"github.com/ushakovn/boiler/pkg/utils"
 )
 
 type project struct {
-	workDir     string
-	projectDir  string
-	projectDesc *desc.Project
+	projectCfgPath string
+	workDirPath    string
+	projectDesc    *projectDesc
 }
 
-type Config struct {
-	WorkDir    string
-	ProjectDir string
-}
+type Config struct{}
 
-func (c *Config) Validate() error {
-	if c.WorkDir == "" {
-		log.Printf("boilder: use default working directory path")
+func NewProject(_ Config) (gen.Generator, error) {
+	pwd, err := utils.Env("PWD")
+	if err != nil {
+		return nil, err
 	}
-	if c.ProjectDir == "" {
-		log.Printf("boilder: use default project ")
-		c.ProjectDir = "./config/project/config.textproto"
-	}
-	return nil
-}
+	workDirPath := pwd + "/______out______" // TODO: clear prefix
 
-func NewProject(config Config) (gen.Generator, error) {
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("config.Validate: %w", err)
+	gopath, err := utils.Env("GOPATH")
+	if err != nil {
+		return nil, err
 	}
+	projectConfigPath := filepath.Join(gopath, "/config/boiler/project.json")
+
 	return &project{
-		workDir:    config.WorkDir,
-		projectDir: config.ProjectDir,
+		projectCfgPath: projectConfigPath,
+		workDirPath:    workDirPath,
 	}, nil
 }
 
@@ -49,7 +43,14 @@ func (g *project) Generate(ctx context.Context) error {
 	if err := g.loadProjectDesc(); err != nil {
 		return fmt.Errorf("g.loadProjectDesc: %w", err)
 	}
-	for _, dir := range g.projectDesc.Dirs {
+	for _, file := range g.projectDesc.Root.Files {
+		file.Path = g.buildPath(file.Name)
+
+		if err := g.genFile(file); err != nil {
+			return fmt.Errorf("g.genFile: %w", err)
+		}
+	}
+	for _, dir := range g.projectDesc.Root.Dirs {
 		if err := g.genDirectory(ctx, dir, ""); err != nil {
 			return fmt.Errorf("g.genDirectory %w", err)
 		}
@@ -58,27 +59,35 @@ func (g *project) Generate(ctx context.Context) error {
 }
 
 func (g *project) loadProjectDesc() error {
-	buf, err := os.ReadFile(g.projectDir)
+	buf, err := os.ReadFile(g.projectCfgPath)
 	if err != nil {
 		return fmt.Errorf("os.ReadFile projectDir: %w", err)
 	}
-	proj := &desc.Project{}
+	proj := &projectDesc{}
 
-	if err := prototext.Unmarshal(buf, proj); err != nil {
-		return fmt.Errorf("prototext.Unmarshal: %w", err)
+	if err = json.Unmarshal(buf, proj); err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
 	}
 	g.projectDesc = proj
 
 	return nil
 }
 
-func (g *project) genFile(file *desc.File) error {
-	path := fmt.Sprintf("%s.%s", file.Name, strings.TrimPrefix(file.Extension, "."))
+func (g *project) genFile(file *fileDesc) error {
+	var path string
 
+	if path = file.Path; path == "" {
+		return fmt.Errorf("file.Path not specified")
+	}
+	if extension := file.Extension; extension != "" {
+		extension = strings.TrimPrefix(file.Extension, ".")
+		path = fmt.Sprintf("%s.%s", file.Path, extension)
+	}
 	if _, err := os.Create(path); err != nil {
 		return fmt.Errorf("os.CreateFile: %w", err)
 	}
 	if template := file.Template; template != nil {
+		// Copy content from template to new created file
 		if !template.Executable {
 			buf, err := os.ReadFile(template.Path)
 			if err != nil {
@@ -93,29 +102,29 @@ func (g *project) genFile(file *desc.File) error {
 	return nil
 }
 
-func (g *project) genDirectory(ctx context.Context, dir *desc.Dir, parentPath string) error {
-	path := g.buildFilepath(parentPath, dir.Name)
+func (g *project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
+	path := g.buildPath(parentPath, dir.Name.String())
 
 	if err := os.Mkdir(path, os.ModePerm); err != nil {
 		return fmt.Errorf("os.Mkdir dir: %w", err)
 	}
 	for _, file := range dir.Files {
-		file.Name = g.buildFilepath(parentPath, dir.Name, file.Name)
+		file.Path = g.buildPath(parentPath, dir.Name.String(), file.Name)
 
 		if err := g.genFile(file); err != nil {
 			return fmt.Errorf("g.genFile file: %w", err)
 		}
 	}
-	for _, nested := range dir.Nested {
-		if err := g.genDirectory(ctx, nested, dir.Name); err != nil {
+	for _, nested := range dir.Dirs {
+		if err := g.genDirectory(ctx, nested, dir.Name.String()); err != nil {
 			return fmt.Errorf("g.genDirectory nested: %w", err)
 		}
 	}
 	return nil
 }
 
-func (g *project) buildFilepath(parts ...string) string {
-	pd := []string{g.workDir}
+func (g *project) buildPath(parts ...string) string {
+	pd := []string{g.workDirPath}
 	pd = append(pd, parts...)
 	p := filepath.Join(pd...)
 	return p

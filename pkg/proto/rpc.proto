@@ -13,3 +13,7 @@ message Handler {
   string method = 2;
   string route = 3;
 }
+
+message DummyMessage {
+  string dummy_field = 1;
+}
