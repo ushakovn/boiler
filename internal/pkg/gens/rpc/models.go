@@ -1,297 +1,295 @@
 package rpc
 
 import (
-	"fmt"
-	"regexp"
+  "fmt"
+  "regexp"
+  "strings"
 
-	"github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/pkg/utils"
 )
 
 type rootDesc struct {
-	Handlers []*handlerDesc `json:"handlers"`
+  Handles  []*handleDesc   `json:"handles" yaml:"handles"`
+  TypeDefs []*typeDefsDesc `json:"type_defs" yaml:"type_defs"`
 }
 
-type handlerDesc struct {
-	Name     string        `json:"name"`
-	Request  *requestDesc  `json:"request"`
-	Response *responseDesc `json:"response"`
+type handleDesc struct {
+  Name     string        `json:"name" yaml:"name"`
+  Route    string        `json:"route" yaml:"route"`
+  Request  *contractDesc `json:"request" yaml:"request"`
+  Response *contractDesc `json:"response" yaml:"response"`
 }
 
-type requestDesc struct {
-	Fields []*fieldDesc `json:"fields"`
-}
-
-type responseDesc struct {
-	Fields []*fieldDesc `json:"fields"`
+type contractDesc struct {
+  Fields []*fieldDesc `json:"fields" yaml:"fields"`
 }
 
 type fieldDesc struct {
-	Name          string             `json:"name"`
-	ScalarType    string             `json:"scalar_type"`
-	CompositeType *compositeTypeDesc `json:"composite_type"`
+  Name string `json:"name" yaml:"name"`
+  Type string `json:"type" yaml:"type"`
 }
 
-type compositeTypeDesc struct {
-	Desc string   `json:"desc"`
-	Def  *defDesc `json:"def"`
-}
-
-type defDesc struct {
-	Name   string       `json:"name"`
-	Fields []*fieldDesc `json:"fields"`
+type typeDefsDesc struct {
+  Name   string       `json:"name" yaml:"name"`
+  Fields []*fieldDesc `json:"fields" yaml:"fields"`
 }
 
 func (d *rootDesc) Validate() error {
-	if len(d.Handlers) == 0 {
-		return fmt.Errorf("rpc handler not specfied")
-	}
-	for _, handler := range d.Handlers {
-		if err := handler.Validate(); err != nil {
-			return fmt.Errorf("handler error: %v", err)
-		}
-	}
-	return nil
+  defTypesMap := map[string]struct{}{}
+
+  for _, typeDef := range d.TypeDefs {
+    if typeDef.Name == "" {
+      return fmt.Errorf("type definition name not specified")
+    }
+    if utils.IsWrongCase(typeDef.Name) {
+      return fmt.Errorf("invalid type definition name: %s", typeDef.Name)
+    }
+    if _, ok := defTypesMap[typeDef.Name]; ok {
+      return fmt.Errorf("duplicated type definition for type: %s", typeDef.Name)
+    }
+    defTypesMap[typeDef.Name] = struct{}{}
+  }
+
+  for _, typeDef := range d.TypeDefs {
+    if err := typeDef.Validate(defTypesMap); err != nil {
+      return fmt.Errorf("type definition: %w", err)
+    }
+  }
+
+  if len(d.Handles) == 0 {
+    return fmt.Errorf("rpc handler not specfied")
+  }
+  handlerNamesMap := map[string]struct{}{}
+  handlerRouterMap := map[string]struct{}{}
+
+  for _, handler := range d.Handles {
+    if utils.IsWrongCase(handler.Name) {
+      return fmt.Errorf("invalid handler name: %s", handler.Name)
+    }
+    if _, ok := handlerNamesMap[handler.Name]; ok {
+      return fmt.Errorf("duplicated handler name: %s", handler.Name)
+    }
+    handlerNamesMap[handler.Name] = struct{}{}
+
+    if utils.IsWrongCase(handler.Route) {
+      return fmt.Errorf("invalid handler route: %s", handler.Route)
+    }
+    if _, ok := handlerRouterMap[utils.StringToLowerCase(handler.Route)]; ok {
+      return fmt.Errorf("duplicated handler route: %s", handler.Route)
+    }
+    handlerRouterMap[utils.StringToLowerCase(handler.Route)] = struct{}{}
+
+    if err := handler.Validate(defTypesMap); err != nil {
+      return fmt.Errorf("handler error: %v", err)
+    }
+  }
+  return nil
 }
 
-func (d *handlerDesc) Validate() error {
-	if d.Name == "" {
-		return fmt.Errorf("name not specified")
-	}
-	if d.Request == nil {
-		return fmt.Errorf("request not specified")
-	}
-	if err := d.Request.Validate(); err != nil {
-		return fmt.Errorf("request error: %v", err)
-	}
-	if err := d.Response.Validate(); err != nil {
-		return fmt.Errorf("response error: %v", err)
-	}
-	return nil
+func (d *handleDesc) Validate(types map[string]struct{}) error {
+  if d.Name == "" {
+    return fmt.Errorf("name not specified")
+  }
+  if utils.IsWrongCase(d.Name) {
+    return fmt.Errorf("invalid name: %s", d.Name)
+  }
+  if d.Request == nil {
+    return fmt.Errorf("request not specified")
+  }
+  if err := d.Request.Validate(types); err != nil {
+    return fmt.Errorf("request error: %v", err)
+  }
+  if err := d.Response.Validate(types); err != nil {
+    return fmt.Errorf("response error: %v", err)
+  }
+  return nil
 }
 
-func (d *responseDesc) Validate() error {
-	for _, field := range d.Fields {
-		if err := field.Validate(); err != nil {
-			return fmt.Errorf("field: %s: error: %v", field.Name, err)
-		}
-	}
-	return nil
+func (d *contractDesc) Validate(types map[string]struct{}) error {
+  fieldsNamesMap := map[string]struct{}{}
+
+  for _, field := range d.Fields {
+    if field.Name == "" {
+      return fmt.Errorf("field name not specified")
+    }
+    if utils.IsWrongCase(field.Name) {
+      return fmt.Errorf("invalid field name: %s", field.Name)
+    }
+    if _, ok := fieldsNamesMap[field.Name]; ok {
+      return fmt.Errorf("duplicated field: %s", field.Name)
+    }
+    fieldsNamesMap[field.Name] = struct{}{}
+
+    if err := field.Validate(types); err != nil {
+      return fmt.Errorf("field: %s: error: %v", field.Name, err)
+    }
+  }
+  return nil
 }
 
-func (d *requestDesc) Validate() error {
-	for _, field := range d.Fields {
-		if err := field.Validate(); err != nil {
-			return fmt.Errorf("field: %s: error: %v", field.Name, err)
-		}
-	}
-	return nil
+func (d *fieldDesc) Validate(types map[string]struct{}) error {
+  if d.Name == "" {
+    return fmt.Errorf("field name not specified")
+  }
+  if d.Type == "" {
+    return fmt.Errorf("field type not specified")
+  }
+  if _, ok := scalarTypesMap[d.Type]; ok {
+    return nil
+  }
+  if typeScalarSliceRegex.MatchString(d.Type) {
+    return nil
+  }
+  if typeDefSliceRegex.MatchString(d.Type) {
+    if _, ok := types[strings.TrimPrefix(d.Type, slicePrefix)]; !ok {
+      return fmt.Errorf("unexpected field type: %s", d.Type)
+    }
+  }
+  return nil
 }
 
-func (d *fieldDesc) Validate() error {
-	if d.ScalarType == "" && d.CompositeType == nil {
-		return fmt.Errorf("scalar type or composite type not specfied")
-	}
-	if d.ScalarType != "" && d.CompositeType != nil {
-		return fmt.Errorf("must has one scalar or composite type only")
-	}
-	if d.ScalarType != "" {
-		if _, ok := scalarTypesMap[d.ScalarType]; !ok {
-			return fmt.Errorf("has unsupported scalar type name: %s", d.ScalarType)
-		}
-	}
-	if d.CompositeType != nil {
-		if err := d.CompositeType.Validate(); err != nil {
-			return fmt.Errorf("composite type: %v", err)
-		}
-	}
-	return nil
-}
+func (d *typeDefsDesc) Validate(types map[string]struct{}) error {
+  if d.Name == "" {
+    return fmt.Errorf("type name not specified")
+  }
+  fieldsNamesMap := map[string]struct{}{}
 
-func (d *compositeTypeDesc) Validate() error {
-	var (
-		err error
-		ok  bool
-	)
-	for _, rule := range compTypeValidations {
-		if ok = rule.match(d.Desc); !ok {
-			continue
-		}
-		if err = rule.validate(d.Def); err != nil {
-			return fmt.Errorf("composite type definition error: %s", err)
-		}
-	}
-	if !ok {
-		return fmt.Errorf("has unsupported composite type description: %s", d.Desc)
-	}
-	return nil
-}
+  for _, field := range d.Fields {
+    if _, ok := fieldsNamesMap[field.Name]; ok {
+      return fmt.Errorf("duplicated field: %s", field.Name)
+    }
+    fieldsNamesMap[field.Name] = struct{}{}
 
-type compTypeValidation struct {
-	validate func(desc *defDesc) (err error)
-	match    func(typ string) (ok bool)
-}
-
-var compTypeValidations = []*compTypeValidation{
-	{
-		validate: func(desc *defDesc) error {
-			return desc.Validate()
-		},
-		match: compTypeStructMatch,
-	},
-	{
-		validate: func(desc *defDesc) error {
-			if desc != nil {
-				return fmt.Errorf("definition must be null")
-			}
-			return nil
-		},
-		match: compTypeSlicesMatch,
-	},
-}
-
-func (d *defDesc) Validate() error {
-	if d.Name == "" {
-		return fmt.Errorf("name not specified")
-	}
-	if utils.IsCamelCase(d.Name) || utils.IsSnakeCase(d.Name) {
-		return fmt.Errorf("invalid name")
-	}
-	for _, field := range d.Fields {
-		if err := field.Validate(); err != nil {
-			return fmt.Errorf("field: %s: error: %v", field.Name, err)
-		}
-	}
-	return nil
+    if err := field.Validate(types); err != nil {
+      return fmt.Errorf("field: %s: error: %v", field.Name, err)
+    }
+  }
+  return nil
 }
 
 var scalarTypesMap = map[string]struct{}{
-	"int":     {},
-	"int32":   {},
-	"int64":   {},
-	"float32": {},
-	"float64": {},
-	"byte":    {},
-	"string":  {},
+  "int":     {},
+  "int32":   {},
+  "int64":   {},
+  "float32": {},
+  "float64": {},
+  "bool":    {},
+  "byte":    {},
+  "string":  {},
 }
 
 var (
-	compTypeStructMatch = regexp.MustCompile(`struct\{\}`).MatchString
-	compTypeSlicesMatch = regexp.MustCompile(`^\[\]((bool|string|byte|int)|(float|int)(32|64))$`).MatchString
+  typeDefSliceRegex    = regexp.MustCompile(`^\[\]\w+$`)
+  typeScalarSliceRegex = regexp.MustCompile(`^\[\]((bool|string|byte|int)|(float|int)(32|64))$`)
 )
 
 type rpcTemplates struct {
-	Handles   []*rpcHandle
-	Contracts *rpcContracts
+  Handles   []*rpcHandle
+  Contracts *rpcContracts
 }
 
 type rpcHandle struct {
-	Name string
+  Name  string
+  Route string
 }
 
 type rpcContracts struct {
-	Requests       []*rpcRequest
-	Responses      []*rpcResponse
-	CompositeTypes []*rpcCompositeType
+  Requests  []*rpcContract
+  Responses []*rpcContract
+  TypeDefs  []*rpcTypeDef
 }
 
-type rpcRequest struct {
-	Fields []*rpcStructField
+type rpcContract struct {
+  Name   string
+  Fields []*rpcStructField
 }
 
-type rpcResponse struct {
-	Fields []*rpcStructField
-}
-
-type rpcCompositeType struct {
-	Name   string
-	Fields []*rpcStructField
+type rpcTypeDef struct {
+  Name   string
+  Fields []*rpcStructField
 }
 
 type rpcStructField struct {
-	Name string
-	Type string
-	Tag  string
+  Name string
+  Type string
+  Tag  string
 }
 
-func rootDescToRpcTemplates(desc *rootDesc) (*rpcTemplates, error) {
-	var (
-		handles []*rpcHandle
+func rootDescToRpcTemplates(desc *rootDesc) *rpcTemplates {
+  handlesCount := len(desc.Handles)
 
-		// TODO: complete this function
-		_ []*rpcRequest
-		_ []*rpcResponse
-		_ []*rpcCompositeType
-	)
-	for _, handlerDesc := range desc.Handlers {
-		// collect handles names
-		handles = append(handles, &rpcHandle{
-			Name: handlerDesc.Name,
-		})
-		// init request
-		_ = &rpcRequest{}
+  handles := make([]*rpcHandle, 0, handlesCount)
+  reqs := make([]*rpcContract, 0, handlesCount)
+  resp := make([]*rpcContract, 0, handlesCount)
 
-		// collect request fields
-		for _, fieldDesc := range handlerDesc.Request.Fields {
-			reqField := &rpcStructField{}
-			// set name and json tag for field
-			reqField.Name = fieldDesc.Name
-			reqField.Tag = utils.ToStructTag(fieldDesc.Name)
+  for _, handleDesc := range desc.Handles {
+    handles = append(handles, handleDescToRpcHandle(handleDesc))
+    reqs = append(reqs, contractDescToRpcContract(handleDesc.Name, handleDesc.Request))
+    resp = append(resp, contractDescToRpcContract(handleDesc.Name, handleDesc.Response))
+  }
+  typeDefs := utils.Map(desc.TypeDefs, typeDefDescToRpcTypeDef)
 
-			if typ := fieldDesc.ScalarType; typ != "" {
-				reqField.Type = typ
-			}
-			if typ := fieldDesc.CompositeType; typ != nil {
-				_ = &rpcCompositeType{}
-
-				// if composite type match slice
-				if compTypeSlicesMatch(typ.Desc) {
-					reqField.Type = typ.Desc
-				}
-				// if composite type match struct
-				if compTypeStructMatch(typ.Desc) {
-					reqField.Type = typ.Def.Name
-
-				}
-			}
-		}
-	}
-	// TODO: complete this function
-	return nil, nil
+  return &rpcTemplates{
+    Handles: handles,
+    Contracts: &rpcContracts{
+      Requests:  reqs,
+      Responses: resp,
+      TypeDefs:  typeDefs,
+    },
+  }
 }
 
-func fieldDescToRpc() {
-	// TODO: complete this function
+func contractDescToRpcContract(name string, desc *contractDesc) *rpcContract {
+  return &rpcContract{
+    Name:   name,
+    Fields: utils.Map(desc.Fields, fieldDescToRpcStructField),
+  }
 }
 
-func compTypeDescToRpcCompType(desc *compositeTypeDesc) []*rpcCompositeType {
-	// collect rpc composite types
-	var _ []*rpcCompositeType
-
-	rpcCompTyp := &rpcCompositeType{}
-	rpcCompTyp.Name = desc.Def.Name
-
-	for _, fieldDesc := range desc.Def.Fields {
-		rpcStructField := &rpcStructField{}
-
-		if typ := fieldDesc.ScalarType; typ != "" {
-			rpcStructField.Type = typ
-		}
-		if typ := fieldDesc.CompositeType; typ != nil {
-			// if composite type match slice
-			if compTypeSlicesMatch(typ.Desc) {
-				rpcStructField.Type = typ.Desc
-			}
-			// if composite type match struct
-			if compTypeStructMatch(typ.Desc) {
-				rpcStructField.Type = typ.Def.Name
-				rpcStructField.Tag = utils.ToStructTag(typ.Def.Name)
-
-				// TODO: complete this function
-				for _, fieldDesc = range typ.Def.Fields {
-					return compTypeDescToRpcCompType(fieldDesc.CompositeType)
-				}
-			}
-		}
-	}
-	return nil // TODO: complete this function
+func handleDescToRpcHandle(desc *handleDesc) *rpcHandle {
+  return &rpcHandle{
+    Name:  utils.StringToUpperCamelCase(desc.Name),
+    Route: desc.Route,
+  }
 }
+
+func typeDefDescToRpcTypeDef(desc *typeDefsDesc) *rpcTypeDef {
+  return &rpcTypeDef{
+    Name:   utils.StringToUpperCamelCase(desc.Name),
+    Fields: utils.Map(desc.Fields, fieldDescToRpcStructField),
+  }
+}
+
+func fieldDescToRpcStructField(desc *fieldDesc) *rpcStructField {
+  structField := &rpcStructField{}
+
+  structField.Name = utils.StringToUpperCamelCase(desc.Name)
+  structField.Tag = utils.StringToSnakeCase(desc.Name)
+
+  switch {
+  case utils.MapLookup(scalarTypesMap, desc.Type) || typeScalarSliceRegex.MatchString(desc.Type):
+    // Not convert
+    structField.Type = desc.Type
+
+  case !typeScalarSliceRegex.MatchString(desc.Type) && typeDefSliceRegex.MatchString(desc.Type):
+    sliceType := strings.TrimPrefix(desc.Type, slicePrefix)
+    // Convert to upper case
+    sliceType = utils.StringToUpperCamelCase(sliceType)
+    // Convert to slice of pointers
+    sliceType = strings.Join([]string{slicePrefix, ptrPrefix, sliceType}, dummySep)
+    structField.Type = sliceType
+
+  default:
+    // Convert to upper case
+    structType := utils.StringToUpperCamelCase(desc.Type)
+    // Convert to pointer
+    structField.Type = strings.Join([]string{ptrPrefix, structType}, dummySep)
+  }
+  return structField
+}
+
+const (
+  dummySep    = ""
+  ptrPrefix   = "*"
+  slicePrefix = "[]"
+)

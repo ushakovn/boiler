@@ -1,0 +1,11 @@
+package {{.Name}}_storage
+
+type {{.Name}}Storage interface {
+    {{range .Models}}
+    List{{.Name}}(ctx context.Context, input List{{.Name}}Input) ([]*model.{{.Name}}, error)
+    {{.Name}}(ctx context.Context, input {{.Name}}Input) (*model.{{.Name}}, error)
+    Put{{.Name}}(ctx context.Context, input Put{{.Name}}Input) (*model.{{.Name}}, error)
+    Update{{.Name}}(ctx context.Context, input Update{{.Name}}Input) (*model.{{.Name}}, error)
+    Delete{{.Name}}(ctx context.Context, input Delete{{.Name}}Input) error
+    {{end}}
+}

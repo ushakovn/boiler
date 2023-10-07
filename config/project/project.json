@@ -8,9 +8,19 @@
       {
         "name": "Makefile",
         "extension": ""
+      },
+      {
+        "name": "go",
+        "extension": "mod",
+        "template": {
+          "compiled": "gomod"
+        }
+      },
+      {
+        "name": "go",
+        "extension": "sum"
       }
     ],
-
     "dirs": [
       {
         "name": {
@@ -26,7 +36,7 @@
                 "name": "main",
                 "extension": "go",
                 "template": {
-                  "path": "templates/main.template"
+                  "compiled": "main"
                 }
               }
             ]

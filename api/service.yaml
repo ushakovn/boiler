@@ -1,0 +1,84 @@
+handles:
+  - name: "GetClients"
+    route: "getClients"
+
+    request:
+      fields:
+        - name: "ids"
+          type: "[]string"
+        - name: "page"
+          type: "int"
+        - name: "count"
+          type: "int"
+
+    response:
+      fields:
+        - name: "clients"
+          type: "client"
+        - name: "total"
+          type: "int"
+
+  - name: "PutClients"
+    route: "putClients"
+
+    request:
+      fields:
+        - name: "clients"
+          type: "[]client"
+
+    response:
+      fields:
+        - name: "put_count"
+          type: "int"
+        - name: "status"
+          type: "bool"
+
+  - name: "BatchUploadPhotos"
+    route: "batchUpload"
+
+    request:
+      fields:
+        - name: "photos"
+          type: "[]photo"
+
+    response:
+      fields:
+        - name: "uploaded"
+          type: "int32"
+
+  - name: "BatchUploadPhotosV2"
+    route: "batchUploadV2"
+
+    request:
+      fields:
+        - name: "photos"
+          type: "[]photo"
+        - name: "clientPhotos"
+          type: "[]photo"
+        - name: "clients"
+          type: "[]client"
+
+
+    response:
+      fields:
+        - name: "uploaded"
+          type: "int32"
+
+type_defs:
+  - name: "client"
+    fields:
+      - name: "id"
+        type: "string"
+      - name: "name"
+        type: "string"
+      - name: "photos"
+        type: "[]photo"
+
+  - name: "photo"
+    fields:
+      - name: "url"
+        type: "string"
+      - name: "title"
+        type: "string"
+      - name: "bytes"
+        type: "[]byte"

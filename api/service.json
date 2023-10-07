@@ -1,0 +1,68 @@
+{
+  "handles": [
+    {
+      "name": "GetClients",
+      "route": "getClients",
+      "request": {
+        "fields": [
+          {
+            "name": "ids",
+            "type": "[]string"
+          },
+          {
+            "name": "page",
+            "type": "int"
+          },
+          {
+            "name": "count",
+            "type": "int"
+          }
+        ]
+      },
+      "response": {
+        "fields": [
+          {
+            "name": "clients",
+            "type": "client"
+          },
+          {
+            "name": "total",
+            "type": "int"
+          }
+        ]
+      }
+    }
+  ],
+  "type_defs": [
+    {
+      "name": "client",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "photos",
+          "type": "[]photo"
+        }
+      ]
+    },
+    {
+      "name": "photo",
+      "fields": [
+        {
+          "name": "url",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}
