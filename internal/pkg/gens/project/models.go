@@ -6,7 +6,7 @@ import (
 )
 
 type projectDesc struct {
-  Root *rootDesc `json:"root"`
+  Root *rootDesc `json:"root" yaml:"root"`
 }
 
 type rootDesc struct {
@@ -27,7 +27,7 @@ type nameDesc struct {
 
 type fileDesc struct {
   // Path field it is combination of fileDesc.Name and path prefixes
-  Path      string        `json:"-" yaml:"path"`
+  Path      string        `json:"-" yaml:"-"`
   Name      string        `json:"name" yaml:"name"`
   Extension string        `json:"extension" yaml:"extension"`
   Template  *templateDesc `json:"template" yaml:"template"`

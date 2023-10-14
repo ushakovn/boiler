@@ -6,6 +6,7 @@ import (
   "github.com/ushakovn/boiler/internal/boiler/gen"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
+  "github.com/ushakovn/boiler/internal/pkg/gens/storage"
 )
 
 type Typ string
@@ -20,6 +21,7 @@ type Generators []gen.Generator
 type CommonConfig struct {
   Project project.Config
   Rpc     rpc.Config
+  Storage storage.Config
 }
 
 func NewGenerator(config CommonConfig, typ Typ) (gen.Generator, error) {

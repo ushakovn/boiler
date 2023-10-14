@@ -22,7 +22,7 @@ func Env(key string) (string, error) {
   return "", fmt.Errorf("%s value not found", key)
 }
 
-func FileFormat(fullName string) string {
+func ExtractFileExtension(fullName string) string {
   parts := strings.Split(fullName, ".")
   return parts[len(parts)-1]
 }

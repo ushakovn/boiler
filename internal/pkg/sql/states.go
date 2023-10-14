@@ -22,15 +22,12 @@ func doTransitions(tokens []string) (state, error) {
     state = newTerminateState()
     err   error
   )
-  collected := make([]string, 0, len(tokens))
-
   for _, token := range tokens {
     token = utils.NormalizeToken(token)
+
     if state, err = state.next(token); err != nil {
       return nil, fmt.Errorf("state.next: %w", err)
     }
-
-    collected = append(collected, token)
   }
   return state, nil
 }
@@ -43,9 +40,23 @@ func (t *terminate) next(token string) (state, error) {
   switch token {
   case "create":
     return &create{dump: t.dump}, nil
-
+  case "alter":
+    return &alter{dump: t.dump}, nil
   default:
     return t, nil
+  }
+}
+
+type alter struct {
+  dump *DumpSQL
+}
+
+func (t *alter) next(token string) (state, error) {
+  switch token {
+  case "table":
+    return &table{dump: t.dump}, nil
+  default:
+    return &terminate{dump: t.dump}, nil
   }
 }
 
@@ -57,7 +68,6 @@ func (t *create) next(token string) (state, error) {
   switch token {
   case "table":
     return &table{dump: t.dump}, nil
-
   default:
     return &terminate{dump: t.dump}, nil
   }
@@ -69,6 +79,9 @@ type table struct {
 
 func (t *table) next(token string) (state, error) {
   switch {
+  case token == "only":
+    return &only{dump: t.dump}, nil
+
   case matchTableName(token):
     const (
       withSchema = 2
@@ -86,12 +99,28 @@ func (t *table) next(token string) (state, error) {
       name = parts[tablePart]
     }
 
-    t.dump.Tables = append(t.dump.Tables, &DumpTable{
+    t.dump.Tables.Push(&DumpTable{
       RawName: token,
       Name:    name,
       Schema:  schema,
     })
 
+    return &tableName{dump: t.dump}, nil
+
+  default:
+    return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
+  }
+}
+
+type only struct {
+  dump *DumpSQL
+}
+
+func (t *only) next(token string) (state, error) {
+  switch {
+  case matchTableName(token):
+
+    t.dump.tempStack.Push(token)
     return &tableName{dump: t.dump}, nil
 
   default:
@@ -106,8 +135,126 @@ type tableName struct {
 func (t *tableName) next(token string) (state, error) {
   switch token {
   case "(":
+    t.dump.tempStack.Pop()
     return &openBracket{dump: t.dump}, nil
 
+  case "add":
+    return &add{dump: t.dump}, nil
+
+  case "alter":
+    t.dump.tempStack.Pop()
+    return &terminate{dump: t.dump}, nil
+
+  default:
+    return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
+  }
+}
+
+type add struct {
+  dump *DumpSQL
+}
+
+func (t *add) next(token string) (state, error) {
+  switch token {
+  case "constraint":
+    return &constraint{dump: t.dump}, nil
+  default:
+    return &terminate{dump: t.dump}, nil
+  }
+}
+
+type constraint struct {
+  dump *DumpSQL
+}
+
+func (t *constraint) next(token string) (state, error) {
+  switch {
+  case matchPrimaryKeyConstraint(token):
+    return &primaryKeyConstraintName{dump: t.dump}, nil
+  default:
+    return &terminate{dump: t.dump}, nil
+  }
+}
+
+type primaryKeyConstraintName struct {
+  dump *DumpSQL
+}
+
+func (t *primaryKeyConstraintName) next(token string) (state, error) {
+  switch token {
+  case "primary":
+    return &primary{dump: t.dump}, nil
+  default:
+    return &terminate{dump: t.dump}, nil
+  }
+}
+
+type primary struct {
+  dump *DumpSQL
+}
+
+func (t *primary) next(token string) (state, error) {
+  switch token {
+  case "key":
+    return &key{dump: t.dump}, nil
+  default:
+    return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
+  }
+}
+
+type key struct {
+  dump *DumpSQL
+}
+
+func (t *key) next(token string) (state, error) {
+  switch {
+  case matchPrimaryKeyName(token):
+    columnName := strings.Trim(token, "()")
+
+    rawTableName, ok := t.dump.tempStack.Pop()
+    if !ok {
+      return nil, fmt.Errorf("table name not found: primary key: %s", token)
+    }
+    ok = false
+
+    for tableIdx, table := range t.dump.Tables.Elems() {
+      if ok {
+        break
+      }
+      if rawTableName != table.RawName {
+        continue
+      }
+      for columnIdx, column := range table.Columns.Elems() {
+        if columnName != column.Name {
+          continue
+        }
+        t.dump.Tables.ElemWith(tableIdx, func(table *DumpTable) {
+          table.Columns.ElemWith(columnIdx, func(column *DumpColumn) {
+            column.IsPrimaryKey = true
+          })
+        })
+        ok = true
+        break
+      }
+    }
+    if !ok {
+      return nil, fmt.Errorf("invalid primary key: table name: %s column: %s", rawTableName, columnName)
+    }
+    return &primaryKeyName{dump: t.dump}, nil
+
+  default:
+    return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
+  }
+}
+
+type primaryKeyName struct {
+  dump *DumpSQL
+}
+
+func (t *primaryKeyName) next(token string) (state, error) {
+  switch token {
+  case ";":
+    return &terminate{dump: t.dump}, nil
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
   }
@@ -120,10 +267,10 @@ type openBracket struct {
 func (t *openBracket) next(token string) (state, error) {
   switch {
   case matchColumnName(token):
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-
-    table.Columns = append(table.Columns, &DumpColumn{
-      Name: token,
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.Push(&DumpColumn{
+        Name: token,
+      })
     })
     return &columnName{dump: t.dump}, nil
 
@@ -144,26 +291,35 @@ func (t *columnName) next(token string) (state, error) {
 
   defer func() {
     if err == nil {
-      table := t.dump.Tables[len(t.dump.Tables)-1]
-      column := table.Columns[len(table.Columns)-1]
-      column.Typ = token
+      t.dump.Tables.PeekWith(func(table *DumpTable) {
+        table.Columns.PeekWith(func(column *DumpColumn) {
+          column.Typ = token
+        })
+      })
     }
   }()
 
   switch {
   case utils.StringOneOfEqual(token,
-    "bigint",
-    "bit",
-    "boolean",
-    "bool",
-    "bytea",
-    "date",
     "integer",
+    
+    "smallint",
     "int",
+    "bigint",
+
+    "smallserial",
+    "serial",
+    "bigserial",
+
+    "bit",
+    "bool",
+    "boolean",
+
+    "real",
     "money",
     "numeric",
-    "real",
-    "serial",
+
+    "bytea",
     "json",
     "jsonb",
   ) ||
@@ -192,14 +348,15 @@ type timeOrTimestampColumnTyp struct {
 }
 
 func (t *timeOrTimestampColumnTyp) next(token string) (state, error) {
-  table := t.dump.Tables[len(t.dump.Tables)-1]
-  column := table.Columns[len(table.Columns)-1]
-
   switch token {
   case
     "with",
     "without":
-    column.TypOpt = token
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.PeekWith(func(column *DumpColumn) {
+        column.TypOptions = token
+      })
+    })
     return &timeOrTimestampWithOrWithoutOption{dump: t.dump}, nil
 
   case ",":
@@ -209,7 +366,6 @@ func (t *timeOrTimestampColumnTyp) next(token string) (state, error) {
     return &closeBracket{dump: t.dump}, nil
 
   case "not":
-    column.ColOpt = token
     return &notColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -226,9 +382,11 @@ func (t *timeOrTimestampWithOrWithoutOption) next(token string) (state, error) {
 
   defer func() {
     if err == nil {
-      table := t.dump.Tables[len(t.dump.Tables)-1]
-      column := table.Columns[len(table.Columns)-1]
-      column.TypOpt += " " + token
+      t.dump.Tables.PeekWith(func(table *DumpTable) {
+        table.Columns.PeekWith(func(column *DumpColumn) {
+          column.TypOptions += " " + token
+        })
+      })
     }
   }()
 
@@ -251,9 +409,11 @@ type timeOrTimestampTimeOption struct {
 func (t *timeOrTimestampTimeOption) next(token string) (state, error) {
   switch token {
   case "zone":
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-    column := table.Columns[len(table.Columns)-1]
-    column.TypOpt += " " + token
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.PeekWith(func(column *DumpColumn) {
+        column.TypOptions += " " + token
+      })
+    })
 
     return &timeOrTimestampTimezoneOption{dump: t.dump}, nil
 
@@ -275,10 +435,6 @@ func (t *timeOrTimestampTimezoneOption) next(token string) (state, error) {
     return &closeBracket{dump: t.dump}, nil
 
   case "not":
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-    column := table.Columns[len(table.Columns)-1]
-    column.ColOpt = token
-
     return &notColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -291,12 +447,13 @@ type characterColumnTyp struct {
 }
 
 func (t *characterColumnTyp) next(token string) (state, error) {
-  table := t.dump.Tables[len(t.dump.Tables)-1]
-  column := table.Columns[len(table.Columns)-1]
-
   switch {
   case matchCharacterVaryingOption(token):
-    column.TypOpt = token
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.PeekWith(func(column *DumpColumn) {
+        column.TypOptions = token
+      })
+    })
 
     return &characterVaryingOption{dump: t.dump}, nil
 
@@ -307,7 +464,6 @@ func (t *characterColumnTyp) next(token string) (state, error) {
     return &closeBracket{dump: t.dump}, nil
 
   case token == "not":
-    column.ColOpt = token
     return &notColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -328,10 +484,6 @@ func (t *characterVaryingOption) next(token string) (state, error) {
     return &closeBracket{dump: t.dump}, nil
 
   case "not":
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-    column := table.Columns[len(table.Columns)-1]
-    column.ColOpt = token
-
     return &notColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -346,10 +498,11 @@ type notColumnTypOption struct {
 func (t *notColumnTypOption) next(token string) (state, error) {
   switch token {
   case "null":
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-    column := table.Columns[len(table.Columns)-1]
-    column.ColOpt += " " + token
-
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.PeekWith(func(column *DumpColumn) {
+        column.IsNotNull = true
+      })
+    })
     return &nullColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -374,10 +527,6 @@ func (t *nullColumnTypOption) next(token string) (state, error) {
   }
 }
 
-type columnColon struct {
-  dump *DumpSQL
-}
-
 type scalarColumnTyp struct {
   dump *DumpSQL
 }
@@ -391,10 +540,6 @@ func (t *scalarColumnTyp) next(token string) (state, error) {
     return &closeBracket{dump: t.dump}, nil
 
   case "not":
-    table := t.dump.Tables[len(t.dump.Tables)-1]
-    column := table.Columns[len(table.Columns)-1]
-    column.ColOpt = token
-
     return &notColumnTypOption{dump: t.dump}, nil
 
   default:
@@ -422,6 +567,8 @@ var (
   matchCharacterBracketsColumnTyp = regexp.MustCompile(`^char(acter)?(\(\d+\))$`).MatchString
   matchNVarcharColumnTyp          = regexp.MustCompile(`^(n)+varchar(\(\d+\))?$`).MatchString
   matchCharacterVaryingOption     = regexp.MustCompile(`^varying(\(\d+\)?)*$`).MatchString
+  matchPrimaryKeyConstraint       = regexp.MustCompile(`^\w+_pkey$`).MatchString
+  matchPrimaryKeyName             = regexp.MustCompile(`^(\w+)|\(\w+\)$`).MatchString
 )
 
 var errUnexpectedToken = errors.New("unexpected token")

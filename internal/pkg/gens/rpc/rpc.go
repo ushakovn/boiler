@@ -63,9 +63,9 @@ func (g *rpc) loadRpcDesc() error {
   if err != nil {
     return fmt.Errorf("os.ReadFile projectDir: %w", err)
   }
-  format := utils.FileFormat(g.rpcDescPath)
+  fileExtension := utils.ExtractFileExtension(g.rpcDescPath)
 
-  desc, err := parseRootDesc(format, buf)
+  desc, err := parseRootDesc(fileExtension, buf)
   if err != nil {
     return fmt.Errorf("parseRootDesc: %w", err)
   }
@@ -74,18 +74,18 @@ func (g *rpc) loadRpcDesc() error {
   return nil
 }
 
-func parseRootDesc(format string, buf []byte) (*rootDesc, error) {
+func parseRootDesc(fileExtension string, buf []byte) (*rootDesc, error) {
   var (
     desc *rootDesc
     err  error
   )
-  switch format {
+  switch fileExtension {
   case "yml", "yaml", "YML", "YAML":
     err = yaml.Unmarshal(buf, &desc)
   case "json", "JSON":
     err = json.Unmarshal(buf, &desc)
   default:
-    err = fmt.Errorf("unsupported format: %s", format)
+    err = fmt.Errorf("unsupported file extension: %s", fileExtension)
   }
   return desc, err
 }

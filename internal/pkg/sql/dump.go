@@ -3,36 +3,36 @@ package sql
 import (
   "bytes"
   "fmt"
-  "os"
-  "os/exec"
   "unicode"
 
   "github.com/ushakovn/boiler/pkg/utils"
 )
 
 type DumpSQL struct {
-  Tables []*DumpTable
+  Tables    utils.Stack[*DumpTable]
+  tempStack utils.Stack[string]
 }
 
 type DumpTable struct {
   RawName string
   Name    string
   Schema  string
-  Columns []*DumpColumn
+  Columns utils.Stack[*DumpColumn]
 }
 
 type DumpColumn struct {
-  Name   string
-  Typ    string
-  TypOpt string
-  ColOpt string
+  Name         string
+  Typ          string
+  TypOptions   string
+  IsNotNull    bool
+  IsPrimaryKey bool
 }
 
 // DumpSchemaSQL returns SQL dump including table definitions from CREATE TABLE statements
-func DumpSchemaSQL(conn *PgConn) (*DumpSQL, error) {
-  pgDumpBuf, err := execPgDump(conn)
+func DumpSchemaSQL(option PgDumpOption) (*DumpSQL, error) {
+  pgDumpBuf, err := option.Call()
   if err != nil {
-    return nil, fmt.Errorf("execPgDump: %w", err)
+    return nil, fmt.Errorf("option.Call: %w", err)
   }
   tokens, err := scanSchemaSQLTokens(pgDumpBuf)
   if err != nil {
@@ -90,44 +90,4 @@ func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
 var sqlStickyTokens = map[rune]struct{}{
   ',': {},
   ';': {},
-}
-
-type PgConn struct {
-  DB   string
-  Host string
-  Port string
-  User string
-  Pass string
-}
-
-func (c *PgConn) pgDump() (name string, args []string, err error) {
-  if err := os.Setenv("PGPASSWORD", c.Pass); err != nil {
-    return "", nil, fmt.Errorf("os.Setenv: %w", err)
-  }
-  args = []string{
-    "--no-owner",
-    "-h", c.Host,
-    "-p", c.Port,
-    "-U", c.User,
-    c.DB,
-  }
-  name = "pg_dump"
-
-  return name, args, nil
-}
-
-func execPgDump(conn *PgConn) ([]byte, error) {
-  name, args, err := conn.pgDump()
-  if err != nil {
-    return nil, fmt.Errorf("conn.pgDump: %w", err)
-  }
-  cmd := exec.Command(name, args...)
-  if cmd.Err != nil {
-    return nil, fmt.Errorf("exec.CommandContext %w", cmd.Err)
-  }
-  buf, err := cmd.Output()
-  if err != nil {
-    return nil, fmt.Errorf("cmd.Output: %w", err)
-  }
-  return buf, nil
 }

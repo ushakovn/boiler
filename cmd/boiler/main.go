@@ -9,6 +9,7 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/gens/factory"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
+  "github.com/ushakovn/boiler/internal/pkg/gens/storage"
 )
 
 func main() {
@@ -37,11 +38,15 @@ func main() {
 func parseFlags() (factory.Typ, factory.CommonConfig, error) {
   genType := flag.String("type", "", "generator type")
 
-  projDescPath := flag.String("project", "", "project description json/yaml path")
-  rpcDescPath := flag.String("rpc", "", "rpc description json/yaml path")
+  projDescPath := flag.String("project", "", "path to project description in json/yaml")
+  rpcDescPath := flag.String("rpc", "", "path to rpc description in json/yaml")
+
+  pgConfigPath := flag.String("pg_config", "", "path to postgres connection config in json/yaml")
+  pgDumpPath := flag.String("pg_dump", "", "path to postgres dump in sql ddl")
 
   flag.Parse()
-  if *genType == "" {
+
+  if genType == nil || *genType == "" {
     return "", factory.CommonConfig{}, fmt.Errorf("generator type not specified")
   }
 
@@ -51,6 +56,10 @@ func parseFlags() (factory.Typ, factory.CommonConfig, error) {
     },
     Rpc: rpc.Config{
       RpcDescPath: *rpcDescPath,
+    },
+    Storage: storage.Config{
+      PgConfigPath: *pgConfigPath,
+      PgDumpPath:   *pgDumpPath,
     },
   }, nil
 }
