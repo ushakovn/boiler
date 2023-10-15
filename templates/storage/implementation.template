@@ -3,10 +3,9 @@
 package {{toLowerCamelCase .ModelName}}_storage
 
 import (
-  "context"
-  "fmt"
-
-  sq "github.com/Masterminds/squirrel"
+  {{- range .ModelPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 type {{.ModelName}}Storage struct {
@@ -43,8 +42,8 @@ func (s *{{toLowerCamelCase .ModelName}}Storage) {{.ModelName}}s(ctx context.Con
 
   {{- range .ModelFields}}
   {{- range .ModelsFieldFilters}}
-  if {{withIfCondition .FilterName}} {
-    builder = builder.Where(sq.Eq{string({{.FieldName}}): filters.{{.FilterName}}{{withDot .FilterTypeSuffix}}})
+  if {{.FilterIfStmt}} {
+    builder = builder.Where(sq.{{.FilterSqOperator}}{string({{.FieldName}}): filters.{{.FilterName}}{{withDot .FilterTypeSuffix}}})
   }
   {{- end}}
   {{- end}}
@@ -65,7 +64,7 @@ func (s *{{toLowerCamelCase .ModelName}}Storage) {{.ModelName}}(ctx context.Cont
 
   {{- range .ModelFields}}
   {{- range .ModelFieldFilters}}
-  if {{withIfCondition .FilterName}} {
+  if {{.FilterIfStmt}} {
     builder = builder.Where(sq.Eq{string({{.FieldName}}): filters.{{.FilterName}}{{withDot .FilterTypeSuffix}}})
   }
   {{- end}}

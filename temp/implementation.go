@@ -48,7 +48,7 @@ func (s *productStorage) Products(ctx context.Context, input ProductsInput) ([]*
   if filters.CreatedAtGte.Ptr() != nil {
     query = query.Where(sq.GtOrEq{string(CreatedAtProductField): filters.CreatedAtGte.Time})
   }
-  if filters.CreatedAtGt.Ptr() != nil {
+  if filters.CostGte.Ptr() != nil {
     query = query.Where(sq.Gt{string(CreatedAtProductField): filters.CreatedAtGt.Time})
   }
   return doQueryContext[*Product](ctx, s.client, query)

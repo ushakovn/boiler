@@ -3,7 +3,9 @@
 package storage
 
 import (
-  sq "github.com/Masterminds/squirrel"
+  {{- range .BuildersPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 func newSelectBuilder() sq.SelectBuilder {

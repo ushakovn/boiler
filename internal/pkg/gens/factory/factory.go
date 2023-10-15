@@ -14,6 +14,7 @@ type Typ string
 const (
   ProjectTyp Typ = "project"
   RpcType    Typ = "rpc"
+  StorageTyp Typ = "storage"
 )
 
 type Generators []gen.Generator
@@ -26,16 +27,18 @@ type CommonConfig struct {
 
 func NewGenerator(config CommonConfig, typ Typ) (gen.Generator, error) {
   var (
-    gn  gen.Generator
+    g   gen.Generator
     err error
   )
   switch typ {
   case ProjectTyp:
-    gn, err = project.NewProject(config.Project)
+    g, err = project.NewProject(config.Project)
   case RpcType:
-    gn, err = rpc.NewRpc(config.Rpc)
+    g, err = rpc.NewRpc(config.Rpc)
+  case StorageTyp:
+    g, err = storage.NewStorage(config.Storage)
   default:
-    err = fmt.Errorf("wrong generator type")
+    err = fmt.Errorf("unsupported generator type")
   }
-  return gn, err
+  return g, err
 }

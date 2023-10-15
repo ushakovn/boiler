@@ -3,11 +3,9 @@
 package storage
 
 import (
-  "context"
-  "errors"
-  "fmt"
-
-  "gopkg.in/guregu/null.v4/zero"
+  {{- range .InterfacePackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 type {{.ModelName}}Storage interface {

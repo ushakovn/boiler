@@ -3,12 +3,9 @@
 package storage
 
 import (
-  "context"
-  "database/sql"
-  "errors"
-  "fmt"
-
-  "github.com/georgysavva/scany/v2/sqlscan"
+  {{- range .ClientPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 var ErrZeroRowsRetrieved = errors.New("zero rows retrieved")
@@ -48,7 +45,7 @@ func doQueryContext[Model any](ctx context.Context, querier Querier, builder Bui
     return nil, fmt.Errorf("builder.ToSql: %w", err)
   }
   var models []Model
-  if err = sqlscan.Select(ctx, querier, &models, statement, args); err != nil {
+  if err = sc.Select(ctx, querier, &models, statement, args); err != nil {
     return nil, fmt.Errorf("sqlscan.Select: %w", err)
   }
   if len(models) == 0 {

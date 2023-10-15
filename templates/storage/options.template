@@ -3,7 +3,9 @@
 package storage
 
 import (
-  "fmt"
+  {{- range .OptionsPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 type sortOrder string

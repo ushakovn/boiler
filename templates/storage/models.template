@@ -3,13 +3,17 @@
 package storage
 
 import (
-  "gopkg.in/guregu/null.v4/zero"
+  {{- range .Models}}
+  {{- range .ModelPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
+  {{- end}}
 )
 
 {{- range .Models}}
 type {{.ModelName}} struct {
   {{- range .ModelFields}}
-  {{.FieldName}} {{.FieldType}} {{.FieldDbTag}}
+  {{.FieldName}} {{.FieldType}} `db:"{{.SqlTableFieldName}}"`
   {{- end}}
 }
 {{end}}

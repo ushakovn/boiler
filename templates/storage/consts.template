@@ -3,10 +3,9 @@
 package storage
 
 import (
-  "context"
-  "fmt"
-
-  sq "github.com/Masterminds/squirrel"
+  {{- range .ConstsPackages}}
+  {{.ImportAlias}} "{{.ImportLine}}"
+  {{- end}}
 )
 
 type tableName string
@@ -17,12 +16,16 @@ const (
   {{- end}}
 )
 
-type {{toLowerCamelCase .ModelName}}Field string
+type (
+  {{- range .Models}}
+  {{toLowerCamelCase .ModelName}}Field string
+  {{- end}}
+)
 
-{{- range .Models}}
+{{- range $m := .Models}}
 const (
   {{- range .ModelFields}}
-  {{.FieldName}}{{.ModelName}}Field {{toLowerCamelCase .FieldName}}Field = {{.SqlTableFieldName}}
+  {{.FieldName}}{{$m.ModelName}}Field {{toLowerCamelCase $m.ModelName}}Field = "{{.SqlTableFieldName}}"
   {{- end}}
 )
 {{end}}

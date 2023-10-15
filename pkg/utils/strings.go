@@ -105,6 +105,10 @@ func StringToLowerCase(s string) string {
   return string(out)
 }
 
+func StringWithDotPrefix(s string) string {
+  return fmt.Sprint(".", s)
+}
+
 func IsWrongCase(s string) bool {
   isCamel := IsCamelCase(s)
   isSnake := IsSnakeCase(s)
