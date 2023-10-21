@@ -1,6 +1,0 @@
-pg_config:
-  db: ""
-  host: ""
-  port: ""
-  user: ""
-  password: ""

@@ -134,7 +134,7 @@ func (g *storage) loadSchemaDesc() error {
     ConstsPackages:   constsPackages,
     OptionsPackages:  optionsPackages,
   }
-  
+
   return nil
 }
 
@@ -300,6 +300,7 @@ func columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
     "uuid": "string",
     "text": "string",
 
+    "date":      "time.Time",
     "time":      "time.Time",
     "timestamp": "time.Time",
   }[columnTyp]
@@ -346,6 +347,7 @@ func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     fieldTyp = "zero.String"
 
   case
+    "date",
     "time",
     "timestamp":
     fieldTyp = "zero.Time"

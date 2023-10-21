@@ -342,6 +342,8 @@ func (t *columnName) next(token string) (state, error) {
 
     "text",
     "uuid",
+
+    "date",
   ) ||
     matchNVarcharColumnTyp(token) ||
     matchCharacterBracketsColumnTyp(token):
@@ -387,6 +389,9 @@ func (t *timeOrTimestampColumnTyp) next(token string) (state, error) {
 
   case "not":
     return &notColumnTypOption{dump: t.dump}, nil
+
+  case "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
 
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
@@ -434,7 +439,6 @@ func (t *timeOrTimestampTimeOption) next(token string) (state, error) {
         column.TypOptions += " " + token
       })
     })
-
     return &timeOrTimestampTimezoneOption{dump: t.dump}, nil
 
   default:
@@ -457,6 +461,9 @@ func (t *timeOrTimestampTimezoneOption) next(token string) (state, error) {
   case "not":
     return &notColumnTypOption{dump: t.dump}, nil
 
+  case "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
+
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
   }
@@ -474,7 +481,6 @@ func (t *characterColumnTyp) next(token string) (state, error) {
         column.TypOptions = token
       })
     })
-
     return &characterVaryingOption{dump: t.dump}, nil
 
   case token == ",":
@@ -485,6 +491,9 @@ func (t *characterColumnTyp) next(token string) (state, error) {
 
   case token == "not":
     return &notColumnTypOption{dump: t.dump}, nil
+
+  case token == "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
 
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
@@ -505,6 +514,9 @@ func (t *characterVaryingOption) next(token string) (state, error) {
 
   case "not":
     return &notColumnTypOption{dump: t.dump}, nil
+
+  case "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
 
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
@@ -542,8 +554,28 @@ func (t *nullColumnTypOption) next(token string) (state, error) {
   case ")":
     return &closeBracket{dump: t.dump}, nil
 
+  case "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
+
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
+  }
+}
+
+type defaultColumnTypOption struct {
+  dump *DumpSQL
+}
+
+func (t *defaultColumnTypOption) next(token string) (state, error) {
+  switch token {
+  case ",":
+    return &openBracket{dump: t.dump}, nil
+
+  case ")":
+    return &closeBracket{dump: t.dump}, nil
+
+  default:
+    return t, nil
   }
 }
 
@@ -561,6 +593,9 @@ func (t *scalarColumnTyp) next(token string) (state, error) {
 
   case "not":
     return &notColumnTypOption{dump: t.dump}, nil
+
+  case "default":
+    return &defaultColumnTypOption{dump: t.dump}, nil
 
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
