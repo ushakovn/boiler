@@ -2,6 +2,7 @@ package storage
 
 import (
   "fmt"
+  "path"
   "regexp"
   "strings"
 
@@ -11,8 +12,8 @@ import (
 )
 
 type schemaDesc struct {
-  SchemaName       string
   Models           []*modelDesc
+  ModelsPackages   []*goPackageDesc
   BuildersPackages []*goPackageDesc
   ClientPackages   []*goPackageDesc
   ConstsPackages   []*goPackageDesc
@@ -20,11 +21,11 @@ type schemaDesc struct {
 }
 
 type modelDesc struct {
-  ModelName         string
-  SqlTableName      string
-  ModelFields       []*fieldDesc
-  ModelPackages     []*goPackageDesc
-  InterfacePackages []*goPackageDesc
+  ModelName              string
+  SqlTableName           string
+  ModelFields            []*fieldDesc
+  InterfacePackages      []*goPackageDesc
+  ImplementationPackages []*goPackageDesc
 }
 
 type fieldDesc struct {
@@ -72,40 +73,68 @@ func (g *storage) loadSchemaDesc() error {
     })
   }
 
-  interfacePackages := buildFilePackages(interfaceFileName)
   buildersPackages := buildFilePackages(buildersFileName)
   clientPackages := buildFilePackages(clientFileName)
   constsPackages := buildFilePackages(constsFileName)
   optionsPackages := buildFilePackages(optionsFileName)
-  implementationPackages := buildFilePackages(implementationFileName)
+  modelsPackages := buildFilePackages(modelsFileName)
+
+  implementationPackages := append(
+    buildFilePackages(implementationFileName),
+    buildCrossFilePackages(g.goModuleName, implementationFileName)...,
+  )
+
+  modelUniquePackages := map[string]struct{}{}
 
   for _, model := range models {
-    modelPackages := append([]*goPackageDesc{}, implementationPackages...)
-    packagesByCustomNames := map[string]struct{}{}
+
+    interfacePackages := append(
+      buildFilePackages(interfaceFileName),
+      buildCrossFilePackages(g.goModuleName, interfaceFileName)...,
+    )
+    interfaceUniquePackages := map[string]struct{}{}
 
     for _, field := range model.ModelFields {
-      modelPackage, ok := fieldTypToPackageDesc(field.FieldType)
+      fieldPackages, ok := buildFieldPackages(field.FieldType)
       if !ok {
         continue
       }
-      if _, ok = packagesByCustomNames[modelPackage.CustomName]; ok {
-        continue
+      for _, fieldPackage := range fieldPackages {
+        if _, ok = modelUniquePackages[fieldPackage.CustomName]; ok {
+          continue
+        }
+        modelsPackages = append(modelsPackages, fieldPackage)
+        modelUniquePackages[fieldPackage.CustomName] = struct{}{}
       }
-      modelPackages = append(modelPackages, modelPackage)
-      packagesByCustomNames[modelPackage.CustomName] = struct{}{}
+
+      for _, filter := range field.ModelsFieldFilters {
+        fieldPackages, ok = buildFilterFieldPackages(filter.FilterType)
+        if !ok {
+          continue
+        }
+        for _, fieldPackage := range fieldPackages {
+          if _, ok = interfaceUniquePackages[fieldPackage.CustomName]; ok {
+            continue
+          }
+          interfacePackages = append(interfacePackages, fieldPackage)
+          interfaceUniquePackages[fieldPackage.CustomName] = struct{}{}
+        }
+      }
     }
-    model.ModelPackages = modelPackages
+
     model.InterfacePackages = interfacePackages
+    model.ImplementationPackages = implementationPackages
   }
 
   g.schemaDesc = &schemaDesc{
-    SchemaName:       g.storageName,
     Models:           models,
+    ModelsPackages:   modelsPackages,
     BuildersPackages: buildersPackages,
     ClientPackages:   clientPackages,
     ConstsPackages:   constsPackages,
     OptionsPackages:  optionsPackages,
   }
+  
   return nil
 }
 
@@ -141,7 +170,7 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
     fieldBadge = fieldBadgePk
   }
 
-  fieldTypSuffix := fieldTypeSuffix(fieldTyp)
+  fieldTypSuffix := buildFieldTypeSuffix(fieldTyp)
   modelFilters, modelsFilters := buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp)
 
   return &fieldDesc{
@@ -180,7 +209,8 @@ func buildStringFilters(stringFilterOperators []string, fieldName, fieldZeroTyp,
   for _, filterOperator := range stringFilterOperators {
     filterName := buildStringFilterName(fieldName, filterOperator)
     filterTyp := buildStringFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator)
-    filterTypSuffix := buildStringFilterTypeSuffix(filterTyp)
+    // Filter type suffix at the same that field type suffix
+    filterTypSuffix := buildFieldTypeSuffix(filterTyp)
     filterIfStmt := buildStringFilterIfStmt(filterName, filterOperator)
     filterSqOperator := buildStringFilterSqOperator(filterOperator)
 
@@ -198,7 +228,8 @@ func buildStringFilters(stringFilterOperators []string, fieldName, fieldZeroTyp,
 func buildBoolFilters(fieldName, fieldZeroTyp string) []*fieldFilterDesc {
   filterName := buildBoolFilterName(fieldName)
   filterTyp := buildBoolFilterType(fieldZeroTyp)
-  filterTypSuffix := buildBoolFilterTypeSuffix(fieldZeroTyp)
+  // Filter type suffix at the same that field type suffix
+  filterTypSuffix := buildFieldTypeSuffix(filterTyp)
   filterIfStmt := buildBoolFilterIfStmt(filterName)
   filterSqOperator := buildBoolFilterSqOperator()
 
@@ -219,7 +250,8 @@ func buildNumericFilters(numericFilterOperators []string, fieldName, fieldZeroTy
   for _, filterOperator := range numericFilterOperators {
     filterName := buildNumericFilterName(fieldName, filterOperator)
     filterTyp := buildNumericFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator)
-    filterTypSuffix := buildNumericFilterTypeSuffix(filterTyp)
+    // Filter type suffix at the same that field type suffix
+    filterTypSuffix := buildFieldTypeSuffix(filterTyp)
     filterIfStmt := buildNumericFilterIfStmt(filterName, filterOperator)
     filterSqOperator := buildNumericFilterSqOperator(filterOperator)
 
@@ -250,8 +282,11 @@ func columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
     "bool":    "bool",
     "boolean": "bool",
 
-    "real":    "float32",
     "money":   "float64",
+    "real":    "float32",
+    "float":   "float32",
+    "double":  "float64",
+    "decimal": "float64",
     "numeric": "float64",
 
     "bytea": "[]byte",
@@ -262,6 +297,7 @@ func columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
     "varying":   "string",
     "character": "string",
 
+    "uuid": "string",
     "text": "string",
 
     "time":      "time.Time",
@@ -287,8 +323,11 @@ func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     fieldTyp = "zero.Int"
 
   case
-    "real",
     "money",
+    "real",
+    "float",
+    "double",
+    "decimal",
     "numeric":
     fieldTyp = "zero.Float"
 
@@ -302,6 +341,7 @@ func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     "varchar",
     "varying",
     "character",
+    "uuid",
     "text":
     fieldTyp = "zero.String"
 
@@ -310,16 +350,27 @@ func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     "timestamp":
     fieldTyp = "zero.Time"
 
+  case
+    "bool",
+    "boolean":
+    fieldTyp = "zero.Bool"
+
   default:
     ok = false
   }
   return fieldTyp, ok
 }
 
-func fieldTypeSuffix(fieldTyp string) string {
+func buildFieldTypeSuffix(fieldTyp string) string {
   var fieldTypSuffix string
 
-  if matchZeroPackageTyp(fieldTyp) {
+  if matchZeroTyp(fieldTyp) {
+    // zero.Int{} and zero.Float{}
+    // Contains zero.Int{}.Int64 and zero.Float{}.Float64 fields
+    if matchZeroNumericTyp(fieldTyp) {
+      fieldTyp = fmt.Sprint(fieldTyp, 64)
+    }
+    // Trim zero package prefix
     fieldTypSuffix = strings.TrimPrefix(fieldTyp, zeroTypPackagePrefix)
   }
   return fieldTypSuffix
@@ -338,25 +389,20 @@ func matchNumericTyp(fieldTyp string) bool {
 }
 
 func matchZeroNumericTyp(fieldTyp string) bool {
-  return regexZeroNumericTyp.MatchString(fieldTyp)
+  return fieldTyp == "zero.Int" || fieldTyp == "zero.Float"
 }
 
 func matchTimeTyp(fieldTyp string) bool {
   return fieldTyp == "time.Time" || fieldTyp == "zero.Time"
 }
 
-func matchZeroPackageTyp(fieldTyp string) bool {
+func matchZeroTyp(fieldTyp string) bool {
   return regexZeroPackageTyp.MatchString(fieldTyp)
-}
-
-func matchTimePackageTyp(fieldTyp string) bool {
-  return fieldTyp == "time.Time"
 }
 
 var (
   regexNumericTyp     = regexp.MustCompile(`^(int(16|32|64)?)|float(32|64)$`)
   regexZeroPackageTyp = regexp.MustCompile(`^zero\.[A-Z][a-z]+$`)
-  regexZeroNumericTyp = regexp.MustCompile(`^zero\.(Int|Float)$`)
 )
 
 func buildNumericFilterName(fieldName, filterOperator string) string {
@@ -368,15 +414,6 @@ func buildNumericFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator string
     return fmt.Sprint(filterSlicePrefix, fieldBuiltinTyp)
   }
   return fieldZeroTyp
-}
-
-func buildNumericFilterTypeSuffix(filterTyp string) string {
-  var filterTypSuffix string
-
-  if matchZeroPackageTyp(filterTyp) {
-    filterTypSuffix = strings.TrimPrefix(filterTyp, zeroTypPackagePrefix)
-  }
-  return filterTypSuffix
 }
 
 func buildNumericFilterIfStmt(filterName, filterOperator string) string {
@@ -405,7 +442,7 @@ func buildNumericFilterSqOperator(filterOperator string) string {
     numericFilterOperatorLt:    "Lt",
     numericFilterOperatorLte:   "LtOrEq",
     numericFilterOperatorEq:    "Eq",
-    numericFilterOperatorIn:    "In",
+    numericFilterOperatorIn:    "Eq",
     numericFilterOperatorNotIn: "NotEq",
   }[filterOperator]
 }
@@ -416,10 +453,6 @@ func buildBoolFilterName(fieldName string) string {
 
 func buildBoolFilterType(fieldZeroTyp string) string {
   return fieldZeroTyp
-}
-
-func buildBoolFilterTypeSuffix(fieldZeroTyp string) string {
-  return strings.TrimPrefix(fieldZeroTyp, zeroTypPackagePrefix)
 }
 
 func buildBoolFilterIfStmt(filterName string) string {
@@ -441,15 +474,6 @@ func buildStringFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator string)
   return fieldZeroTyp
 }
 
-func buildStringFilterTypeSuffix(filterTyp string) string {
-  var filterTypSuffix string
-
-  if matchZeroPackageTyp(filterTyp) {
-    filterTypSuffix = strings.TrimPrefix(filterTyp, zeroTypPackagePrefix)
-  }
-  return filterTypSuffix
-}
-
 func buildStringFilterIfStmt(filterName, filterOperator string) string {
   var filterIfStmt string
 
@@ -468,7 +492,7 @@ func buildStringFilterIfStmt(filterName, filterOperator string) string {
 func buildStringFilterSqOperator(filterOperator string) string {
   return map[string]string{
     stringFilterOperatorEq:    "Eq",
-    stringFilterOperatorIn:    "In",
+    stringFilterOperatorIn:    "Eq",
     stringFilterOperatorNotIn: "NotEq",
   }[filterOperator]
 }
@@ -476,7 +500,7 @@ func buildStringFilterSqOperator(filterOperator string) string {
 const (
   fieldBadgePk         = "pk"
   filterSlicePrefix    = "[]"
-  zeroTypPackagePrefix = "zero."
+  zeroTypPackagePrefix = "zero"
 )
 
 const (
@@ -540,19 +564,63 @@ func buildFilePackages(fileName string) []*goPackageDesc {
   return packagesDesc
 }
 
-func fieldTypToPackageDesc(fieldTyp string) (*goPackageDesc, bool) {
-  var p *goPackageDesc
-  ok := true
-
+func buildFieldPackages(fieldTyp string) ([]*goPackageDesc, bool) {
+  var (
+    fieldPackages []*goPackageDesc
+  )
   switch {
-  case matchZeroPackageTyp(fieldTyp):
-    p = importPackagesByNames[zeroPackageName]
-  case matchTimePackageTyp(fieldTyp):
-    p = importPackagesByNames[timePackageName]
-  default:
-    ok = false
+  case matchZeroTyp(fieldTyp):
+    fieldPackages = append(fieldPackages, importPackagesByNames[zeroPackageName])
+  case matchTimeTyp(fieldTyp):
+    fieldPackages = append(fieldPackages, importPackagesByNames[timePackageName])
   }
-  return p, ok
+  return fieldPackages, len(fieldPackages) != 0
+}
+
+func buildFilterFieldPackages(filterTyp string) ([]*goPackageDesc, bool) {
+  var (
+    fieldPackages []*goPackageDesc
+  )
+  if matchZeroTyp(filterTyp) {
+    fieldPackages = append(fieldPackages, importPackagesByNames[zeroPackageName])
+  }
+  if matchTimeTyp(filterTyp) {
+    fieldPackages = append(fieldPackages, importPackagesByNames[timePackageName])
+  }
+  return fieldPackages, len(fieldPackages) != 0
+}
+
+func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
+  crossFileNames := map[string][]string{
+    interfaceFileName:      {modelsFileName},
+    implementationFileName: {modelsFileName, clientFileName},
+  }[fileName]
+
+  var (
+    nestedFileParts   = []string{"internal", "pkg", "storage"}
+    crossFilePackages []*goPackageDesc
+  )
+
+  for _, crossFileName := range crossFileNames {
+    var packagePathParts []string
+
+    packagePathParts = append(packagePathParts, goModuleName)
+    packagePathParts = append(packagePathParts, nestedFileParts...)
+    packagePathParts = append(packagePathParts, crossFileName)
+
+    packageImportPath := path.Join(packagePathParts...)
+    packageImportAlias := crossFileName
+
+    crossFilePackages = append(crossFilePackages, &goPackageDesc{
+      CustomName:  "boiler-cross-package",
+      ImportLine:  packageImportPath,
+      ImportAlias: packageImportAlias,
+      IsBuiltin:   false,
+      IsInstall:   false,
+    })
+  }
+
+  return crossFilePackages
 }
 
 const (
@@ -581,7 +649,6 @@ var importPackagesByFiles = map[string][]string{
   },
   interfaceFileName: {
     contextPackageName,
-    errorsPackageName,
     fmtPackageName,
   },
   implementationFileName: {

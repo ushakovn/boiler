@@ -42,7 +42,6 @@ func parseFlags() (factory.Typ, factory.CommonConfig, error) {
 
   rpcDescPath := flag.String("rpc_desc_path", "", "path to rpc description in json/yaml")
 
-  storageName := flag.String("pg_storage_name", "", "name for generated storage")
   pgConfigPath := flag.String("pg_config", "", "path to postgres connection config in json/yaml")
   pgDumpPath := flag.String("pg_dump", "", "path to postgres dump in sql ddl")
 
@@ -60,7 +59,6 @@ func parseFlags() (factory.Typ, factory.CommonConfig, error) {
       RpcDescPath: *rpcDescPath,
     },
     Storage: storage.Config{
-      StorageName:  *storageName,
       PgConfigPath: *pgConfigPath,
       PgDumpPath:   *pgDumpPath,
     },

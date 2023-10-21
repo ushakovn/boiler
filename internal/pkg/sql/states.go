@@ -14,7 +14,10 @@ type state interface {
 }
 
 func newTerminateState() state {
-  return &terminate{dump: &DumpSQL{}}
+  return &terminate{dump: &DumpSQL{
+    Tables:    utils.NewStack[*DumpTable](),
+    tempStack: utils.NewStack[string](),
+  }}
 }
 
 func doTransitions(tokens []string) (state, error) {
@@ -22,12 +25,16 @@ func doTransitions(tokens []string) (state, error) {
     state = newTerminateState()
     err   error
   )
+  var collected []string
+
   for _, token := range tokens {
     token = utils.NormalizeToken(token)
 
     if state, err = state.next(token); err != nil {
       return nil, fmt.Errorf("state.next: %w", err)
     }
+
+    collected = append(collected, token) //TODO: remove this
   }
   return state, nil
 }
@@ -141,8 +148,15 @@ func (t *tableName) next(token string) (state, error) {
   case "add":
     return &add{dump: t.dump}, nil
 
-  case "alter":
+  case
+    "alter":
     t.dump.tempStack.Pop()
+    return &terminate{dump: t.dump}, nil
+
+  case
+    "owner":
+    t.dump.tempStack.Pop()
+    t.dump.Tables.Pop()
     return &terminate{dump: t.dump}, nil
 
   default:
@@ -302,7 +316,7 @@ func (t *columnName) next(token string) (state, error) {
   switch {
   case utils.StringOneOfEqual(token,
     "integer",
-    
+
     "smallint",
     "int",
     "bigint",
@@ -315,13 +329,19 @@ func (t *columnName) next(token string) (state, error) {
     "bool",
     "boolean",
 
-    "real",
     "money",
+    "real",
+    "float",
+    "double",
+    "decimal",
     "numeric",
 
     "bytea",
     "json",
     "jsonb",
+
+    "text",
+    "uuid",
   ) ||
     matchNVarcharColumnTyp(token) ||
     matchCharacterBracketsColumnTyp(token):

@@ -9,8 +9,8 @@ import (
 )
 
 type DumpSQL struct {
-  Tables    utils.Stack[*DumpTable]
-  tempStack utils.Stack[string]
+  Tables    *utils.Stack[*DumpTable]
+  tempStack *utils.Stack[string]
 }
 
 type DumpTable struct {

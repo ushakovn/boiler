@@ -6,7 +6,6 @@ import (
   "fmt"
   "go/format"
   "os"
-  "path"
   "path/filepath"
   "text/template"
 
@@ -17,22 +16,18 @@ import (
 )
 
 type storage struct {
-  storageName string
-  dumpSQL     *sql.DumpSQL
-  schemaDesc  *schemaDesc
-  workDirPath string
+  dumpSQL      *sql.DumpSQL
+  schemaDesc   *schemaDesc
+  workDirPath  string
+  goModuleName string
 }
 
 type Config struct {
-  StorageName  string
   PgConfigPath string
   PgDumpPath   string
 }
 
 func (c *Config) Validate() error {
-  if c.StorageName == "" {
-    return fmt.Errorf("storage name must be specified")
-  }
   if (c.PgDumpPath == "" && c.PgConfigPath == "") || (c.PgDumpPath != "" && c.PgConfigPath != "") {
     return fmt.Errorf("pg dump path OR pg config path must be specified")
   }
@@ -44,6 +39,10 @@ func NewStorage(config Config) (gen.Generator, error) {
     return nil, err
   }
   workDirPath, err := utils.Env("PWD")
+  if err != nil {
+    return nil, err
+  }
+  goModuleName, err := utils.ExtractGoModuleName(workDirPath)
   if err != nil {
     return nil, err
   }
@@ -61,10 +60,11 @@ func NewStorage(config Config) (gen.Generator, error) {
   if err != nil {
     return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
   }
+
   return &storage{
-    storageName: config.StorageName,
-    dumpSQL:     dumpSQL,
-    workDirPath: workDirPath,
+    dumpSQL:      dumpSQL,
+    workDirPath:  workDirPath,
+    goModuleName: goModuleName,
   }, nil
 }
 
@@ -79,37 +79,17 @@ func (g *storage) Generate(ctx context.Context) error {
   }
 
   templatesFuncMap := template.FuncMap{
-    "toLowerCamelCase": utils.StringToLowerCase,
+    "toLowerCamelCase": utils.StringToLowerCamelCase,
     "toUpperCamelCase": utils.StringToUpperCamelCase,
-    "withDot":          utils.StringWithDotPrefix,
+    "toSnakeCase":      utils.StringToSnakeCase,
   }
 
-  type storageCommonTemplate struct {
-    templateName     string
-    compiledTemplate string
-    fileNameBuilder  func() string
-  }
-
-  commonTemplates := []*storageCommonTemplate{
-    {
-      templateName:     "Options",
-      compiledTemplate: templates.Options,
-      fileNameBuilder:  buildOptionsFileName,
-    },
-    {
-      templateName:     "Consts",
-      compiledTemplate: templates.Consts,
-      fileNameBuilder:  buildConstsFileName,
-    },
-    {
-      templateName:     "Models",
-      compiledTemplate: templates.Models,
-      fileNameBuilder:  buildModelsFileName,
-    },
-  }
-
-  for _, commonTemplate := range commonTemplates {
-    filePath := path.Join(storagePath, commonTemplate.fileNameBuilder())
+  for _, commonTemplate := range storageCommonTemplates {
+    filePath, err := createStorageFolders(storagePath, commonTemplate.filePathParts...)
+    if err != nil {
+      return fmt.Errorf("createStorageFolders: %w", err)
+    }
+    filePath = filepath.Join(filePath, commonTemplate.fileNameBuild(""))
 
     if err := executeTemplateCopy(commonTemplate.compiledTemplate, filePath, g.schemaDesc, templatesFuncMap); err != nil {
       return fmt.Errorf("executeTemplateCopy templates.%s: %w", commonTemplate.templateName, err)
@@ -117,52 +97,20 @@ func (g *storage) Generate(ctx context.Context) error {
   }
 
   for _, model := range g.schemaDesc.Models {
-    interfaceFileName := buildStorageInterfaceFileName(model.ModelName)
-    interfaceFilePath := path.Join(storagePath, interfaceFileName)
-    if err := executeTemplateCopy(templates.Interface, interfaceFilePath, model, templatesFuncMap); err != nil {
-      return fmt.Errorf("executeTemplateCopy templates.Interface: %w", err)
-    }
+    for _, modelTemplate := range storageModelTemplates {
+      filePath, err := createStorageFolders(storagePath, modelTemplate.filePathParts...)
+      if err != nil {
+        return fmt.Errorf("createStorageFolders: %w", err)
+      }
+      filePath = filepath.Join(filePath, modelTemplate.fileNameBuild(model.ModelName))
 
-    implementationFileName := buildStorageImplementationFileName(model.ModelName)
-    implementationFolderName := buildStorageImplementationFolderName(model.ModelName)
-    implementationFolderPath, err := createStorageFolders(storagePath, implementationFolderName)
-    if err != nil {
-      return fmt.Errorf("createStorageFolders: %w", err)
-    }
-
-    implementationFilePath := path.Join(implementationFolderPath, implementationFileName)
-    if err := executeTemplateCopy(templates.Implementation, implementationFilePath, model, templatesFuncMap); err != nil {
-      return fmt.Errorf("executeTemplateCopy templates.Interface: %w", err)
+      if err := executeTemplateCopy(modelTemplate.compiledTemplate, filePath, model, templatesFuncMap); err != nil {
+        return fmt.Errorf("executeTemplateCopy templates.%s: %w", modelTemplate.templateName, err)
+      }
     }
   }
 
   return nil
-}
-
-func buildConstsFileName() string {
-  return "consts.go"
-}
-
-func buildOptionsFileName() string {
-  return "options.go"
-}
-
-func buildModelsFileName() string {
-  return "models.go"
-}
-
-func buildStorageImplementationFileName(modelName string) string {
-  modelName = utils.StringToLowerCase(modelName)
-  return fmt.Sprint(modelName, "_implementation.go")
-}
-
-func buildStorageImplementationFolderName(modelName string) string {
-  return utils.StringToLowerCase(modelName)
-}
-
-func buildStorageInterfaceFileName(modelName string) string {
-  modelName = utils.StringToLowerCase(modelName)
-  return fmt.Sprint(modelName, "_interface.go")
 }
 
 func createStorageFolders(sourcePath string, destNestedFolders ...string) (string, error) {
@@ -213,4 +161,71 @@ func executeTemplateCopy(templateCompiled, filePath string, structPtr any, funcM
     return fmt.Errorf("os.WriteFile: %w", err)
   }
   return nil
+}
+
+type storageTemplate struct {
+  templateName     string
+  compiledTemplate string
+  filePathParts    []string
+  fileNameBuild    func(modelName string) string
+}
+
+var storageModelTemplates = []*storageTemplate{
+  {
+    templateName:     "Interface",
+    compiledTemplate: templates.Interface,
+    fileNameBuild: func(modelName string) string {
+      modelName = utils.StringToSnakeCase(modelName)
+      return fmt.Sprint(modelName, ".ifc.go")
+    },
+  },
+  {
+    templateName:     "Implementation",
+    compiledTemplate: templates.Implementation,
+    fileNameBuild: func(modelName string) string {
+      modelName = utils.StringToSnakeCase(modelName)
+      return fmt.Sprint(modelName, ".imp.go")
+    },
+  },
+}
+
+var storageCommonTemplates = []*storageTemplate{
+  {
+    templateName:     "Builders",
+    compiledTemplate: templates.Builders,
+    filePathParts:    []string{"client"},
+    fileNameBuild: func(modelName string) string {
+      return "builders.storage.go"
+    },
+  },
+  {
+    templateName:     "Client",
+    compiledTemplate: templates.Client,
+    filePathParts:    []string{"client"},
+    fileNameBuild: func(modelName string) string {
+      return "client.storage.go"
+    },
+  },
+  {
+    templateName:     "Options",
+    compiledTemplate: templates.Options,
+    fileNameBuild: func(modelName string) string {
+      return "options.storage.go"
+    },
+  },
+  {
+    templateName:     "Consts",
+    compiledTemplate: templates.Consts,
+    fileNameBuild: func(modelName string) string {
+      return "storage.storage.go"
+    },
+  },
+  {
+    templateName:     "Models",
+    compiledTemplate: templates.Models,
+    filePathParts:    []string{"models"},
+    fileNameBuild: func(modelName string) string {
+      return "models.storage.go"
+    },
+  },
 }

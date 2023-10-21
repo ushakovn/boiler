@@ -12,20 +12,20 @@ type tableName string
 
 const (
   {{- range .Models}}
-  {{.ModelName}}TableName = "{{.SqlTableName}}"
+  {{.ModelName}}_TableName = "{{.SqlTableName}}"
   {{- end}}
 )
 
 type (
   {{- range .Models}}
-  {{toLowerCamelCase .ModelName}}Field string
+  {{toLowerCamelCase .ModelName}}_Field string
   {{- end}}
 )
 
 {{- range $m := .Models}}
 const (
   {{- range .ModelFields}}
-  {{.FieldName}}{{$m.ModelName}}Field {{toLowerCamelCase $m.ModelName}}Field = "{{.SqlTableFieldName}}"
+  {{.FieldName}}_{{$m.ModelName}}_Field {{toLowerCamelCase $m.ModelName}}_Field = "{{.SqlTableFieldName}}"
   {{- end}}
 )
 {{end}}

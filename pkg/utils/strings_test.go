@@ -92,3 +92,65 @@ func Test_CamelCaseToUpperCamelCase(t *testing.T) {
     })
   }
 }
+
+func Test_StringToUpperCamelCase(t *testing.T) {
+  type testCase struct {
+    s        string
+    expected string
+  }
+  testCases := []*testCase{
+    {
+      s:        "snake_cased_string",
+      expected: "SnakeCasedString",
+    },
+    {
+      s:        "camel",
+      expected: "Camel",
+    },
+    {
+      s:        "batchUploadPhotosV2",
+      expected: "BatchUploadPhotosV2",
+    },
+  }
+  for _, tt := range testCases {
+    tt := tt
+
+    t.Run(tt.s, func(t *testing.T) {
+      actual := StringToUpperCamelCase(tt.s)
+      assert.Equal(t, tt.expected, actual)
+    })
+  }
+}
+
+func Test_StringToLowerCamelCase(t *testing.T) {
+  type testCase struct {
+    s        string
+    expected string
+  }
+  testCases := []*testCase{
+    {
+      s:        "snake_cased_string",
+      expected: "snakeCasedString",
+    },
+    {
+      s:        "camel",
+      expected: "camel",
+    },
+    {
+      s:        "Camel",
+      expected: "camel",
+    },
+    {
+      s:        "BatchUploadPhotosV2",
+      expected: "batchUploadPhotosV2",
+    },
+  }
+  for _, tt := range testCases {
+    tt := tt
+
+    t.Run(tt.s, func(t *testing.T) {
+      actual := StringToLowerCamelCase(tt.s)
+      assert.Equal(t, tt.expected, actual)
+    })
+  }
+}

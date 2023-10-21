@@ -8,18 +8,18 @@ import (
   {{- end}}
 )
 
-func newSelectBuilder() sq.SelectBuilder {
+func NewSelectBuilder() sq.SelectBuilder {
   return sq.SelectBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func newInsertBuilder() sq.InsertBuilder {
+func NewInsertBuilder() sq.InsertBuilder {
   return sq.InsertBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func newUpdateBuilder() sq.UpdateBuilder {
+func NewUpdateBuilder() sq.UpdateBuilder {
   return sq.UpdateBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func newDeleteBuilder() sq.DeleteBuilder {
+func NewDeleteBuilder() sq.DeleteBuilder {
   return sq.DeleteBuilder{}.PlaceholderFormat(sq.Dollar)
 }

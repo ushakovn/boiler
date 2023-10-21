@@ -92,6 +92,46 @@ func StringToUpperCamelCase(s string) string {
   return ""
 }
 
+func StringToLowerCamelCase(s string) string {
+  if IsSnakeCase(s) {
+    return SnakeCaseToLowerCamelCase(s)
+  }
+  if IsCamelCase(s) {
+    return CamelCaseToLowerCamelCase(s)
+  }
+  return ""
+}
+
+func CamelCaseToLowerCamelCase(s string) string {
+  out := make([]rune, 0, len([]rune(s)))
+
+  for index, ch := range s {
+    if index == 0 && unicode.IsUpper(ch) {
+      ch = unicode.ToLower(ch)
+    }
+    out = append(out, ch)
+  }
+  return string(out)
+}
+
+func SnakeCaseToLowerCamelCase(s string) string {
+  out := make([]rune, 0, len([]rune(s)))
+  var ok bool
+
+  for _, ch := range s {
+    if ch == '_' {
+      ok = true
+      continue
+    }
+    if ok {
+      ch = unicode.ToUpper(ch)
+      ok = false
+    }
+    out = append(out, ch)
+  }
+  return string(out)
+}
+
 func StringToLowerCase(s string) string {
   out := make([]rune, 0, len([]rune(s)))
 
@@ -103,10 +143,6 @@ func StringToLowerCase(s string) string {
   }
 
   return string(out)
-}
-
-func StringWithDotPrefix(s string) string {
-  return fmt.Sprint(".", s)
 }
 
 func IsWrongCase(s string) bool {
