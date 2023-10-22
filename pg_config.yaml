@@ -1,6 +1,0 @@
-pg_config:
-  db: "test"
-  port: "5432"
-  host: "localhost"
-  user: "postgres"
-  password: "pass"
