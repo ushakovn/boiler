@@ -19,6 +19,7 @@ type project struct {
   projectDescPath  string
   workDirPath      string
   projectDesc      *projectDesc
+  execFunctions    map[string]execFunc
   withCompiledDesc bool
 }
 
@@ -43,11 +44,14 @@ func NewProject(config Config) (gen.Generator, error) {
   if err != nil {
     return nil, err
   }
-  return &project{
+  proj := &project{
     withCompiledDesc: config.withCompiledDesc,
     projectDescPath:  config.ProjectDescPath,
     workDirPath:      workDirPath,
-  }, nil
+  }
+  proj.setExecFunctions()
+
+  return proj, nil
 }
 
 func (g *project) Generate(ctx context.Context) error {
@@ -105,57 +109,42 @@ func (g *project) genFile(file *fileDesc) error {
     return fmt.Errorf("os.CreateFile: %w", err)
   }
   if template := file.Template; template != nil {
-    // Copy content from template to new created file
-    if !template.Executable {
-      buf, err := loadFileTemplate(template)
-      if err != nil {
-        return fmt.Errorf("loadFileTemplate: %w", err)
-      }
-      if err := os.WriteFile(path, buf, os.ModePerm); err != nil {
-        return fmt.Errorf("os.WriteFile: %w", err)
-      }
+    buf := loadFileTemplate(template)
+
+    if err := os.WriteFile(path, buf, os.ModePerm); err != nil {
+      return fmt.Errorf("os.WriteFile: %w", err)
     }
   }
-
   return nil
 }
 
-func loadFileTemplate(desc *templateDesc) ([]byte, error) {
-  var (
-    buf []byte
-    err error
-  )
-  if desc.Compiled != "" {
-    if desc.Compiled == templates.NameMain {
-      buf = []byte(templates.Main)
-    }
-    if desc.Compiled == templates.NameGomod {
-      buf = []byte(templates.Gomod)
-    }
+func loadFileTemplate(desc *templateDesc) []byte {
+  var compiled string
+
+  switch desc.Name {
+  case templates.NameMain:
+    compiled = templates.Main
+  case templates.NameGomod:
+    compiled = templates.Gomod
   }
-  if desc.Path != "" {
-    if buf, err = os.ReadFile(desc.Path); err != nil {
-      return nil, fmt.Errorf("os.ReadFile: %w", err)
-    }
-  }
-  return buf, nil
+  return []byte(compiled)
 }
 
 func (g *project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
-  path := g.buildPath(parentPath, dir.Name.String())
+  path := g.buildPath(parentPath, dir.Name.Execute(g.execFunctions))
 
   if err := os.Mkdir(path, os.ModePerm); err != nil {
     return fmt.Errorf("os.Mkdir dir: %w", err)
   }
   for _, file := range dir.Files {
-    file.Path = g.buildPath(parentPath, dir.Name.String(), file.Name)
+    file.Path = g.buildPath(parentPath, dir.Name.Execute(g.execFunctions), file.Name)
 
     if err := g.genFile(file); err != nil {
       return fmt.Errorf("g.genFile file: %w", err)
     }
   }
   for _, nested := range dir.Dirs {
-    if err := g.genDirectory(ctx, nested, dir.Name.String()); err != nil {
+    if err := g.genDirectory(ctx, nested, dir.Name.Execute(g.execFunctions)); err != nil {
       return fmt.Errorf("g.genDirectory nested: %w", err)
     }
   }
@@ -167,4 +156,14 @@ func (g *project) buildPath(parts ...string) string {
   pd = append(pd, parts...)
   p := filepath.Join(pd...)
   return p
+}
+
+func (g *project) workDirFolder() string {
+  if parts := strings.Split(g.workDirPath, `/`); len(parts) > 0 {
+    return parts[len(parts)-1]
+  }
+  if parts := strings.Split(g.workDirPath, `\`); len(parts) > 0 {
+    return parts[len(parts)-1]
+  }
+  return g.workDirPath
 }

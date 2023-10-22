@@ -13,7 +13,7 @@ type {{.ModelName}}Storage interface {
   {{.ModelName}}(ctx context.Context, input {{.ModelName}}Input) (*models.{{.ModelName}}, error)
   Put{{.ModelName}}(ctx context.Context, input Put{{.ModelName}}Input) (*models.{{.ModelName}}, error)
   Update{{.ModelName}}(ctx context.Context, input Update{{.ModelName}}Input) (*models.{{.ModelName}}, error)
-  Delete{{.ModelName}}(ctx context.Context, input Delete{{.ModelName}}Input) error
+  Delete{{.ModelName}}(ctx context.Context, input Delete{{.ModelName}}Input) (*models.{{.ModelName}}, error)
 }
 
 type {{.ModelName}}Input struct {

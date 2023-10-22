@@ -195,7 +195,7 @@ var storageCommonTemplates = []*storageTemplate{
     compiledTemplate: templates.Builders,
     filePathParts:    []string{"client"},
     fileNameBuild: func(modelName string) string {
-      return "builders.storage.go"
+      return "storage.builders.go"
     },
   },
   {
@@ -203,21 +203,21 @@ var storageCommonTemplates = []*storageTemplate{
     compiledTemplate: templates.Client,
     filePathParts:    []string{"client"},
     fileNameBuild: func(modelName string) string {
-      return "client.storage.go"
+      return "storage.client.go"
     },
   },
   {
     templateName:     "Options",
     compiledTemplate: templates.Options,
     fileNameBuild: func(modelName string) string {
-      return "options.storage.go"
+      return "storage.options.go"
     },
   },
   {
     templateName:     "Consts",
     compiledTemplate: templates.Consts,
     fileNameBuild: func(modelName string) string {
-      return "storage.storage.go"
+      return "storage.consts.go"
     },
   },
   {
@@ -225,7 +225,7 @@ var storageCommonTemplates = []*storageTemplate{
     compiledTemplate: templates.Models,
     filePathParts:    []string{"models"},
     fileNameBuild: func(modelName string) string {
-      return "models.storage.go"
+      return "storage.models.go"
     },
   },
 }

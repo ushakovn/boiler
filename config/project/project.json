@@ -13,7 +13,7 @@
         "name": "go",
         "extension": "mod",
         "template": {
-          "compiled": "gomod"
+          "name": "gomod"
         }
       },
       {
@@ -24,19 +24,31 @@
     "dirs": [
       {
         "name": {
+          "value": "api"
+        },
+        "dirs": [
+          {
+            "name": {
+              "func": "appName"
+            }
+          }
+        ]
+      },
+      {
+        "name": {
           "value": "cmd"
         },
         "dirs": [
           {
             "name": {
-              "env": "PWD"
+              "func": "appName"
             },
             "files": [
               {
                 "name": "main",
                 "extension": "go",
                 "template": {
-                  "compiled": "main"
+                  "name": "main"
                 }
               }
             ]
@@ -50,7 +62,7 @@
         "dirs": [
           {
             "name": {
-              "env": "PWD"
+              "value": "app"
             }
           },
           {
@@ -63,14 +75,7 @@
       {
         "name": {
           "value": "pkg"
-        },
-        "dirs": [
-          {
-            "name": {
-              "value": "utils"
-            }
-          }
-        ]
+        }
       }
     ]
   }

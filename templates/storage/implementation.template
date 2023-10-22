@@ -38,15 +38,15 @@ func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.
     builder = builder.OrderBy(input.Sort.{{toLowerCamelCase $modelName}}Sort())
   }
 
-  filters := input.Filters
-
-  {{- range $modelField := .ModelFields}}
-  {{- range .ModelsFieldFilters}}
-  if {{.FilterIfStmt}} {
-    builder = builder.Where(sq.{{.FilterSqOperator}}{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+  if filters := input.Filters; filters != nil {
+    {{- range $modelField := .ModelFields}}
+    {{- range .ModelsFieldFilters}}
+    if {{.FilterIfStmt}} {
+      builder = builder.Where(sq.{{.FilterSqOperator}}{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+    }
+    {{- end}}
+    {{- end}}
   }
-  {{- end}}
-  {{- end}}
 
   return client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
 }
@@ -60,15 +60,15 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
     ).
     From({{$modelName}}_TableName)
 
-  filters := input.Filters
-
-  {{- range $modelField := .ModelFields}}
-  {{- range .ModelFieldFilters}}
-  if {{.FilterIfStmt}} {
-    builder = builder.Where(sq.Eq{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+  if filters := input.Filters; filters != nil {
+    {{- range $modelField := .ModelFields}}
+    {{- range .ModelFieldFilters}}
+    if {{.FilterIfStmt}} {
+      builder = builder.Where(sq.Eq{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+    }
+    {{- end}}
+    {{- end}}
   }
-  {{- end}}
-  {{- end}}
 
   model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
   if err != nil {
@@ -92,7 +92,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.C
 
   {{- range $modelField := .ModelFields}}
   {{- if eq .NotNullField false}}
-  if input.{{.FieldName}}.Ptr() != nil {
+  if {{.FieldIfStmt}} {
     fields[string({{$modelField.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldTypeSuffix}}
   }
   {{- end}}
@@ -130,7 +130,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
   {{- range .ModelFields}}
   {{- if eq .NotNullField false}}
   {{- if ne .FieldBadge "pk"}}
-  if input.{{.FieldName}}.Ptr() != nil {
+  if {{.FieldIfStmt}} {
     fields[string({{.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldTypeSuffix}}
   }
   {{- end}}
@@ -141,31 +141,31 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
     SetMap(fields).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
-    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}})
+    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    Suffix(suffixReturning)
     {{- end}}
     {{- end}}
 
-  if err := client.DoExecContext(ctx, s.client, builder); err != nil {
+  model, err := client.DoQueryContext[*models.Product](ctx, s.client, builder)
+  if err != nil {
     return nil, err
   }
-
-  model := &models.{{$modelName}}{
-    {{- range .ModelFields}}
-    {{.FieldName}}: input.{{.FieldName}},
-    {{- end}}
-  }
-
-  return model, nil
+  return model[0], nil
 }
 
-func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) error {
+func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
   builder := client.NewDeleteBuilder().
     From({{$modelName}}_TableName).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
-    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}})
+    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    Suffix(suffixReturning)
     {{- end}}
     {{- end}}
 
-  return client.DoExecContext(ctx, s.client, builder)
+  model, err := client.DoQueryContext[*models.Product](ctx, s.client, builder)
+  if err != nil {
+    return nil, err
+  }
+  return model[0], nil
 }

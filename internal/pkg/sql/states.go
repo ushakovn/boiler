@@ -25,16 +25,12 @@ func doTransitions(tokens []string) (state, error) {
     state = newTerminateState()
     err   error
   )
-  var collected []string
-
   for _, token := range tokens {
     token = utils.NormalizeToken(token)
 
     if state, err = state.next(token); err != nil {
       return nil, fmt.Errorf("state.next: %w", err)
     }
-
-    collected = append(collected, token) //TODO: remove this
   }
   return state, nil
 }

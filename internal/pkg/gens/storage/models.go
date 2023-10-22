@@ -35,6 +35,7 @@ type fieldDesc struct {
   FieldZeroType      string
   FieldBuiltinType   string
   FieldTypeSuffix    string
+  FieldIfStmt        string
   NotNullField       bool
   FieldBadge         string
   ModelFieldFilters  []*fieldFilterDesc
@@ -95,29 +96,24 @@ func (g *storage) loadSchemaDesc() error {
     interfaceUniquePackages := map[string]struct{}{}
 
     for _, field := range model.ModelFields {
-      fieldPackages, ok := buildFieldPackages(field.FieldType)
-      if !ok {
-        continue
-      }
-      for _, fieldPackage := range fieldPackages {
-        if _, ok = modelUniquePackages[fieldPackage.CustomName]; ok {
-          continue
-        }
-        modelsPackages = append(modelsPackages, fieldPackage)
-        modelUniquePackages[fieldPackage.CustomName] = struct{}{}
-      }
-
-      for _, filter := range field.ModelsFieldFilters {
-        fieldPackages, ok = buildFilterFieldPackages(filter.FilterType)
-        if !ok {
-          continue
-        }
+      if fieldPackages, ok := buildFieldPackages(field.FieldType); ok {
         for _, fieldPackage := range fieldPackages {
-          if _, ok = interfaceUniquePackages[fieldPackage.CustomName]; ok {
+          if _, ok = modelUniquePackages[fieldPackage.CustomName]; ok {
             continue
           }
-          interfacePackages = append(interfacePackages, fieldPackage)
-          interfaceUniquePackages[fieldPackage.CustomName] = struct{}{}
+          modelsPackages = append(modelsPackages, fieldPackage)
+          modelUniquePackages[fieldPackage.CustomName] = struct{}{}
+        }
+      }
+      for _, filter := range field.ModelsFieldFilters {
+        if fieldPackages, ok := buildFilterFieldPackages(filter.FilterType); ok {
+          for _, fieldPackage := range fieldPackages {
+            if _, ok = interfaceUniquePackages[fieldPackage.CustomName]; ok {
+              continue
+            }
+            interfacePackages = append(interfacePackages, fieldPackage)
+            interfaceUniquePackages[fieldPackage.CustomName] = struct{}{}
+          }
         }
       }
     }
@@ -170,6 +166,7 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
     fieldBadge = fieldBadgePk
   }
 
+  fieldIfStmt := buildFieldIfStmt(fieldName, fieldTyp)
   fieldTypSuffix := buildFieldTypeSuffix(fieldTyp)
   modelFilters, modelsFilters := buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp)
 
@@ -177,6 +174,7 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
     SqlTableFieldName:  sqlTableFieldName,
     FieldName:          fieldName,
     FieldType:          fieldTyp,
+    FieldIfStmt:        fieldIfStmt,
     FieldZeroType:      fieldZeroTyp,
     FieldBuiltinType:   fieldBuiltinTyp,
     FieldTypeSuffix:    fieldTypSuffix,
@@ -378,6 +376,22 @@ func buildFieldTypeSuffix(fieldTyp string) string {
   return fieldTypSuffix
 }
 
+func buildFieldIfStmt(fieldName, fieldTyp string) string {
+  var fieldIfStmt string
+
+  if matchSliceTyp(fieldTyp) {
+    fieldIfStmt = fmt.Sprintf(templates.InputIfStmtWithLen, fieldName)
+  }
+  if matchZeroTyp(fieldTyp) {
+    fieldIfStmt = fmt.Sprintf(templates.InputIfStmtWithPtr, fieldName)
+  }
+  return fieldIfStmt
+}
+
+func matchSliceTyp(fieldTyp string) bool {
+  return strings.HasPrefix(fieldTyp, sliceTypPrefix)
+}
+
 func matchBoolTyp(fieldTyp string) bool {
   return fieldTyp == "bool"
 }
@@ -413,7 +427,7 @@ func buildNumericFilterName(fieldName, filterOperator string) string {
 
 func buildNumericFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator string) string {
   if filterOperator == numericFilterOperatorIn || filterOperator == numericFilterOperatorNotIn {
-    return fmt.Sprint(filterSlicePrefix, fieldBuiltinTyp)
+    return fmt.Sprint(sliceTypPrefix, fieldBuiltinTyp)
   }
   return fieldZeroTyp
 }
@@ -471,7 +485,7 @@ func buildStringFilterName(fieldName, filterOperator string) string {
 
 func buildStringFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator string) string {
   if filterOperator == stringFilterOperatorIn || filterOperator == stringFilterOperatorNotIn {
-    return fmt.Sprint(filterSlicePrefix, fieldBuiltinTyp)
+    return fmt.Sprint(sliceTypPrefix, fieldBuiltinTyp)
   }
   return fieldZeroTyp
 }
@@ -501,7 +515,7 @@ func buildStringFilterSqOperator(filterOperator string) string {
 
 const (
   fieldBadgePk         = "pk"
-  filterSlicePrefix    = "[]"
+  sliceTypPrefix       = "[]"
   zeroTypPackagePrefix = "zero"
 )
 
@@ -614,7 +628,7 @@ func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
     packageImportAlias := crossFileName
 
     crossFilePackages = append(crossFilePackages, &goPackageDesc{
-      CustomName:  "boiler-cross-package",
+      CustomName:  "boiler/cross-package",
       ImportLine:  packageImportPath,
       ImportAlias: packageImportAlias,
       IsBuiltin:   false,

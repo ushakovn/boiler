@@ -1,10 +1,5 @@
 package project
 
-import (
-  "os"
-  "strings"
-)
-
 type projectDesc struct {
   Root *rootDesc `json:"root" yaml:"root"`
 }
@@ -21,8 +16,8 @@ type directoryDesc struct {
 }
 
 type nameDesc struct {
-  Value string `json:"value"`
-  Env   string `json:"env"`
+  Value string `json:"value" yaml:"value"`
+  Func  string `json:"func" yaml:"func"`
 }
 
 type fileDesc struct {
@@ -34,25 +29,29 @@ type fileDesc struct {
 }
 
 type templateDesc struct {
-  Path       string `json:"path" yaml:"path"`
-  Compiled   string `json:"compiled" yaml:"compiled"`
-  Executable bool   `json:"executable" yaml:"executable"`
+  Name string `json:"name" yaml:"name"`
 }
 
-func (d *nameDesc) String() string {
+type execFunc func() any
+
+func (g *project) setExecFunctions() {
+  // Write other exec functions
+  g.execFunctions = map[string]execFunc{
+    "appName": func() any {
+      return g.workDirFolder()
+    },
+  }
+}
+
+func (d *nameDesc) Execute(execFunctions map[string]execFunc) string {
   if d.Value != "" {
     return d.Value
   }
-  if d.Env != "" {
-    env := os.Getenv(d.Env)
-
-    if parts := strings.Split(env, `/`); len(parts) > 0 {
-      return parts[len(parts)-1]
+  if f, ok := execFunctions[d.Func]; ok {
+    value, ok := f().(string)
+    if ok {
+      return value
     }
-    if parts := strings.Split(env, `\`); len(parts) > 0 {
-      return parts[len(parts)-1]
-    }
-    return env
   }
   return ""
 }

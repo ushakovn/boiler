@@ -42,10 +42,30 @@ func DumpSchemaSQL(option PgDumpOption) (*DumpSQL, error) {
   if err != nil {
     return nil, fmt.Errorf("doTransitions: %w", err)
   }
+  var dump *DumpSQL
+
   if state, ok := state.(*terminate); ok {
-    return state.dump, nil
+    dump = state.dump
   }
-  return nil, fmt.Errorf("not a terminate state: %T", state)
+  if dump == nil {
+    return nil, fmt.Errorf("sql dump: not a terminate state: %T", state)
+  }
+  dump = sanitizeDumpSQL(dump)
+
+  return dump, nil
+}
+
+func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
+  sanitized := &DumpSQL{
+    Tables: utils.NewStack[*DumpTable](),
+  }
+  for _, table := range dump.Tables.Elems() {
+    if _, ok := systemTablesNames[table.Name]; ok {
+      continue
+    }
+    sanitized.Tables.Push(table)
+  }
+  return sanitized
 }
 
 func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
@@ -90,4 +110,9 @@ func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
 var sqlStickyTokens = map[rune]struct{}{
   ',': {},
   ';': {},
+}
+
+var systemTablesNames = map[string]struct{}{
+  "goose_db_version": {},
+  "db_version":       {},
 }
