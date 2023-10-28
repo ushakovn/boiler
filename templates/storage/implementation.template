@@ -146,7 +146,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
     {{- end}}
     {{- end}}
 
-  model, err := client.DoQueryContext[*models.Product](ctx, s.client, builder)
+  model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
   if err != nil {
     return nil, err
   }
@@ -163,7 +163,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx contex
     {{- end}}
     {{- end}}
 
-  model, err := client.DoQueryContext[*models.Product](ctx, s.client, builder)
+  model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
   if err != nil {
     return nil, err
   }

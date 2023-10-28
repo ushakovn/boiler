@@ -11,27 +11,27 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
   "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
   "github.com/ushakovn/boiler/templates"
 )
 
 type project struct {
-  projectDescPath  string
-  workDirPath      string
-  projectDesc      *projectDesc
-  execFunctions    map[string]execFunc
-  withCompiledDesc bool
+  projectDescPath     string
+  projectDescCompiled string
+  workDirPath         string
+  projectDesc         *projectDesc
+  execFunctions       map[string]execFunc
 }
 
 type Config struct {
-  ProjectDescPath  string
-  withCompiledDesc bool
+  ProjectDescPath     string
+  ProjectDescCompiled string
 }
 
 func (c *Config) Validate() error {
-  if c.ProjectDescPath == "" {
-    log.Warnf("boiler: using default project directories")
-    c.withCompiledDesc = true
+  if c.ProjectDescPath == "" && c.ProjectDescCompiled == "" {
+    log.Infof("boiler: using default project directories")
+    c.ProjectDescCompiled = config.Project
   }
   return nil
 }
@@ -40,14 +40,14 @@ func NewProject(config Config) (gen.Generator, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.Env("PWD")
+  workDirPath, err := utils.WorkDirPath()
   if err != nil {
     return nil, err
   }
   proj := &project{
-    withCompiledDesc: config.withCompiledDesc,
-    projectDescPath:  config.ProjectDescPath,
-    workDirPath:      workDirPath,
+    projectDescPath:     config.ProjectDescPath,
+    projectDescCompiled: config.ProjectDescCompiled,
+    workDirPath:         workDirPath,
   }
   proj.setExecFunctions()
 
@@ -59,14 +59,14 @@ func (g *project) Generate(ctx context.Context) error {
     return fmt.Errorf("g.loadProjectDesc: %w", err)
   }
   for _, file := range g.projectDesc.Root.Files {
-    file.Path = g.buildPath(file.Name)
+    file.Path = filepath.Join(g.workDirPath, file.Name)
 
     if err := g.genFile(file); err != nil {
       return fmt.Errorf("g.genFile: %w", err)
     }
   }
   for _, dir := range g.projectDesc.Root.Dirs {
-    if err := g.genDirectory(ctx, dir, ""); err != nil {
+    if err := g.genDirectory(ctx, dir, g.workDirPath); err != nil {
       return fmt.Errorf("g.genDirectory %w", err)
     }
   }
@@ -78,9 +78,10 @@ func (g *project) loadProjectDesc() error {
     buf []byte
     err error
   )
-  if g.withCompiledDesc {
-    buf = []byte(config.Project)
-  } else {
+  if g.projectDescCompiled != "" {
+    buf = []byte(g.projectDescCompiled)
+  }
+  if g.projectDescPath != "" {
     if buf, err = os.ReadFile(g.projectDescPath); err != nil {
       return fmt.Errorf("os.ReadFile projectDir: %w", err)
     }
@@ -131,31 +132,24 @@ func loadFileTemplate(desc *templateDesc) []byte {
 }
 
 func (g *project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
-  path := g.buildPath(parentPath, dir.Name.Execute(g.execFunctions))
+  path := filepath.Join(parentPath, dir.Name.Execute(g.execFunctions))
 
-  if err := os.Mkdir(path, os.ModePerm); err != nil {
+  if err := os.Mkdir(path, os.ModePerm); err != nil && !utils.IsExistedDirectory(path) {
     return fmt.Errorf("os.Mkdir dir: %w", err)
   }
   for _, file := range dir.Files {
-    file.Path = g.buildPath(parentPath, dir.Name.Execute(g.execFunctions), file.Name)
+    file.Path = filepath.Join(parentPath, dir.Name.Execute(g.execFunctions), file.Name)
 
     if err := g.genFile(file); err != nil {
       return fmt.Errorf("g.genFile file: %w", err)
     }
   }
   for _, nested := range dir.Dirs {
-    if err := g.genDirectory(ctx, nested, dir.Name.Execute(g.execFunctions)); err != nil {
+    if err := g.genDirectory(ctx, nested, path); err != nil {
       return fmt.Errorf("g.genDirectory nested: %w", err)
     }
   }
   return nil
-}
-
-func (g *project) buildPath(parts ...string) string {
-  pd := []string{g.workDirPath}
-  pd = append(pd, parts...)
-  p := filepath.Join(pd...)
-  return p
 }
 
 func (g *project) workDirFolder() string {

@@ -7,6 +7,7 @@ import (
 
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/gens/factory"
+  "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/storage"
@@ -45,6 +46,8 @@ func parseFlags() (factory.Typ, factory.CommonConfig, error) {
   pgConfigPath := flag.String("pg_config", "", "path to postgres connection config in json/yaml")
   pgDumpPath := flag.String("pg_dump", "", "path to postgres dump in sql ddl")
 
+  gqlgenDescPath := flag.String("gqlgen_yaml", "", "path to yaml file for gqlgen")
+
   flag.Parse()
 
   if genType == nil || *genType == "" {
@@ -61,6 +64,9 @@ func parseFlags() (factory.Typ, factory.CommonConfig, error) {
     Storage: storage.Config{
       PgConfigPath: *pgConfigPath,
       PgDumpPath:   *pgDumpPath,
+    },
+    Gqlgen: gqlgen.Config{
+      GqlgenDescPath: *gqlgenDescPath,
     },
   }, nil
 }

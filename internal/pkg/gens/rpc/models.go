@@ -5,7 +5,7 @@ import (
   "regexp"
   "strings"
 
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
 )
 
 type rootDesc struct {

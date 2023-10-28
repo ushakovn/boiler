@@ -1,0 +1,68 @@
+{
+  "root": {
+    "dirs": [
+      {
+        "name": {
+          "value": "api"
+        },
+        "dirs": [
+          {
+            "name": {
+              "value": "graphql"
+            },
+            "dirs": [
+              {
+                "name": {
+                  "value": "directives"
+                },
+                "files": [
+                  {
+                    "name": "directives",
+                    "extension": "graphql"
+                  }
+                ]
+              },
+              {
+                "name": {
+                  "value": "mutation"
+                }
+              },
+              {
+                "name": {
+                  "value": "query"
+                }
+              },
+              {
+                "name": {
+                  "value": "scalars"
+                },
+                "files": [
+                  {
+                    "name": "directives",
+                    "extension": "graphql"
+                  }
+                ]
+              },
+              {
+                "name": {
+                  "value": "schema"
+                },
+                "files": [
+                  {
+                    "name": "schema",
+                    "extension": "graphql"
+                  }
+                ]
+              },
+              {
+                "name": {
+                  "value": "types"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

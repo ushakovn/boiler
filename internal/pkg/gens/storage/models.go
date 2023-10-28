@@ -7,7 +7,7 @@ import (
   "strings"
 
   "github.com/ushakovn/boiler/internal/pkg/sql"
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
   "github.com/ushakovn/boiler/templates"
 )
 

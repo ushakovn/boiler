@@ -25,14 +25,7 @@
       {
         "name": {
           "value": "api"
-        },
-        "dirs": [
-          {
-            "name": {
-              "func": "appName"
-            }
-          }
-        ]
+        }
       },
       {
         "name": {
@@ -41,7 +34,7 @@
         "dirs": [
           {
             "name": {
-              "func": "appName"
+              "value": "app"
             },
             "files": [
               {

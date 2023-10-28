@@ -1,18 +1,15 @@
 package rpc
 
 import (
-  "bytes"
   "context"
   "encoding/json"
   "fmt"
-  "go/format"
   "os"
   "path/filepath"
   "strings"
-  "text/template"
 
   "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
   "github.com/ushakovn/boiler/templates"
   "gopkg.in/yaml.v3"
 )
@@ -38,7 +35,7 @@ func NewRpc(config Config) (gen.Generator, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.Env("PWD")
+  workDirPath, err := utils.WorkDirPath()
   if err != nil {
     return nil, err
   }
@@ -102,12 +99,12 @@ func (g *rpc) genRpcHandler() error {
   }
   filePath := filepath.Join(handlerDir, "contracts.go")
 
-  if err = executeTemplateCopy(templates.Contracts, filePath, rpcTemplate.Contracts); err != nil {
+  if err = utils.ExecuteTemplateCopy(templates.Contracts, filePath, rpcTemplate.Contracts, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
   filePath = filepath.Join(handlerDir, "handler.go")
 
-  if err = executeTemplateCopy(templates.Handler, filePath, rpcTemplate); err != nil {
+  if err = utils.ExecuteTemplateCopy(templates.Handler, filePath, rpcTemplate, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
 
@@ -117,30 +114,9 @@ func (g *rpc) genRpcHandler() error {
 
     filePath = filepath.Join(handlerDir, fileName)
 
-    if err = executeTemplateCopy(templates.Handle, filePath, handle); err != nil {
+    if err = utils.ExecuteTemplateCopy(templates.Handle, filePath, handle, nil); err != nil {
       return fmt.Errorf("executeTemplateCopy: %w", err)
     }
-  }
-  return nil
-}
-
-func executeTemplateCopy(templateCompiled, filePath string, structPtr any) error {
-  t, err := template.New("").Parse(templateCompiled)
-  if err != nil {
-    return fmt.Errorf("template.New().Parse: %w", err)
-  }
-  var (
-    buffer bytes.Buffer
-    buf    []byte
-  )
-  if err = t.Execute(&buffer, structPtr); err != nil {
-    return fmt.Errorf("t.Execute: %w", err)
-  }
-  if buf, err = format.Source(buffer.Bytes()); err != nil {
-    return fmt.Errorf("format.Source: %w", err)
-  }
-  if err = os.WriteFile(filePath, buf, os.ModePerm); err != nil {
-    return fmt.Errorf("os.WriteFile: %w", err)
   }
   return nil
 }

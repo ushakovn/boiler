@@ -5,7 +5,7 @@ import (
   "fmt"
   "unicode"
 
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
 )
 
 type DumpSQL struct {

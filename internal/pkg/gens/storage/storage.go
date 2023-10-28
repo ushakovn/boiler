@@ -1,17 +1,15 @@
 package storage
 
 import (
-  "bytes"
   "context"
   "fmt"
-  "go/format"
   "os"
   "path/filepath"
   "text/template"
 
   "github.com/ushakovn/boiler/internal/boiler/gen"
   "github.com/ushakovn/boiler/internal/pkg/sql"
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
   "github.com/ushakovn/boiler/templates"
 )
 
@@ -38,7 +36,7 @@ func NewStorage(config Config) (gen.Generator, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.Env("PWD")
+  workDirPath, err := utils.WorkDirPath()
   if err != nil {
     return nil, err
   }
@@ -91,7 +89,7 @@ func (g *storage) Generate(ctx context.Context) error {
     }
     filePath = filepath.Join(filePath, commonTemplate.fileNameBuild(""))
 
-    if err := executeTemplateCopy(commonTemplate.compiledTemplate, filePath, g.schemaDesc, templatesFuncMap); err != nil {
+    if err = utils.ExecuteTemplateCopy(commonTemplate.compiledTemplate, filePath, g.schemaDesc, templatesFuncMap); err != nil {
       return fmt.Errorf("executeTemplateCopy templates.%s: %w", commonTemplate.templateName, err)
     }
   }
@@ -104,7 +102,7 @@ func (g *storage) Generate(ctx context.Context) error {
       }
       filePath = filepath.Join(filePath, modelTemplate.fileNameBuild(model.ModelName))
 
-      if err := executeTemplateCopy(modelTemplate.compiledTemplate, filePath, model, templatesFuncMap); err != nil {
+      if err = utils.ExecuteTemplateCopy(modelTemplate.compiledTemplate, filePath, model, templatesFuncMap); err != nil {
         return fmt.Errorf("executeTemplateCopy templates.%s: %w", modelTemplate.templateName, err)
       }
     }
@@ -136,31 +134,6 @@ func createStorageFolders(sourcePath string, destNestedFolders ...string) (strin
   }
 
   return defaultDir, nil
-}
-
-func executeTemplateCopy(templateCompiled, filePath string, structPtr any, funcMap template.FuncMap) error {
-  t := template.New("")
-  if len(funcMap) > 0 {
-    t = t.Funcs(funcMap)
-  }
-  t, err := t.Parse(templateCompiled)
-  if err != nil {
-    return fmt.Errorf("template.New().Parse: %w", err)
-  }
-  var (
-    buffer bytes.Buffer
-    buf    []byte
-  )
-  if err = t.Execute(&buffer, structPtr); err != nil {
-    return fmt.Errorf("t.Execute: %w", err)
-  }
-  if buf, err = format.Source(buffer.Bytes()); err != nil {
-    return fmt.Errorf("format.Source: %w", err)
-  }
-  if err = os.WriteFile(filePath, buf, os.ModePerm); err != nil {
-    return fmt.Errorf("os.WriteFile: %w", err)
-  }
-  return nil
 }
 
 type storageTemplate struct {

@@ -6,7 +6,7 @@ import (
   "os"
   "os/exec"
 
-  "github.com/ushakovn/boiler/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/utils"
   "gopkg.in/yaml.v3"
 )
 
@@ -86,10 +86,10 @@ func parsePgConfig(fileExtension string, buf []byte) (PgConfig, error) {
 }
 
 type PgConfig struct {
-  DB       string `json:"db" yaml:"db"`
   Host     string `json:"host" yaml:"host"`
   Port     string `json:"port" yaml:"port"`
   User     string `json:"user" yaml:"user"`
+  DBName   string `json:"db_name" yaml:"db_name"`
   Password string `json:"password" yaml:"password"`
 }
 
@@ -102,7 +102,7 @@ func (c *PgConfig) pgDumpCmd() (name string, args []string, err error) {
     "-h", c.Host,
     "-p", c.Port,
     "-U", c.User,
-    c.DB,
+    c.DBName,
   }
   name = "pg_dump"
 
