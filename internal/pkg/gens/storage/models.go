@@ -7,7 +7,7 @@ import (
   "strings"
 
   "github.com/ushakovn/boiler/internal/pkg/sql"
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/templates"
 )
 
@@ -50,7 +50,7 @@ type fieldFilterDesc struct {
   FilterTypeSuffix string
 }
 
-func (g *storage) loadSchemaDesc() error {
+func (g *Storage) loadSchemaDesc() error {
   tables := g.dumpSQL.Tables.Elems()
   models := make([]*modelDesc, 0, len(tables))
 
@@ -65,7 +65,7 @@ func (g *storage) loadSchemaDesc() error {
       }
       fields = append(fields, field)
     }
-    modelName := utils.StringToUpperCamelCase(table.Name)
+    modelName := stringer.StringToUpperCamelCase(table.Name)
 
     models = append(models, &modelDesc{
       ModelName:    modelName,
@@ -136,7 +136,7 @@ func (g *storage) loadSchemaDesc() error {
 
 func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
   sqlTableFieldName := column.Name
-  fieldName := utils.StringToUpperCamelCase(column.Name)
+  fieldName := stringer.StringToUpperCamelCase(column.Name)
 
   fieldZeroTyp, ok := columnNullableTypToFieldTyp(column.Typ)
   if !ok {

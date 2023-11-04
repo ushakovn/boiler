@@ -5,7 +5,8 @@ import (
   "regexp"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/aggr"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
 type rootDesc struct {
@@ -41,7 +42,7 @@ func (d *rootDesc) Validate() error {
     if typeDef.Name == "" {
       return fmt.Errorf("type definition name not specified")
     }
-    if utils.IsWrongCase(typeDef.Name) {
+    if stringer.IsWrongCase(typeDef.Name) {
       return fmt.Errorf("invalid type definition name: %s", typeDef.Name)
     }
     if _, ok := defTypesMap[typeDef.Name]; ok {
@@ -63,7 +64,7 @@ func (d *rootDesc) Validate() error {
   handlerRouterMap := map[string]struct{}{}
 
   for _, handler := range d.Handles {
-    if utils.IsWrongCase(handler.Name) {
+    if stringer.IsWrongCase(handler.Name) {
       return fmt.Errorf("invalid handler name: %s", handler.Name)
     }
     if _, ok := handlerNamesMap[handler.Name]; ok {
@@ -71,13 +72,13 @@ func (d *rootDesc) Validate() error {
     }
     handlerNamesMap[handler.Name] = struct{}{}
 
-    if utils.IsWrongCase(handler.Route) {
+    if stringer.IsWrongCase(handler.Route) {
       return fmt.Errorf("invalid handler route: %s", handler.Route)
     }
-    if _, ok := handlerRouterMap[utils.StringToLowerCase(handler.Route)]; ok {
+    if _, ok := handlerRouterMap[stringer.StringToLowerCase(handler.Route)]; ok {
       return fmt.Errorf("duplicated handler route: %s", handler.Route)
     }
-    handlerRouterMap[utils.StringToLowerCase(handler.Route)] = struct{}{}
+    handlerRouterMap[stringer.StringToLowerCase(handler.Route)] = struct{}{}
 
     if err := handler.Validate(defTypesMap); err != nil {
       return fmt.Errorf("handler error: %v", err)
@@ -90,7 +91,7 @@ func (d *handleDesc) Validate(types map[string]struct{}) error {
   if d.Name == "" {
     return fmt.Errorf("name not specified")
   }
-  if utils.IsWrongCase(d.Name) {
+  if stringer.IsWrongCase(d.Name) {
     return fmt.Errorf("invalid name: %s", d.Name)
   }
   if d.Request == nil {
@@ -112,7 +113,7 @@ func (d *contractDesc) Validate(types map[string]struct{}) error {
     if field.Name == "" {
       return fmt.Errorf("field name not specified")
     }
-    if utils.IsWrongCase(field.Name) {
+    if stringer.IsWrongCase(field.Name) {
       return fmt.Errorf("invalid field name: %s", field.Name)
     }
     if _, ok := fieldsNamesMap[field.Name]; ok {
@@ -227,7 +228,7 @@ func rootDescToRpcTemplates(desc *rootDesc) *rpcTemplates {
     reqs = append(reqs, contractDescToRpcContract(handleDesc.Name, handleDesc.Request))
     resp = append(resp, contractDescToRpcContract(handleDesc.Name, handleDesc.Response))
   }
-  typeDefs := utils.Map(desc.TypeDefs, typeDefDescToRpcTypeDef)
+  typeDefs := aggr.Map(desc.TypeDefs, typeDefDescToRpcTypeDef)
 
   return &rpcTemplates{
     Handles: handles,
@@ -242,46 +243,46 @@ func rootDescToRpcTemplates(desc *rootDesc) *rpcTemplates {
 func contractDescToRpcContract(name string, desc *contractDesc) *rpcContract {
   return &rpcContract{
     Name:   name,
-    Fields: utils.Map(desc.Fields, fieldDescToRpcStructField),
+    Fields: aggr.Map(desc.Fields, fieldDescToRpcStructField),
   }
 }
 
 func handleDescToRpcHandle(desc *handleDesc) *rpcHandle {
   return &rpcHandle{
-    Name:  utils.StringToUpperCamelCase(desc.Name),
+    Name:  stringer.StringToUpperCamelCase(desc.Name),
     Route: desc.Route,
   }
 }
 
 func typeDefDescToRpcTypeDef(desc *typeDefsDesc) *rpcTypeDef {
   return &rpcTypeDef{
-    Name:   utils.StringToUpperCamelCase(desc.Name),
-    Fields: utils.Map(desc.Fields, fieldDescToRpcStructField),
+    Name:   stringer.StringToUpperCamelCase(desc.Name),
+    Fields: aggr.Map(desc.Fields, fieldDescToRpcStructField),
   }
 }
 
 func fieldDescToRpcStructField(desc *fieldDesc) *rpcStructField {
   structField := &rpcStructField{}
 
-  structField.Name = utils.StringToUpperCamelCase(desc.Name)
-  structField.Tag = utils.StringToSnakeCase(desc.Name)
+  structField.Name = stringer.StringToUpperCamelCase(desc.Name)
+  structField.Tag = stringer.StringToSnakeCase(desc.Name)
 
   switch {
-  case utils.MapLookup(scalarTypesMap, desc.Type) || typeScalarSliceRegex.MatchString(desc.Type):
+  case aggr.MapLookup(scalarTypesMap, desc.Type) || typeScalarSliceRegex.MatchString(desc.Type):
     // Not convert
     structField.Type = desc.Type
 
   case !typeScalarSliceRegex.MatchString(desc.Type) && typeDefSliceRegex.MatchString(desc.Type):
     sliceType := strings.TrimPrefix(desc.Type, slicePrefix)
     // Convert to upper case
-    sliceType = utils.StringToUpperCamelCase(sliceType)
+    sliceType = stringer.StringToUpperCamelCase(sliceType)
     // Convert to slice of pointers
     sliceType = strings.Join([]string{slicePrefix, ptrPrefix, sliceType}, dummySep)
     structField.Type = sliceType
 
   default:
     // Convert to upper case
-    structType := utils.StringToUpperCamelCase(desc.Type)
+    structType := stringer.StringToUpperCamelCase(desc.Type)
     // Convert to pointer
     structField.Type = strings.Join([]string{ptrPrefix, structType}, dummySep)
   }

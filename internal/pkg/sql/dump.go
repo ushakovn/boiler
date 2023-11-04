@@ -2,22 +2,24 @@ package sql
 
 import (
   "bytes"
+  "context"
   "fmt"
   "unicode"
 
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/stack"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
 type DumpSQL struct {
-  Tables    *utils.Stack[*DumpTable]
-  tempStack *utils.Stack[string]
+  Tables    *stack.Stack[*DumpTable]
+  tempStack *stack.Stack[string]
 }
 
 type DumpTable struct {
   RawName string
   Name    string
   Schema  string
-  Columns utils.Stack[*DumpColumn]
+  Columns stack.Stack[*DumpColumn]
 }
 
 type DumpColumn struct {
@@ -29,8 +31,8 @@ type DumpColumn struct {
 }
 
 // DumpSchemaSQL returns SQL dump including table definitions from CREATE TABLE statements
-func DumpSchemaSQL(option PgDumpOption) (*DumpSQL, error) {
-  pgDumpBuf, err := option.Call()
+func DumpSchemaSQL(ctx context.Context, option PgDumpOption) (*DumpSQL, error) {
+  pgDumpBuf, err := option.Call(ctx)
   if err != nil {
     return nil, fmt.Errorf("option.Call: %w", err)
   }
@@ -57,7 +59,7 @@ func DumpSchemaSQL(option PgDumpOption) (*DumpSQL, error) {
 
 func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
   sanitized := &DumpSQL{
-    Tables: utils.NewStack[*DumpTable](),
+    Tables: stack.NewStack[*DumpTable](),
   }
   for _, table := range dump.Tables.Elems() {
     if _, ok := systemTablesNames[table.Name]; ok {
@@ -72,7 +74,7 @@ func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
   var tokens []string
 
   // Scan tokens from file
-  if err := utils.ScanLines(bytes.NewReader(pgDump), func(line string) error {
+  if err := stringer.ScanLines(bytes.NewReader(pgDump), func(line string) error {
     var token []rune
 
     // Scan current token

@@ -6,7 +6,8 @@ import (
   "regexp"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/stack"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
 type state interface {
@@ -15,8 +16,8 @@ type state interface {
 
 func newTerminateState() state {
   return &terminate{dump: &DumpSQL{
-    Tables:    utils.NewStack[*DumpTable](),
-    tempStack: utils.NewStack[string](),
+    Tables:    stack.NewStack[*DumpTable](),
+    tempStack: stack.NewStack[string](),
   }}
 }
 
@@ -26,7 +27,7 @@ func doTransitions(tokens []string) (state, error) {
     err   error
   )
   for _, token := range tokens {
-    token = utils.NormalizeToken(token)
+    token = stringer.NormalizeToken(token)
 
     if state, err = state.next(token); err != nil {
       return nil, fmt.Errorf("state.next: %w", err)
@@ -310,7 +311,7 @@ func (t *columnName) next(token string) (state, error) {
   }()
 
   switch {
-  case utils.StringOneOfEqual(token,
+  case stringer.StringOneOfEqual(token,
     "integer",
 
     "smallint",
@@ -349,7 +350,7 @@ func (t *columnName) next(token string) (state, error) {
   case token == "character":
     return &characterColumnTyp{dump: t.dump}, nil
 
-  case utils.StringOneOfEqual(token,
+  case stringer.StringOneOfEqual(token,
     "timestamp",
     "time",
   ):

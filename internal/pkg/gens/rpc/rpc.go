@@ -8,13 +8,14 @@ import (
   "path/filepath"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
+  "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
   "gopkg.in/yaml.v3"
 )
 
-type rpc struct {
+type Rpc struct {
   rpcDescPath string
   workDirPath string
   rpcDesc     *rootDesc
@@ -31,21 +32,21 @@ func (c *Config) Validate() error {
   return nil
 }
 
-func NewRpc(config Config) (gen.Generator, error) {
+func NewRpc(config Config) (*Rpc, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.WorkDirPath()
+  workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
   }
-  return &rpc{
+  return &Rpc{
     rpcDescPath: config.RpcDescPath,
     workDirPath: workDirPath,
   }, nil
 }
 
-func (g *rpc) Generate(context.Context) error {
+func (g *Rpc) Generate(context.Context) error {
   if err := g.loadRpcDesc(); err != nil {
     return fmt.Errorf("g.loadRpcDesc: %w", err)
   }
@@ -55,12 +56,12 @@ func (g *rpc) Generate(context.Context) error {
   return nil
 }
 
-func (g *rpc) loadRpcDesc() error {
+func (g *Rpc) loadRpcDesc() error {
   buf, err := os.ReadFile(g.rpcDescPath)
   if err != nil {
     return fmt.Errorf("os.ReadFile projectDir: %w", err)
   }
-  fileExtension := utils.ExtractFileExtension(g.rpcDescPath)
+  fileExtension := filer.ExtractFileExtension(g.rpcDescPath)
 
   desc, err := parseRootDesc(fileExtension, buf)
   if err != nil {
@@ -87,7 +88,7 @@ func parseRootDesc(fileExtension string, buf []byte) (*rootDesc, error) {
   return desc, err
 }
 
-func (g *rpc) genRpcHandler() error {
+func (g *Rpc) genRpcHandler() error {
   if err := g.rpcDesc.Validate(); err != nil {
     return err
   }
@@ -99,29 +100,29 @@ func (g *rpc) genRpcHandler() error {
   }
   filePath := filepath.Join(handlerDir, "contracts.go")
 
-  if err = utils.ExecuteTemplateCopy(templates.Contracts, filePath, rpcTemplate.Contracts, nil); err != nil {
+  if err = templater.ExecTemplateCopyWithGoFmt(templates.Contracts, filePath, rpcTemplate.Contracts, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
   filePath = filepath.Join(handlerDir, "handler.go")
 
-  if err = utils.ExecuteTemplateCopy(templates.Handler, filePath, rpcTemplate, nil); err != nil {
+  if err = templater.ExecTemplateCopyWithGoFmt(templates.Handler, filePath, rpcTemplate, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
 
   for _, handle := range rpcTemplate.Handles {
-    fileName := utils.StringToSnakeCase(handle.Name)
+    fileName := stringer.StringToSnakeCase(handle.Name)
     fileName = fmt.Sprint(fileName, ".go")
 
     filePath = filepath.Join(handlerDir, fileName)
 
-    if err = utils.ExecuteTemplateCopy(templates.Handle, filePath, handle, nil); err != nil {
+    if err = templater.ExecTemplateCopyWithGoFmt(templates.Handle, filePath, handle, nil); err != nil {
       return fmt.Errorf("executeTemplateCopy: %w", err)
     }
   }
   return nil
 }
 
-func (g *rpc) createHandlerDir() (string, error) {
+func (g *Rpc) createHandlerDir() (string, error) {
   projectName := g.projectName()
 
   defaultDirParts := []string{g.workDirPath, "internal", projectName, "handler"}
@@ -148,7 +149,7 @@ func (g *rpc) createHandlerDir() (string, error) {
   return defaultDir, nil
 }
 
-func (g *rpc) projectName() string {
+func (g *Rpc) projectName() string {
   if parts := strings.Split(g.workDirPath, `/`); len(parts) > 0 {
     return parts[len(parts)-1]
   }

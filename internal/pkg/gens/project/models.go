@@ -34,7 +34,7 @@ type templateDesc struct {
 
 type execFunc func() any
 
-func (g *project) setExecFunctions() {
+func (g *Project) setExecFunctions() {
   // Write other exec functions
   g.execFunctions = map[string]execFunc{
     "appName": func() any {

@@ -1,12 +1,13 @@
 package sql
 
 import (
+  "context"
   "encoding/json"
   "fmt"
   "os"
   "os/exec"
 
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "gopkg.in/yaml.v3"
 )
 
@@ -18,7 +19,7 @@ const (
 )
 
 type PgDumpOption interface {
-  Call() (PgDumpBuf []byte, err error)
+  Call(ctx context.Context) (PgDumpBuf []byte, err error)
 }
 
 func NewPgDumpOption(typ pgDumpOptionTyp, filePath string) PgDumpOption {
@@ -36,7 +37,7 @@ type withPgDumpFile struct {
   filePath string
 }
 
-func (option *withPgDumpFile) Call() ([]byte, error) {
+func (option *withPgDumpFile) Call(context.Context) ([]byte, error) {
   pgDumpBuf, err := os.ReadFile(option.filePath)
   if err != nil {
     return nil, fmt.Errorf("os.ReadFile filePath: %w", err)
@@ -48,18 +49,18 @@ type withPgConfigFile struct {
   filePath string
 }
 
-func (option *withPgConfigFile) Call() ([]byte, error) {
+func (option *withPgConfigFile) Call(ctx context.Context) ([]byte, error) {
   buf, err := os.ReadFile(option.filePath)
   if err != nil {
     return nil, fmt.Errorf("os.ReadFile filePath: %w", err)
   }
-  fileExtension := utils.ExtractFileExtension(option.filePath)
+  fileExtension := filer.ExtractFileExtension(option.filePath)
 
   config, err := parsePgConfig(fileExtension, buf)
   if err != nil {
     return nil, fmt.Errorf("parsePgConfig: %w", err)
   }
-  pgDumpBuf, err := execPgDump(config)
+  pgDumpBuf, err := execPgDump(ctx, config)
   if err != nil {
     return nil, fmt.Errorf("execPgDump: %w", err)
   }
@@ -94,7 +95,7 @@ type PgConfig struct {
 }
 
 func (c *PgConfig) pgDumpCmd() (name string, args []string, err error) {
-  if err := os.Setenv("PGPASSWORD", c.Password); err != nil {
+  if err = os.Setenv("PGPASSWORD", c.Password); err != nil {
     return "", nil, fmt.Errorf("os.Setenv: %w", err)
   }
   args = []string{
@@ -109,12 +110,12 @@ func (c *PgConfig) pgDumpCmd() (name string, args []string, err error) {
   return name, args, nil
 }
 
-func execPgDump(config PgConfig) ([]byte, error) {
+func execPgDump(ctx context.Context, config PgConfig) ([]byte, error) {
   name, args, err := config.pgDumpCmd()
   if err != nil {
     return nil, fmt.Errorf("conn.pgDump: %w", err)
   }
-  cmd := exec.Command(name, args...)
+  cmd := exec.CommandContext(ctx, name, args...)
   if cmd.Err != nil {
     return nil, fmt.Errorf("exec.CommandContext %w", cmd.Err)
   }

@@ -7,13 +7,13 @@ import (
 
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
-  "github.com/ushakovn/boiler/internal/boiler/gen"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
 
-type gqlgen struct {
+type Gqlgen struct {
   workDir            string
   gqlgenDescPath     string
   gqlgenDescCompiled string
@@ -32,22 +32,22 @@ func (c *Config) Validate() error {
   return nil
 }
 
-func NewGqlgen(config Config) (gen.Generator, error) {
+func NewGqlgen(config Config) (*Gqlgen, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.WorkDirPath()
+  workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
   }
-  return &gqlgen{
+  return &Gqlgen{
     workDir:            workDirPath,
     gqlgenDescPath:     config.GqlgenDescPath,
     gqlgenDescCompiled: config.GqlgenDescCompiled,
   }, nil
 }
 
-func (g *gqlgen) Generate(ctx context.Context) error {
+func (g *Gqlgen) Generate(ctx context.Context) error {
   // Use project generator for create gqlgen dirs
   p, err := project.NewProject(project.Config{
     ProjectDescPath:     g.gqlgenDescPath,
@@ -67,10 +67,10 @@ func (g *gqlgen) Generate(ctx context.Context) error {
   return nil
 }
 
-func (g *gqlgen) createGqlgenYaml() error {
+func (g *Gqlgen) createGqlgenYaml() error {
   filePath := filepath.Join(g.workDir, "gqlgen.yaml")
 
-  if err := utils.CopyTemplate(templates.GqlgenYaml, filePath); err != nil {
+  if err := templater.CopyTemplate(templates.GqlgenYaml, filePath); err != nil {
     return fmt.Errorf("copyTemplate: %w", err)
   }
   return nil

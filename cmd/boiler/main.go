@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+  // TODO: move to corba cli
+
   logBoilerMark()
   ctx := context.Background()
 
@@ -22,15 +24,15 @@ func main() {
     log.Fatalf("boiler validation error: %v", err)
   }
 
-  gens, err := factory.NewGenerator(config, typ)
+  generator, err := factory.NewGenerator(config, typ)
   if err != nil {
-    log.Fatalf("boiler initialization error: %v", err)
+    log.Fatalf("boiler failed to create generator: %v", err)
   }
 
   log.Infof("boiler info: generation started")
 
-  if err = gens.Generate(ctx); err != nil {
-    log.Fatalf("boiler generation error: %v", err)
+  if err = generator.Generate(ctx); err != nil {
+    log.Fatalf("boiler generation failed: %v", err)
   }
 
   log.Infof("boiler info: generation finished")

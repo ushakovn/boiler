@@ -7,13 +7,14 @@ import (
   "path/filepath"
   "text/template"
 
-  "github.com/ushakovn/boiler/internal/boiler/gen"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/sql"
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
+  "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
 
-type storage struct {
+type Storage struct {
   dumpSQL      *sql.DumpSQL
   schemaDesc   *schemaDesc
   workDirPath  string
@@ -32,15 +33,15 @@ func (c *Config) Validate() error {
   return nil
 }
 
-func NewStorage(config Config) (gen.Generator, error) {
+func NewStorage(config Config) (*Storage, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.WorkDirPath()
+  workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
   }
-  goModuleName, err := utils.ExtractGoModuleName(workDirPath)
+  goModuleName, err := filer.ExtractGoModuleName(workDirPath)
   if err != nil {
     return nil, err
   }
@@ -54,19 +55,19 @@ func NewStorage(config Config) (gen.Generator, error) {
   if filePath = config.PgDumpPath; filePath != "" {
     option = sql.NewPgDumpOption(sql.WithPgDumpFile, filePath)
   }
-  dumpSQL, err := sql.DumpSchemaSQL(option)
+  dumpSQL, err := sql.DumpSchemaSQL(context.Background(), option)
   if err != nil {
     return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
   }
 
-  return &storage{
+  return &Storage{
     dumpSQL:      dumpSQL,
     workDirPath:  workDirPath,
     goModuleName: goModuleName,
   }, nil
 }
 
-func (g *storage) Generate(ctx context.Context) error {
+func (g *Storage) Generate(ctx context.Context) error {
   if err := g.loadSchemaDesc(); err != nil {
     return fmt.Errorf("loadSchemaDesc: %w", err)
   }
@@ -77,9 +78,9 @@ func (g *storage) Generate(ctx context.Context) error {
   }
 
   templatesFuncMap := template.FuncMap{
-    "toLowerCamelCase": utils.StringToLowerCamelCase,
-    "toUpperCamelCase": utils.StringToUpperCamelCase,
-    "toSnakeCase":      utils.StringToSnakeCase,
+    "toLowerCamelCase": stringer.StringToLowerCamelCase,
+    "toUpperCamelCase": stringer.StringToUpperCamelCase,
+    "toSnakeCase":      stringer.StringToSnakeCase,
   }
 
   for _, commonTemplate := range storageCommonTemplates {
@@ -89,7 +90,7 @@ func (g *storage) Generate(ctx context.Context) error {
     }
     filePath = filepath.Join(filePath, commonTemplate.fileNameBuild(""))
 
-    if err = utils.ExecuteTemplateCopy(commonTemplate.compiledTemplate, filePath, g.schemaDesc, templatesFuncMap); err != nil {
+    if err = templater.ExecTemplateCopyWithGoFmt(commonTemplate.compiledTemplate, filePath, g.schemaDesc, templatesFuncMap); err != nil {
       return fmt.Errorf("executeTemplateCopy templates.%s: %w", commonTemplate.templateName, err)
     }
   }
@@ -102,7 +103,7 @@ func (g *storage) Generate(ctx context.Context) error {
       }
       filePath = filepath.Join(filePath, modelTemplate.fileNameBuild(model.ModelName))
 
-      if err = utils.ExecuteTemplateCopy(modelTemplate.compiledTemplate, filePath, model, templatesFuncMap); err != nil {
+      if err = templater.ExecTemplateCopyWithGoFmt(modelTemplate.compiledTemplate, filePath, model, templatesFuncMap); err != nil {
         return fmt.Errorf("executeTemplateCopy templates.%s: %w", modelTemplate.templateName, err)
       }
     }
@@ -148,7 +149,7 @@ var storageModelTemplates = []*storageTemplate{
     templateName:     "Interface",
     compiledTemplate: templates.Interface,
     fileNameBuild: func(modelName string) string {
-      modelName = utils.StringToSnakeCase(modelName)
+      modelName = stringer.StringToSnakeCase(modelName)
       return fmt.Sprint(modelName, ".ifc.go")
     },
   },
@@ -156,7 +157,7 @@ var storageModelTemplates = []*storageTemplate{
     templateName:     "Implementation",
     compiledTemplate: templates.Implementation,
     fileNameBuild: func(modelName string) string {
-      modelName = utils.StringToSnakeCase(modelName)
+      modelName = stringer.StringToSnakeCase(modelName)
       return fmt.Sprint(modelName, ".imp.go")
     },
   },

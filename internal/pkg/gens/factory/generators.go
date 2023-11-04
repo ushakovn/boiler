@@ -5,6 +5,7 @@ import (
 
   "github.com/ushakovn/boiler/internal/boiler/gen"
   "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
+  "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/storage"
@@ -17,6 +18,7 @@ const (
   RpcType    Typ = "rpc"
   StorageTyp Typ = "storage"
   GqlgenTyp  Typ = "gqlgen"
+  GrpcTyp    Typ = "grpc"
 )
 
 type Generators []gen.Generator
@@ -26,6 +28,7 @@ type CommonConfig struct {
   Rpc     rpc.Config
   Storage storage.Config
   Gqlgen  gqlgen.Config
+  Grpc    grpc.Config
 }
 
 func NewGenerator(config CommonConfig, typ Typ) (gen.Generator, error) {
@@ -42,6 +45,8 @@ func NewGenerator(config CommonConfig, typ Typ) (gen.Generator, error) {
     g, err = storage.NewStorage(config.Storage)
   case GqlgenTyp:
     g, err = gqlgen.NewGqlgen(config.Gqlgen)
+  case GrpcTyp:
+    g, err = grpc.NewGrpc(config.Grpc)
   default:
     err = fmt.Errorf("unsupported generator type")
   }

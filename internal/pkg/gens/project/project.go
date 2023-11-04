@@ -10,12 +10,11 @@ import (
 
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
-  "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/internal/pkg/utils"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/templates"
 )
 
-type project struct {
+type Project struct {
   projectDescPath     string
   projectDescCompiled string
   workDirPath         string
@@ -36,15 +35,15 @@ func (c *Config) Validate() error {
   return nil
 }
 
-func NewProject(config Config) (gen.Generator, error) {
+func NewProject(config Config) (*Project, error) {
   if err := config.Validate(); err != nil {
     return nil, err
   }
-  workDirPath, err := utils.WorkDirPath()
+  workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
   }
-  proj := &project{
+  proj := &Project{
     projectDescPath:     config.ProjectDescPath,
     projectDescCompiled: config.ProjectDescCompiled,
     workDirPath:         workDirPath,
@@ -54,7 +53,7 @@ func NewProject(config Config) (gen.Generator, error) {
   return proj, nil
 }
 
-func (g *project) Generate(ctx context.Context) error {
+func (g *Project) Generate(ctx context.Context) error {
   if err := g.loadProjectDesc(); err != nil {
     return fmt.Errorf("g.loadProjectDesc: %w", err)
   }
@@ -73,7 +72,7 @@ func (g *project) Generate(ctx context.Context) error {
   return nil
 }
 
-func (g *project) loadProjectDesc() error {
+func (g *Project) loadProjectDesc() error {
   var (
     buf []byte
     err error
@@ -96,7 +95,7 @@ func (g *project) loadProjectDesc() error {
   return nil
 }
 
-func (g *project) genFile(file *fileDesc) error {
+func (g *Project) genFile(file *fileDesc) error {
   var path string
 
   if path = file.Path; path == "" {
@@ -131,10 +130,10 @@ func loadFileTemplate(desc *templateDesc) []byte {
   return []byte(compiled)
 }
 
-func (g *project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
+func (g *Project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
   path := filepath.Join(parentPath, dir.Name.Execute(g.execFunctions))
 
-  if err := os.Mkdir(path, os.ModePerm); err != nil && !utils.IsExistedDirectory(path) {
+  if err := os.Mkdir(path, os.ModePerm); err != nil && !filer.IsExistedDirectory(path) {
     return fmt.Errorf("os.Mkdir dir: %w", err)
   }
   for _, file := range dir.Files {
@@ -152,12 +151,6 @@ func (g *project) genDirectory(ctx context.Context, dir *directoryDesc, parentPa
   return nil
 }
 
-func (g *project) workDirFolder() string {
-  if parts := strings.Split(g.workDirPath, `/`); len(parts) > 0 {
-    return parts[len(parts)-1]
-  }
-  if parts := strings.Split(g.workDirPath, `\`); len(parts) > 0 {
-    return parts[len(parts)-1]
-  }
-  return g.workDirPath
+func (g *Project) workDirFolder() string {
+  return filer.ExtractFileName(g.workDirPath)
 }
