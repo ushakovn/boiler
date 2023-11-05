@@ -4,7 +4,9 @@ import (
   "fmt"
   "go/ast"
   "go/parser"
+  "go/printer"
   "go/token"
+  "os"
   "strings"
 
   "github.com/ushakovn/boiler/internal/pkg/filer"
@@ -26,6 +28,69 @@ type grpcServerInterfaceCall struct {
   OutputProto string
 }
 
+func buildAstFuncParams(callDesc *grpcServiceCallDesc) *ast.FieldList {
+  return &ast.FieldList{
+    List: []*ast.Field{
+      {
+        Names: []*ast.Ident{
+          {
+            Name: "ctx",
+          },
+        },
+        Type: &ast.SelectorExpr{
+          X: &ast.Ident{
+            Name: "context",
+          },
+          Sel: &ast.Ident{
+            Name: "Context",
+          },
+        },
+      },
+      {
+        Names: []*ast.Ident{
+          {
+            Name: "req",
+          },
+        },
+        Type: &ast.StarExpr{
+          X: &ast.SelectorExpr{
+            X: &ast.Ident{
+              Name: "desc",
+            },
+            Sel: &ast.Ident{
+              Name: callDesc.CallInputProto,
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
+func buildAstFuncResults(callDesc *grpcServiceCallDesc) *ast.FieldList {
+  return &ast.FieldList{
+    List: []*ast.Field{
+      {
+        Type: &ast.StarExpr{
+          X: &ast.SelectorExpr{
+            X: &ast.Ident{
+              Name: "desc",
+            },
+            Sel: &ast.Ident{
+              Name: callDesc.CallOutputProto,
+            },
+          },
+        },
+      },
+      {
+        Type: &ast.Ident{
+          Name: "error",
+        },
+      },
+    },
+  }
+}
+
 func scanGrpcServerInterface(filePath string) (*grpcServerInterface, error) {
   if err := validateGrpcProtocFileName(filePath); err != nil {
     return nil, fmt.Errorf("validateGrpcProtocFileName: %w", err)
@@ -36,6 +101,7 @@ func scanGrpcServerInterface(filePath string) (*grpcServerInterface, error) {
   if err != nil {
     return nil, fmt.Errorf("parser.ParseFile: %w", err)
   }
+
   var grpcServer *grpcServerInterface
 
   ast.Inspect(astFile, func(node ast.Node) bool {
@@ -180,35 +246,53 @@ func regenerateGrpcServiceStub(filePath string, serviceCallDesc *grpcServiceCall
 
   ast.Inspect(astFile, func(node ast.Node) bool {
     funcDecl, ok := node.(*ast.FuncDecl)
-    if !ok {
+    if !ok || funcDecl.Recv == nil || len(funcDecl.Recv.List) == 0 {
       return true
     }
-    if funcDecl.Name == nil || funcDecl.Name.IsExported() || funcDecl.Recv == nil || len(funcDecl.Recv.List) == 0 {
+    funcRecv := funcDecl.Recv.List[0]
+
+    if funcRecv == nil || funcRecv.Type == nil {
+      return true
+    }
+    funcRecvStarExpr, ok := funcRecv.Type.(*ast.StarExpr)
+    if !ok || funcRecvStarExpr.X == nil {
+      return true
+    }
+    const funcRecvName = "Implementation"
+
+    funcRecvIdent, ok := funcRecvStarExpr.X.(*ast.Ident)
+    if !ok || funcRecvIdent.Name != funcRecvName {
       return true
     }
 
-    // TODO: complete this method
+    if funcDecl.Name == nil || !funcDecl.Name.IsExported() || funcDecl.Name.Name != serviceCallDesc.CallName {
+      return true
+    }
 
-    // TODO: regenerate (s *Implementation) methods signature
+    if funcDecl.Type == nil {
+      err = fmt.Errorf("encountered invalid grpc service method")
+      return false
+    }
 
-    //ast.Inspect(file, func(n ast.Node) bool {
-    //		if fun, ok := n.(*ast.FuncDecl); ok {
-    //			// 4. Validate that method is exported and has a receiver
-    //			if fun.Name.IsExported() && fun.Recv != nil && len(fun.Recv.List) == 1 {
-    //					// 5. Check that the receiver is actually the struct we want
-    //					if r, rok := fun.Recv.List[0].Type.(*ast.StarExpr); rok && r.X.(*ast.Ident).Name == structName {
-    //						// we found it!
-    //					}
-    //				}
-    //			}
-    //
-    //		}
-    //		return true
-    //	})
+    funcDecl.Type.Params = buildAstFuncParams(serviceCallDesc)
+    funcDecl.Type.Results = buildAstFuncResults(serviceCallDesc)
 
     return false
 
   })
+
+  if err != nil {
+    return fmt.Errorf("ast.Inspect: %w", err)
+  }
+
+  osFile, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+  if err != nil {
+    return fmt.Errorf("os.OpenFile: %w", err)
+  }
+
+  if err = printer.Fprint(osFile, fileSet, astFile); err != nil {
+    return fmt.Errorf("printer.Fprint: %w", err)
+  }
 
   return nil
 }

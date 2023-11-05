@@ -9,6 +9,6 @@ import (
 )
 
 // {{.CallName}} implementation stub. Change this.
-func (s *Implementation) {{.CallName}}(context.Context, *desc.{{.CallInputProto}}) (*desc.{{.CallOutputProto}}, error) {
+func (s *Implementation) {{.CallName}}(ctx context.Context, req *desc.{{.CallInputProto}}) (*desc.{{.CallOutputProto}}, error) {
   return nil, status.Error(codes.Unimplemented, "{{.CallName}} not implemented")
 }
