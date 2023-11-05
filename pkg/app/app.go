@@ -46,7 +46,7 @@ func (a *App) Run(services ...Service) {
 func (a *App) registerGrpc() {
   const (
     defaultNetwork = "tcp"
-    defaultHost    = "localhost:82"
+    defaultHost    = "localhost:8082"
   )
   if a.grpcServer != nil {
     lister, err := net.Listen(defaultNetwork, defaultHost)
