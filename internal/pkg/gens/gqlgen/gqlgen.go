@@ -47,7 +47,7 @@ func NewGqlgen(config Config) (*Gqlgen, error) {
   }, nil
 }
 
-func (g *Gqlgen) Generate(ctx context.Context) error {
+func (g *Gqlgen) Init(ctx context.Context) error {
   // Use project generator for create gqlgen dirs
   p, err := project.NewProject(project.Config{
     ProjectDescPath:     g.gqlgenDescPath,
@@ -57,7 +57,7 @@ func (g *Gqlgen) Generate(ctx context.Context) error {
     return err
   }
   // Generate gqlgen project dirs
-  if err = p.Generate(ctx); err != nil {
+  if err = p.Init(ctx); err != nil {
     return err
   }
   // Create yaml config for project

@@ -8,6 +8,7 @@ import (
   "os/exec"
 
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/validator"
   "gopkg.in/yaml.v3"
 )
 
@@ -60,16 +61,16 @@ func (option *withPgConfigFile) Call(ctx context.Context) ([]byte, error) {
   if err != nil {
     return nil, fmt.Errorf("parsePgConfig: %w", err)
   }
-  pgDumpBuf, err := execPgDump(ctx, config)
+  pgDumpBuf, err := execPgDump(ctx, *config)
   if err != nil {
     return nil, fmt.Errorf("execPgDump: %w", err)
   }
   return pgDumpBuf, nil
 }
 
-func parsePgConfig(fileExtension string, buf []byte) (PgConfig, error) {
+func parsePgConfig(fileExtension string, buf []byte) (*PgConfig, error) {
   type wrappedConfig struct {
-    PgConfig PgConfig `json:"pg_config" yaml:"pg_config"`
+    PgConfig *PgConfig `json:"pg_config" yaml:"pg_config"`
   }
   var (
     config *wrappedConfig
@@ -82,6 +83,12 @@ func parsePgConfig(fileExtension string, buf []byte) (PgConfig, error) {
     err = json.Unmarshal(buf, &config)
   default:
     err = fmt.Errorf("unsupported file extension: %s", fileExtension)
+  }
+  if err != nil {
+    return nil, err
+  }
+  if err = validator.ValidateStructWithTags(config, "json", "yaml"); err != nil {
+    return nil, err
   }
   return config.PgConfig, err
 }

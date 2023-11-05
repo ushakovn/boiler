@@ -17,5 +17,5 @@ func New{{.ServiceName}}() *Implementation {
 }
 
 func (s *Implementation) Register(params *app.RegisterParams) {
-  desc.RegisterBarnieServer(params.GrpcServer, &Implementation{})
+  desc.Register{{.ServiceName}}Server(params.GrpcServer, &Implementation{})
 }

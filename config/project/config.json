@@ -7,7 +7,10 @@
       },
       {
         "name": "Makefile",
-        "extension": ""
+        "extension": "",
+        "template": {
+          "name": "makefile"
+        }
       },
       {
         "name": "go",

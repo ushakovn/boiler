@@ -53,7 +53,7 @@ func NewProject(config Config) (*Project, error) {
   return proj, nil
 }
 
-func (g *Project) Generate(ctx context.Context) error {
+func (g *Project) Init(ctx context.Context) error {
   if err := g.loadProjectDesc(); err != nil {
     return fmt.Errorf("g.loadProjectDesc: %w", err)
   }
@@ -126,6 +126,8 @@ func loadFileTemplate(desc *templateDesc) []byte {
     compiled = templates.Main
   case templates.NameGomod:
     compiled = templates.Gomod
+  case templates.NameMakefile:
+    compiled = templates.Makefile
   }
   return []byte(compiled)
 }

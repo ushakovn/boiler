@@ -50,7 +50,7 @@ func (a *App) registerGrpc() {
     defaultHost    = "localhost"
   )
   if a.grpcServer != nil {
-    address := fmt.Sprint(defaultHost, ":", a.grpcPort)
+    address := fmt.Sprint(defaultHost, ":82")
 
     lister, err := net.Listen(defaultNetwork, address)
     if err != nil {
