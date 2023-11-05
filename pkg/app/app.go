@@ -1,7 +1,6 @@
 package app
 
 import (
-  "fmt"
   "net"
   "syscall"
 
@@ -47,14 +46,12 @@ func (a *App) Run(services ...Service) {
 func (a *App) registerGrpc() {
   const (
     defaultNetwork = "tcp"
-    defaultHost    = "localhost"
+    defaultHost    = "localhost:82"
   )
   if a.grpcServer != nil {
-    address := fmt.Sprint(defaultHost, ":82")
-
-    lister, err := net.Listen(defaultNetwork, address)
+    lister, err := net.Listen(defaultNetwork, defaultHost)
     if err != nil {
-      log.Fatalf("Boiler: register gprc failed: %v", err)
+      log.Fatalf("boiler: register gprc failed: %v", err)
     }
     reflection.Register(a.grpcServer)
 
