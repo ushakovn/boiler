@@ -4,6 +4,7 @@ import (
   "context"
   "fmt"
 
+  "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
   "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
 )
@@ -22,6 +23,8 @@ func NewInitor(config any) (Initor, error) {
     g, err = project.NewProject(c)
   case grpc.Config:
     g, err = grpc.NewGrpc(c)
+  case gqlgen.Config:
+    g, err = gqlgen.NewGqlgen(c)
   default:
     err = fmt.Errorf("unsupported initor type")
   }

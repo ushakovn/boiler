@@ -1,0 +1,7 @@
+""" Dummy """
+type Dummy {
+    """ id """
+    id: ID!
+    """ field """
+    field: String!
+}

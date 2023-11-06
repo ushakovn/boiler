@@ -5,3 +5,20 @@ syntax = "proto3";
 package {{.serviceName}};
 
 option go_package = "{{.goPackage}}";
+
+service DummyService {
+  rpc GetDummy(GetDummyRequest) returns (GetDummyResponse);
+}
+
+message GetDummyRequest {
+  string id = 1;
+}
+
+message GetDummyResponse {
+  repeated Dummy dummy = 1;
+}
+
+message Dummy {
+  int64 id = 1;
+  string field = 2;
+}

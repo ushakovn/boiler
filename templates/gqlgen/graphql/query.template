@@ -1,0 +1,16 @@
+extend type Query {
+    """dummyQuery """
+    dummyQuery(input: DummyQueryInput!): DummyQueryPayload!
+}
+
+""" DummyQueryInput """
+input DummyQueryInput {
+    """ id """
+    id: ID!
+}
+
+""" DummyQueryPayload """
+type DummyQueryPayload {
+    """ dummy """
+    dummy: Dummy!
+}

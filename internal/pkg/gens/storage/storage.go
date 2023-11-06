@@ -67,7 +67,7 @@ func NewStorage(config Config) (*Storage, error) {
   }, nil
 }
 
-func (g *Storage) Generate(ctx context.Context) error {
+func (g *Storage) Generate(context.Context) error {
   if err := g.loadSchemaDesc(); err != nil {
     return fmt.Errorf("loadSchemaDesc: %w", err)
   }

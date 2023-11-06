@@ -1,9 +1,6 @@
 package stringer
 
 import (
-  "bufio"
-  "fmt"
-  "io"
   "regexp"
   "strings"
   "unicode"
@@ -164,20 +161,4 @@ func StringOneOfEqual(src string, dst ...string) bool {
     }
   }
   return false
-}
-
-func ScanLines(r io.Reader, f func(line string) error) error {
-  s := bufio.NewScanner(r)
-  s.Split(bufio.ScanLines)
-  var err error
-
-  for s.Scan() {
-    if err = f(s.Text()); err != nil {
-      return fmt.Errorf("f(s.Text()): %w", err)
-    }
-  }
-  if err = s.Err(); err != nil {
-    return fmt.Errorf("s.Err: %w", err)
-  }
-  return nil
 }

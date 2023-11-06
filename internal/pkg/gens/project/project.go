@@ -109,7 +109,7 @@ func (g *Project) genFile(file *fileDesc) error {
     return fmt.Errorf("os.CreateFile: %w", err)
   }
   if template := file.Template; template != nil {
-    buf := loadFileTemplate(template)
+    buf := loadGlobalFileTemplate(template)
 
     if err := os.WriteFile(path, buf, os.ModePerm); err != nil {
       return fmt.Errorf("os.WriteFile: %w", err)
@@ -118,16 +118,40 @@ func (g *Project) genFile(file *fileDesc) error {
   return nil
 }
 
-func loadFileTemplate(desc *templateDesc) []byte {
+func loadGlobalFileTemplate(desc *templateDesc) []byte {
   var compiled string
 
+  // Global file template name
   switch desc.Name {
+
+  // Project templates
+
   case templates.NameMain:
     compiled = templates.Main
+
   case templates.NameGomod:
     compiled = templates.Gomod
+
   case templates.NameMakefile:
     compiled = templates.Makefile
+
+  // Gqlgen Graphql Schema templates
+
+  case templates.NameGqlgenSchema:
+    compiled = templates.GqlgenSchema
+
+  case templates.NameGqlgenMutation:
+    compiled = templates.GqlgenMutation
+
+  case templates.NameGqlgenQuery:
+    compiled = templates.GqlgenQuery
+
+  case templates.NameGqlgenTypes:
+    compiled = templates.GqlgenTypes
+
+  case templates.NameGqlgenScalars:
+    compiled = templates.GqlgenScalars
+    
   }
   return []byte(compiled)
 }

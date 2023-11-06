@@ -12,10 +12,10 @@ type Implementation struct {
   desc.Unimplemented{{.ServiceName}}Server
 }
 
-func New{{.ServiceName}}() *Implementation {
+func New{{.ServiceName}}Service() *Implementation {
   return &Implementation{}
 }
 
-func (s *Implementation) Register(params *app.RegisterParams) {
+func (s *Implementation) RegisterService(params *app.RegisterParams) {
   desc.Register{{.ServiceName}}Server(params.GrpcServer, &Implementation{})
 }

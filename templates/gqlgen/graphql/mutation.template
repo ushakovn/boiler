@@ -1,0 +1,16 @@
+extend type Mutation {
+    """dummyMutation """
+    dummyMutation(input: DummyMutationInput!): DummyMutationPayload!
+}
+
+""" DummyMutationInput """
+input DummyMutationInput {
+    """ field """
+    field: String!
+}
+
+""" DummyMutationPayload """
+type DummyMutationPayload {
+    """ dummy """
+    dummy: Dummy!
+}

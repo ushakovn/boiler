@@ -25,12 +25,30 @@
               {
                 "name": {
                   "value": "mutation"
-                }
+                },
+                "files": [
+                  {
+                    "name": "mutation",
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_mutation"
+                    }
+                  }
+                ]
               },
               {
                 "name": {
                   "value": "query"
-                }
+                },
+                "files": [
+                  {
+                    "name": "query",
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_query"
+                    }
+                  }
+                ]
               },
               {
                 "name": {
@@ -38,8 +56,11 @@
                 },
                 "files": [
                   {
-                    "name": "directives",
-                    "extension": "graphql"
+                    "name": "scalars",
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_scalars"
+                    }
                   }
                 ]
               },
@@ -50,14 +71,26 @@
                 "files": [
                   {
                     "name": "schema",
-                    "extension": "graphql"
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_schema"
+                    }
                   }
                 ]
               },
               {
                 "name": {
                   "value": "types"
-                }
+                },
+                "files": [
+                  {
+                    "name": "types",
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_types"
+                    }
+                  }
+                ]
               }
             ]
           }

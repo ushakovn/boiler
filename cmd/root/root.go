@@ -1,12 +1,15 @@
 package root
 
 import (
+  "context"
+  "fmt"
   "os"
 
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   cmdGen "github.com/ushakovn/boiler/cmd/root/gen"
   cmdInit "github.com/ushakovn/boiler/cmd/root/init"
+  "github.com/ushakovn/boiler/internal/pkg/executor"
 )
 
 var flagDebug bool
@@ -23,25 +26,21 @@ var CmdRoot = &cobra.Command{
 |_.__/ \___/|_|_|\___|_|
 `,
 
-  PersistentPreRun: func(cmd *cobra.Command, args []string) {
-    log.SetFormatter(&log.TextFormatter{
-      FullTimestamp:   true,
-      TimestampFormat: "2006-01-02 15:04:05",
-    })
+  PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
-    if flagDebug {
-      log.SetLevel(log.DebugLevel)
-    } else {
-      log.SetLevel(log.InfoLevel)
-    }
+    return execModTidy()
+  },
+
+  PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+    return execModTidy()
   },
 }
 
 func Execute() {
   const errExitCode = 1
+  setLogFormatter()
 
-  err := CmdRoot.Execute()
-  if err != nil {
+  if err := CmdRoot.Execute(); err != nil {
     os.Exit(errExitCode)
   }
 }
@@ -50,4 +49,23 @@ func init() {
   CmdRoot.AddCommand(cmdInit.CmdInit, cmdGen.CmdGen)
 
   CmdRoot.PersistentFlags().BoolVar(&flagDebug, "debug", false, "sets debug logging level")
+}
+
+func setLogFormatter() {
+  log.SetFormatter(&log.TextFormatter{
+    FullTimestamp:   true,
+    TimestampFormat: "2006-01-02 15:04:05",
+  })
+  if flagDebug {
+    log.SetLevel(log.DebugLevel)
+  } else {
+    log.SetLevel(log.InfoLevel)
+  }
+}
+
+func execModTidy() error {
+  if err := executor.ExecCommandContext(context.Background(), "go", "mod", "tidy"); err != nil {
+    return fmt.Errorf("boiler: failed to exec go mod tidy: %w", err)
+  }
+  return nil
 }

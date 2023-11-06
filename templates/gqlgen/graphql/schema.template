@@ -1,0 +1,5 @@
+""" Query """
+type Query
+
+""" Mutation """
+type Mutation

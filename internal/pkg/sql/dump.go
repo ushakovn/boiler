@@ -6,8 +6,8 @@ import (
   "fmt"
   "unicode"
 
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/stack"
-  "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
 type DumpSQL struct {
@@ -74,7 +74,7 @@ func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
   var tokens []string
 
   // Scan tokens from file
-  if err := stringer.ScanLines(bytes.NewReader(pgDump), func(line string) error {
+  if err := filer.ScanLines(bytes.NewReader(pgDump), func(line string) error {
     var token []rune
 
     // Scan current token
@@ -104,7 +104,7 @@ func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
     return nil
 
   }); err != nil {
-    return nil, fmt.Errorf("utils.ScanLines: %w", err)
+    return nil, fmt.Errorf("filer.ScanLines: %w", err)
   }
   return tokens, nil
 }

@@ -1,27 +1,32 @@
 package app
 
 import (
-  "sync"
-
   "github.com/gin-gonic/gin"
+  "github.com/ushakovn/boiler/internal/pkg/aggr"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/stats"
+  "google.golang.org/grpc/tap"
 )
 
 type Option func(o *calledAppOptions)
 
 type calledAppOptions struct {
-  mu sync.Mutex
+  grpcServePort     int
+  grpcServerOptions []grpc.ServerOption
 
-  grpcServePort int
-  httpServePort int
-
-  grpcOptions []grpc.ServerOption
-  ginHandles  []gin.HandlerFunc
+  gqlgenServePort int
+  gqlgenHandlers  []gin.HandlerFunc
 }
 
 func callAppOptions(calls ...Option) *calledAppOptions {
-  o := &calledAppOptions{}
-
+  const (
+    defaultGrpcPort   = 8082
+    defaultGqlgenPort = 8080
+  )
+  o := &calledAppOptions{
+    grpcServePort:   defaultGrpcPort,
+    gqlgenServePort: defaultGqlgenPort,
+  }
   for _, call := range calls {
     call(o)
   }
@@ -34,24 +39,47 @@ func WithGrpcServePort(port int) Option {
   }
 }
 
-func WithHttpServePort(port int) Option {
+func WithGrpcServerOptions(options ...grpc.ServerOption) Option {
   return func(o *calledAppOptions) {
-    o.httpServePort = port
+    o.grpcServerOptions = append(o.grpcServerOptions, options...)
   }
 }
 
-func WithGrpcServerOptions(grpcOptions ...grpc.ServerOption) Option {
+func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor) Option {
   return func(o *calledAppOptions) {
-    o.mu.Lock()
-    defer o.mu.Unlock()
-    o.grpcOptions = append(o.grpcOptions, grpcOptions...)
+    serverOptions := aggr.Map(interceptors, func(interceptor grpc.UnaryServerInterceptor) grpc.ServerOption {
+      return grpc.UnaryInterceptor(interceptor)
+    })
+    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
   }
 }
 
-func WithGinHandles(ginHandles ...gin.HandlerFunc) Option {
+func WithGrpcStatsHandlers(handlers ...stats.Handler) Option {
   return func(o *calledAppOptions) {
-    o.mu.Lock()
-    defer o.mu.Unlock()
-    o.ginHandles = append(o.ginHandles, ginHandles...)
+    serverOptions := aggr.Map(handlers, func(handler stats.Handler) grpc.ServerOption {
+      return grpc.StatsHandler(handler)
+    })
+    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
+  }
+}
+
+func WithGrpcTapHandlers(handlers ...tap.ServerInHandle) Option {
+  return func(o *calledAppOptions) {
+    serverOptions := aggr.Map(handlers, func(handler tap.ServerInHandle) grpc.ServerOption {
+      return grpc.InTapHandle(handler)
+    })
+    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
+  }
+}
+
+func WithGqlgenServePort(port int) Option {
+  return func(o *calledAppOptions) {
+    o.gqlgenServePort = port
+  }
+}
+
+func WithGqlgenHandles(handlers ...gin.HandlerFunc) Option {
+  return func(o *calledAppOptions) {
+    o.gqlgenHandlers = append(o.gqlgenHandlers, handlers...)
   }
 }

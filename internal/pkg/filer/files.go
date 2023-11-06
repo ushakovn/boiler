@@ -3,6 +3,7 @@ package filer
 import (
   "bufio"
   "fmt"
+  "io"
   "os"
   "path/filepath"
   "strings"
@@ -128,6 +129,16 @@ func collectNestedFilesPath(extension, parentPath string, filesPath *[]string) e
   return nil
 }
 
+func ExtractFileName(filePath string) string {
+  if parts := strings.Split(filePath, `/`); len(parts) > 0 {
+    return parts[len(parts)-1]
+  }
+  if parts := strings.Split(filePath, `\`); len(parts) > 0 {
+    return parts[len(parts)-1]
+  }
+  return filePath
+}
+
 func AppendStringToFile(filePath, rawString string) error {
   // If the file does not exist create it or append to the file
   file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, os.ModePerm)
@@ -153,12 +164,18 @@ func AppendStringToFile(filePath, rawString string) error {
   return nil
 }
 
-func ExtractFileName(filePath string) string {
-  if parts := strings.Split(filePath, `/`); len(parts) > 0 {
-    return parts[len(parts)-1]
+func ScanLines(r io.Reader, f func(line string) error) error {
+  s := bufio.NewScanner(r)
+  s.Split(bufio.ScanLines)
+  var err error
+
+  for s.Scan() {
+    if err = f(s.Text()); err != nil {
+      return fmt.Errorf("f(s.Text()): %w", err)
+    }
   }
-  if parts := strings.Split(filePath, `\`); len(parts) > 0 {
-    return parts[len(parts)-1]
+  if err = s.Err(); err != nil {
+    return fmt.Errorf("s.Err: %w", err)
   }
-  return filePath
+  return nil
 }

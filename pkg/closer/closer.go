@@ -1,7 +1,6 @@
 package closer
 
 import (
-  "context"
   "os"
   "os/signal"
   "sync"
@@ -9,15 +8,9 @@ import (
   log "github.com/sirupsen/logrus"
 )
 
-var boilerCloser = NewCloser()
-
-func Add(f func() error) {
-  boilerCloser.Add(f)
-}
-
 type Closer interface {
   Add(f func() error)
-  WaitAll(ctx context.Context)
+  WaitAll()
   CloseAll()
 }
 
@@ -53,14 +46,8 @@ func (c *closer) Add(f func() error) {
   c.calls = append(c.calls, f)
 }
 
-func (c *closer) WaitAll(ctx context.Context) {
-  select {
-  case <-ctx.Done():
-    log.Warnf("Boiler: closer waiting stopped: context cancelled")
-  case <-c.done:
-    log.Info("Boiler: closer waiting finished with success")
-    break
-  }
+func (c *closer) WaitAll() {
+  <-c.done
 }
 
 func (c *closer) CloseAll() {
@@ -80,15 +67,17 @@ func (c *closer) CloseAll() {
 
     for i := 0; i < callsCount; i++ {
       if err := <-errCh; err != nil {
-        log.Warnf("Boiler: closer call error: %v", err)
+        log.Warnf("boiler: closer call error: %v", err)
         errCount++
       }
     }
 
     if errCount == 0 {
-      log.Info("Boiler: closer close all finished with success")
+      log.Info("boiler: closer close all finished with success")
     } else {
-      log.Warnf("Boiler: closer close all finished with %d errors", errCount)
+      log.Warnf("boiler: closer close all finished with %d errors", errCount)
     }
+
+    c.done <- struct{}{}
   })
 }

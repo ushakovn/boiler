@@ -15,6 +15,14 @@ func CopyTemplate(templateCompiled string, filePath string) error {
   return nil
 }
 
+func MustExecTemplate(templateCompiled string, dataPtr any, funcMap template.FuncMap) []byte {
+  buf, err := ExecTemplate(templateCompiled, dataPtr, funcMap)
+  if err != nil {
+    panic(err)
+  }
+  return buf
+}
+
 func ExecTemplate(templateCompiled string, dataPtr any, funcMap template.FuncMap) ([]byte, error) {
   t := template.New("")
 

@@ -3,12 +3,11 @@ package grpc
 import (
   "context"
   "fmt"
-  "os/exec"
   "path/filepath"
   "strings"
   "text/template"
 
-  log "github.com/sirupsen/logrus"
+  "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/internal/pkg/templater"
@@ -48,6 +47,12 @@ func NewGrpc(config Config) (*Grpc, error) {
 }
 
 func (g *Grpc) Generate(ctx context.Context) error {
+  if err := g.createMakeMkTargetIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
+  }
+  if err := g.createMakefileIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
+  }
   if err := g.generateMakeMkProto(ctx); err != nil {
     return fmt.Errorf("g.generateMakeMkProto: %w", err)
   }
@@ -57,7 +62,7 @@ func (g *Grpc) Generate(ctx context.Context) error {
   return nil
 }
 
-func (g *Grpc) Init(ctx context.Context) error {
+func (g *Grpc) Init(context.Context) error {
   protoDirPath, err := g.createProtoDirectory()
   if err != nil {
     return fmt.Errorf("g.createProtoDirectory: %w", err)
@@ -65,8 +70,8 @@ func (g *Grpc) Init(ctx context.Context) error {
   if err = g.createServiceProtoFile(protoDirPath); err != nil {
     return fmt.Errorf("g.createServiceProtoFile: %w", err)
   }
-  if err = g.createMakeMkTarget(); err != nil {
-    return fmt.Errorf("g.createMakefileMkTarget: %w", err)
+  if err = g.createMakeMkTargetIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
   }
   if err = g.createMakefileIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
@@ -172,26 +177,26 @@ func (g *Grpc) collectGrpcFilesPath() ([]string, error) {
 }
 
 func (g *Grpc) generateMakeMkProto(ctx context.Context) error {
-  if cmd := exec.CommandContext(ctx, "make", "generate-protoc"); cmd != nil {
-    var output string
+  if err := executor.ExecCommandContext(ctx, "make", "generate-protoc"); err != nil {
+    return fmt.Errorf("executor.ExecCommandContext: %w", err)
+  }
+  return nil
+}
 
-    if buf, err := cmd.Output(); err != nil {
-      log.Errorf("cmd.Output: %v", err)
+func (g *Grpc) createMakeMkTargetIfNotExist() error {
+  const fileName = "make.mk"
+  filePath := filepath.Join(g.workDirPath, fileName)
 
-    } else {
-      output = string(buf)
-    }
-    if cmd.Err != nil {
-      return fmt.Errorf("exec.CommandContext: output(%s): %w", output, cmd.Err)
-
-    } else {
-      log.Info(output)
+  if !filer.IsExistedFile(filePath) {
+    if err := g.createMakeMkTarget(); err != nil {
+      return fmt.Errorf("g.createMakeMkTarget: %w", err)
     }
   }
   return nil
 }
 
 func (g *Grpc) createMakeMkTarget() error {
+  const fileName = "make.mk"
   goPackageTrim := g.goModuleName
 
   templateData := map[string]any{
@@ -202,7 +207,7 @@ func (g *Grpc) createMakeMkTarget() error {
     return fmt.Errorf("executeTemplate")
   }
   executedTarget := string(executedBuf)
-  makeMkPath := filepath.Join(g.workDirPath, "make.mk")
+  makeMkPath := filepath.Join(g.workDirPath, fileName)
 
   if err = filer.AppendStringToFile(makeMkPath, executedTarget); err != nil {
     return fmt.Errorf("filer.AppendStringToFile: %w", err)
