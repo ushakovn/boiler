@@ -2,7 +2,7 @@ package app
 
 import "google.golang.org/grpc"
 
-type ServiceType int
+type ServiceType uint32
 
 const (
   UnknownServiceTyp ServiceType = 0
@@ -16,7 +16,7 @@ var knownServiceTypes = map[ServiceType]struct{}{
 }
 
 type Service interface {
-  Register(params *RegisterParams)
+  RegisterService(params *RegisterParams)
 }
 
 type RegisterParams struct {

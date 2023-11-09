@@ -3,6 +3,7 @@ package app
 import (
   "fmt"
   "net"
+  "sync"
   "syscall"
 
   "github.com/gin-gonic/gin"
@@ -14,6 +15,9 @@ import (
 )
 
 type App struct {
+  once sync.Once
+  mu   sync.Mutex
+
   grpcPort   int
   gqlgenPort int
 
@@ -42,15 +46,21 @@ func NewApp(calls ...Option) *App {
 
   // Return app
   return &App{
+    grpcPort:   options.grpcServePort,
+    gqlgenPort: options.gqlgenServePort,
+
     grpcServer:   grpcServer,
     gqlgenServer: gqlgenServer,
-    appCloser:    appCloser,
+
+    appCloser: appCloser,
   }
 }
 
 func (a *App) Run(services ...Service) {
-  a.registerServices(services...)
-  a.waitServicesShutdown()
+  a.once.Do(func() {
+    a.registerServices(services...)
+    a.waitServicesShutdown()
+  })
 }
 
 func (a *App) waitServicesShutdown() {
@@ -62,7 +72,7 @@ func (a *App) registerServices(services ...Service) {
     grpcServer: a.grpcServer,
   }
   for _, service := range services {
-    service.Register(params)
+    service.RegisterService(params)
   }
   serviceTypes := params.serviceTypesValues()
 
@@ -101,4 +111,11 @@ func (a *App) registerGqlgen() {
       a.appCloser.CloseAll()
     }
   }()
+}
+
+func (a *App) GqlgenServer() *gin.Engine {
+  a.mu.Lock()
+  defer a.mu.Unlock()
+
+  return a.gqlgenServer
 }

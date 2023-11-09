@@ -17,5 +17,6 @@ func New{{.ServiceName}}Service() *Implementation {
 }
 
 func (s *Implementation) RegisterService(params *app.RegisterParams) {
-  desc.Register{{.ServiceName}}Server(params.GrpcServer, &Implementation{})
+  params.SetServiceType(app.GrpcServiceTyp)
+  desc.Register{{.ServiceName}}Server(params.GrpcServiceRegistrar(), &Implementation{})
 }
