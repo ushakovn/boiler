@@ -7,6 +7,7 @@ import (
 
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
+  "github.com/ushakovn/boiler/internal/pkg/aster"
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
@@ -77,8 +78,55 @@ func (g *Gqlgen) Init(ctx context.Context) error {
 }
 
 func (g *Gqlgen) Generate(ctx context.Context) error {
+  if err := g.generateGqlgenSchema(ctx); err != nil {
+    return fmt.Errorf("g.generateGqlgenSchema: %w", err)
+  }
+  folderPath, err := filer.CreateNestedFolders(g.workDirPath, "internal", "app", "graph")
+  if err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  filePath := filepath.Join(folderPath, "service.go")
+
+  if filer.IsExistedFile(filePath) {
+    if err := g.regenerateGqlgenService(filePath); err != nil {
+      return fmt.Errorf("g.regenerateGqlgenService: %w", err)
+    }
+  } else {
+    if err := g.generateGqlgenService(filePath); err != nil {
+      return fmt.Errorf("g.generateGqlgenService: %w", err)
+    }
+  }
+  return nil
+}
+
+func (g *Gqlgen) generateGqlgenSchema(ctx context.Context) error {
   if err := executor.ExecCommandContext(ctx, "make", "generate-gqlgen"); err != nil {
     return fmt.Errorf("executor.ExecCommandContext: %w", err)
+  }
+  return nil
+}
+
+func (g *Gqlgen) generateGqlgenService(filePath string) error {
+  templateData := buildGqlgenServiceDesc()
+
+  if err := templater.ExecTemplateCopyWithGoFmt(templates.GqlgenService, filePath, templateData, nil); err != nil {
+    return fmt.Errorf("execTemplateCopy: %w", err)
+  }
+  return nil
+}
+
+func (g *Gqlgen) regenerateGqlgenService(filePath string) error {
+  const methodName = "RegisterService"
+
+  methodFound, err := aster.FindMethodDeclaration(filePath, methodName)
+  if err != nil {
+    return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
+  }
+  if methodFound {
+    return nil
+  }
+  if err = filer.AppendStringToFile(filePath, templates.GqlgenRegisterService); err != nil {
+    return fmt.Errorf("filer.AppendStringToFile: %w", err)
   }
   return nil
 }

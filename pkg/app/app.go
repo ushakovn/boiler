@@ -59,6 +59,7 @@ func NewApp(calls ...Option) *App {
 func (a *App) Run(services ...Service) {
   a.once.Do(func() {
     a.registerServices(services...)
+    log.Infof("boiler: app bootstrapped")
     a.waitServicesShutdown()
   })
 }
@@ -74,6 +75,8 @@ func (a *App) registerServices(services ...Service) {
   for _, service := range services {
     service.RegisterService(params)
   }
+  log.Infof("boiler: app services registered")
+
   serviceTypes := params.serviceTypesValues()
 
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
@@ -82,6 +85,7 @@ func (a *App) registerServices(services ...Service) {
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
     a.registerGqlgen()
   }
+  log.Infof("boiler: app servers registered")
 }
 
 func (a *App) registerGrpc() {
@@ -94,6 +98,8 @@ func (a *App) registerGrpc() {
   reflection.Register(a.grpcServer)
 
   go func() {
+    log.Infof("boiler: grpc server running on port: %d", a.grpcPort)
+
     if err = a.grpcServer.Serve(lister); err != nil {
       log.Fatalf("boiler: grpc server run failed: %v", err)
       a.appCloser.CloseAll()
@@ -106,6 +112,8 @@ func (a *App) registerGqlgen() {
   address := fmt.Sprint("localhost", ":", a.gqlgenPort)
 
   go func() {
+    log.Infof("boiler: gqlgen server running on port: %d", a.gqlgenPort)
+
     if err := a.gqlgenServer.Run(address); err != nil {
       log.Errorf("boiler: gqlgen server run failed: %v", err)
       a.appCloser.CloseAll()

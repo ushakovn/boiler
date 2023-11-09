@@ -9,7 +9,9 @@ import (
   "os"
   "strings"
 
+  "github.com/ushakovn/boiler/internal/pkg/aster"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/templates"
 )
 
 const (
@@ -221,15 +223,22 @@ func scanGrpcServerInterface(filePath string) (*grpcServerInterface, error) {
   return grpcServer, nil
 }
 
-func regenerateGrpcService(filePath string, serviceDesc *grpcServiceDesc) error {
+func regenerateGrpcService(filePath string) error {
+  const methodName = "RegisterService"
+
   if err := validateGrpcFileName(filePath); err != nil {
     return fmt.Errorf("validateGrpcFileName: %w", err)
   }
-
-  // TODO: complete this method
-
-  // TODO: add (s *Implementation) Register(params *app.RegisterParams) regenerate
-
+  methodFound, err := aster.FindMethodDeclaration(filePath, methodName)
+  if err != nil {
+    return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
+  }
+  if methodFound {
+    return nil
+  }
+  if err = filer.AppendStringToFile(filePath, templates.GrpcRegisterService); err != nil {
+    return fmt.Errorf("filer.AppendStringToFile: %w", err)
+  }
   return nil
 }
 
@@ -305,8 +314,8 @@ func validateGrpcFileName(filePath string) error {
 }
 
 func validateGrpcProtocFileName(filePath string) error {
-  if ext := filer.ExtractFileExtension(filePath); ext != "go" {
-    return fmt.Errorf("not a .go file specified: extension: %s", ext)
+  if fileExtension := filer.ExtractFileExtension(filePath); fileExtension != "go" {
+    return fmt.Errorf("not a .go file specified: extension: %s", fileExtension)
   }
   fileName := filer.ExtractFileName(filePath)
 

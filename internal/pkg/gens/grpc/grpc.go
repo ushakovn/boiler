@@ -115,7 +115,7 @@ func (g *Grpc) generateServiceWithCallStubs(grpcFilePath string) error {
 
   if filer.IsExistedFile(serviceFilePath) {
     // If service file exist - analyze it with ast
-    if err = regenerateGrpcService(serviceFilePath, serviceDesc); err != nil {
+    if err = regenerateGrpcService(serviceFilePath); err != nil {
       return fmt.Errorf("regenerateGrpcService: %w", err)
     }
   } else {
@@ -139,7 +139,7 @@ func (g *Grpc) generateServiceWithCallStubs(grpcFilePath string) error {
       }
     } else {
       // If call stub file not exist - generated it
-      if err = templater.ExecTemplateCopy(templates.GrpcStub, callStubFilePath, serviceCallDesc, templateFuncMap); err != nil {
+      if err = templater.ExecTemplateCopyWithGoFmt(templates.GrpcStub, callStubFilePath, serviceCallDesc, templateFuncMap); err != nil {
         return fmt.Errorf("executeTemplateCopy: %w", err)
       }
     }
