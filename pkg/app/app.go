@@ -3,10 +3,11 @@ package app
 import (
   "fmt"
   "net"
+  "net/http"
   "sync"
   "syscall"
 
-  "github.com/gin-gonic/gin"
+  "github.com/go-chi/chi/v5"
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/gqlgen"
@@ -22,7 +23,7 @@ type App struct {
   gqlgenPort int
 
   grpcServer   *grpc.Server
-  gqlgenServer *gin.Engine
+  gqlgenRouter chi.Router
 
   appCloser closer.Closer
 }
@@ -34,12 +35,8 @@ func NewApp(calls ...Option) *App {
   // Create grpc server with options
   grpcServer := grpc.NewServer(options.grpcServerOptions...)
 
-  gin.SetMode(gin.ReleaseMode)
-  // Create gqlgen server with handlers
-  gqlgenServer := gin.New()
-
-  gqlgenServer.Use(gin.Recovery())
-  gqlgenServer.Use(options.gqlgenHandlers...)
+  // Create gqlgen router with middlewares
+  gqlgenRouter := chi.NewRouter().With(options.gqlgenMiddlewares...)
 
   // Create app closer
   appCloser := closer.NewCloser(syscall.SIGTERM, syscall.SIGKILL)
@@ -50,7 +47,7 @@ func NewApp(calls ...Option) *App {
     gqlgenPort: options.gqlgenServePort,
 
     grpcServer:   grpcServer,
-    gqlgenServer: gqlgenServer,
+    gqlgenRouter: gqlgenRouter,
 
     appCloser: appCloser,
   }
@@ -80,15 +77,17 @@ func (a *App) registerServices(services ...Service) {
   serviceTypes := params.serviceTypesValues()
 
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
-    a.registerGrpc()
+    a.registerGrpcServer()
   }
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
-    a.registerGqlgen()
+    a.registerGqlgenSchemaServer(params)
+    a.registerGqlgenSandbox()
+    a.registerGqlgenServer()
   }
   log.Infof("boiler: app servers registered")
 }
 
-func (a *App) registerGrpc() {
+func (a *App) registerGrpcServer() {
   address := fmt.Sprint("localhost", ":", a.grpcPort)
 
   lister, err := net.Listen("tcp", address)
@@ -107,23 +106,41 @@ func (a *App) registerGrpc() {
   }()
 }
 
-func (a *App) registerGqlgen() {
-  gqlgen.SandboxHandler("boiler", "/")
+func (a *App) registerGqlgenServer() {
   address := fmt.Sprint("localhost", ":", a.gqlgenPort)
 
   go func() {
     log.Infof("boiler: gqlgen server running on port: %d", a.gqlgenPort)
 
-    if err := a.gqlgenServer.Run(address); err != nil {
+    if err := http.ListenAndServe(address, a.gqlgenRouter); err != nil {
       log.Errorf("boiler: gqlgen server run failed: %v", err)
       a.appCloser.CloseAll()
     }
   }()
 }
 
-func (a *App) GqlgenServer() *gin.Engine {
+func (a *App) registerGqlgenSchemaServer(params *RegisterParams) {
+  if params.gqlgenSchemaServer == nil {
+    panic("boiler: gqlgen schema server is a nil")
+  }
+  a.gqlgenRouter.Handle("/query", *params.gqlgenSchemaServer)
+}
+
+func (a *App) registerGqlgenSandbox() {
+  const (
+    title    = "boiler"
+    endpoint = "/query"
+  )
+  sandbox := gqlgen.SandboxHandler(title, endpoint)
+  a.gqlgenRouter.Handle("/", sandbox)
+
+  log.Infof("boiler: gqlgen sanbox registered for: %s endpoint", endpoint)
+}
+
+// GqlgenRouter MUTATE APP ROUTER IN YOUR OWN RISK
+func (a *App) GqlgenRouter() chi.Router {
   a.mu.Lock()
   defer a.mu.Unlock()
 
-  return a.gqlgenServer
+  return a.gqlgenRouter
 }

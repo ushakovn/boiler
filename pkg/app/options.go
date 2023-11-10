@@ -1,7 +1,8 @@
 package app
 
 import (
-  "github.com/gin-gonic/gin"
+  "net/http"
+
   "github.com/ushakovn/boiler/internal/pkg/aggr"
   "google.golang.org/grpc"
   "google.golang.org/grpc/stats"
@@ -14,8 +15,8 @@ type calledAppOptions struct {
   grpcServePort     int
   grpcServerOptions []grpc.ServerOption
 
-  gqlgenServePort int
-  gqlgenHandlers  []gin.HandlerFunc
+  gqlgenServePort   int
+  gqlgenMiddlewares []func(http.Handler) http.Handler
 }
 
 func callAppOptions(calls ...Option) *calledAppOptions {
@@ -78,8 +79,8 @@ func WithGqlgenServePort(port int) Option {
   }
 }
 
-func WithGqlgenHandles(handlers ...gin.HandlerFunc) Option {
+func WithGqlgenMiddlewares(middleware ...func(http.Handler) http.Handler) Option {
   return func(o *calledAppOptions) {
-    o.gqlgenHandlers = append(o.gqlgenHandlers, handlers...)
+    o.gqlgenMiddlewares = append(o.gqlgenMiddlewares, middleware...)
   }
 }

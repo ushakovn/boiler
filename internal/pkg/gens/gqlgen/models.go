@@ -1,5 +1,7 @@
 package gqlgen
 
+import "path/filepath"
+
 type gqlgenServiceDesc struct {
   ServicePackages []*goPackageDesc
 }
@@ -19,10 +21,35 @@ var gqlgenServicePackages = []*goPackageDesc{
     ImportAlias: "",
     IsInstall:   true,
   },
+  {
+    CustomName:  "boiler/app",
+    ImportLine:  "github.com/99designs/gqlgen/graphql/handler",
+    ImportAlias: "",
+    IsInstall:   true,
+  },
 }
 
-func buildGqlgenServiceDesc() *gqlgenServiceDesc {
+func (g *Gqlgen) buildGqlgenServiceDesc() *gqlgenServiceDesc {
   return &gqlgenServiceDesc{
-    ServicePackages: gqlgenServicePackages,
+    ServicePackages: g.buildGqlgenServicePackages(),
+  }
+}
+
+func (g *Gqlgen) buildGqlgenServicePackages() []*goPackageDesc {
+  servicePackages := make([]*goPackageDesc, 0, len(gqlgenServicePackages)+1)
+
+  servicePackages = append(servicePackages, gqlgenServicePackages...)
+  servicePackages = append(servicePackages, g.buildGqlgenGeneratedPackage())
+
+  return servicePackages
+}
+
+func (g *Gqlgen) buildGqlgenGeneratedPackage() *goPackageDesc {
+  packagePath := filepath.Join(g.goModuleName, "app", "graph", "generated")
+
+  return &goPackageDesc{
+    CustomName:  "gqlgen/generated",
+    ImportAlias: "",
+    ImportLine:  packagePath,
   }
 }

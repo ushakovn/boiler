@@ -1,6 +1,10 @@
 package app
 
-import "google.golang.org/grpc"
+import (
+  "net/http"
+
+  "google.golang.org/grpc"
+)
 
 type ServiceType uint32
 
@@ -20,22 +24,30 @@ type Service interface {
 }
 
 type RegisterParams struct {
-  serviceTypes []*ServiceType
-  grpcServer   *grpc.Server
+  serviceTypes       []*ServiceType
+  grpcServer         *grpc.Server
+  gqlgenSchemaServer *http.Handler
 }
 
 func (p *RegisterParams) SetServiceType(serviceType ServiceType) {
   if _, ok := knownServiceTypes[serviceType]; !ok {
-    panic("unknown service type")
+    panic("boiler: unknown service type")
   }
   p.serviceTypes = append(p.serviceTypes, &serviceType)
 }
 
 func (p *RegisterParams) GrpcServiceRegistrar() grpc.ServiceRegistrar {
   if p.grpcServer == nil {
-    panic("grpc server is a nil")
+    panic("boiler: grpc server is a nil")
   }
   return p.grpcServer
+}
+
+func (p *RegisterParams) SetGqlgenSchemaServer(schemaServer http.Handler) {
+  if schemaServer == nil {
+    panic("boiler: gqlgen schema server is a nil")
+  }
+  p.gqlgenSchemaServer = &schemaServer
 }
 
 func (p *RegisterParams) serviceTypesValues() map[ServiceType]struct{} {

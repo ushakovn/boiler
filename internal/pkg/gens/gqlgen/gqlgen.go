@@ -17,6 +17,7 @@ import (
 
 type Gqlgen struct {
   workDirPath        string
+  goModuleName       string
   gqlgenDescPath     string
   gqlgenDescCompiled string
 }
@@ -42,8 +43,13 @@ func NewGqlgen(config Config) (*Gqlgen, error) {
   if err != nil {
     return nil, err
   }
+  goModuleName, err := filer.ExtractGoModuleName(workDirPath)
+  if err != nil {
+    return nil, err
+  }
   return &Gqlgen{
     workDirPath:        workDirPath,
+    goModuleName:       goModuleName,
     gqlgenDescPath:     config.GqlgenDescPath,
     gqlgenDescCompiled: config.GqlgenDescCompiled,
   }, nil
