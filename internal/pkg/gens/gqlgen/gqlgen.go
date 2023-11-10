@@ -113,7 +113,7 @@ func (g *Gqlgen) generateGqlgenSchema(ctx context.Context) error {
 }
 
 func (g *Gqlgen) generateGqlgenService(filePath string) error {
-  templateData := buildGqlgenServiceDesc()
+  templateData := g.buildGqlgenServiceDesc()
 
   if err := templater.ExecTemplateCopyWithGoFmt(templates.GqlgenService, filePath, templateData, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)
