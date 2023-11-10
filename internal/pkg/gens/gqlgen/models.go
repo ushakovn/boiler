@@ -16,14 +16,14 @@ type goPackageDesc struct {
 
 var gqlgenServicePackages = []*goPackageDesc{
   {
-    CustomName:  "boiler/app",
-    ImportLine:  "github.com/ushakovn/boiler/pkg/app",
+    CustomName:  "gqlgen/handler",
+    ImportLine:  "github.com/99designs/gqlgen/graphql/handler",
     ImportAlias: "",
     IsInstall:   true,
   },
   {
     CustomName:  "boiler/app",
-    ImportLine:  "github.com/99designs/gqlgen/graphql/handler",
+    ImportLine:  "github.com/ushakovn/boiler/pkg/app",
     ImportAlias: "",
     IsInstall:   true,
   },
@@ -45,7 +45,7 @@ func (g *Gqlgen) buildGqlgenServicePackages() []*goPackageDesc {
 }
 
 func (g *Gqlgen) buildGqlgenGeneratedPackage() *goPackageDesc {
-  packagePath := filepath.Join(g.goModuleName, "app", "graph", "generated")
+  packagePath := filepath.Join(g.goModuleName, "internal", "app", "graph", "generated")
 
   return &goPackageDesc{
     CustomName:  "gqlgen/generated",
