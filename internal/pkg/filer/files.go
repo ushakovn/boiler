@@ -164,6 +164,21 @@ func AppendStringToFile(filePath, rawString string) error {
   return nil
 }
 
+func ScanLinesWithBreak(r io.Reader, f func(line string) bool) error {
+  s := bufio.NewScanner(r)
+  s.Split(bufio.ScanLines)
+
+  for s.Scan() {
+    if !f(s.Text()) {
+      break
+    }
+  }
+  if err := s.Err(); err != nil {
+    return fmt.Errorf("s.Err: %w", err)
+  }
+  return nil
+}
+
 func ScanLines(r io.Reader, f func(line string) error) error {
   s := bufio.NewScanner(r)
   s.Split(bufio.ScanLines)

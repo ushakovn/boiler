@@ -15,11 +15,6 @@ var flagGqlgenConfigPath string
 var CmdGqlgen = &cobra.Command{
   Use: "gqlgen",
 
-  SuggestFor: []string{
-    "graphql",
-    "gql",
-  },
-
   Short: "Init a GraphQL template components",
   Long:  `Init a GraphQL template components`,
 

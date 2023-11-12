@@ -17,10 +17,6 @@ var flagProjectConfigPath string
 var CmdInit = &cobra.Command{
   Use: "init",
 
-  SuggestFor: []string{
-    "initialize",
-  },
-
   Short: "Init a template for a microservice application in the Go language",
   Long:  `Init a template for a microservice application in the Go language`,
 

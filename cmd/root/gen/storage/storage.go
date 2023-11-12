@@ -18,14 +18,6 @@ var (
 var CmdStorage = &cobra.Command{
   Use: "storage",
 
-  SuggestFor: []string{
-    "store",
-    "database",
-    "db",
-    "repository",
-    "repo",
-  },
-
   Short: "Generate a storage template components",
   Long:  `Generate a storage template components`,
 
@@ -50,5 +42,5 @@ var CmdStorage = &cobra.Command{
 
 func init() {
   CmdStorage.Flags().StringVar(&flagPgConfigPath, "pg-conf", "", "path to postgres connection config in json/yaml")
-  CmdStorage.Flags().StringVar(&flagPgDumpPath, "pg-dump", "", "path to postgres dump in sql ddl")
+  CmdStorage.Flags().StringVar(&flagPgDumpPath, "pg-dump", "", "path to postgres dump in sql")
 }

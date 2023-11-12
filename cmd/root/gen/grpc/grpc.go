@@ -13,10 +13,6 @@ import (
 var CmdGrpc = &cobra.Command{
   Use: "grpc",
 
-  SuggestFor: []string{
-    "proto",
-  },
-
   Short: "Generate a gRPC template components",
   Long:  `Generate a gRPC template components`,
 

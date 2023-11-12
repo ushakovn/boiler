@@ -17,9 +17,6 @@ import (
 type Grpc struct {
   workDirPath  string
   goModuleName string
-
-  srcProtoPath []string
-  genProtoPath []string
 }
 
 type Config struct{}

@@ -1,3 +1,4 @@
+// Package rpc DEPRECATED; DO NOT USE.
 package rpc
 
 import (
