@@ -5,9 +5,8 @@ import (
   "fmt"
   "path/filepath"
 
-  log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
-  "github.com/ushakovn/boiler/internal/pkg/aster"
+  "github.com/ushakovn/boiler/internal/pkg/ast"
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
@@ -27,18 +26,16 @@ type Config struct {
   GqlgenDescCompiled string
 }
 
-func (c *Config) Validate() error {
+func (c Config) WithDefault() Config {
   if c.GqlgenDescPath == "" && c.GqlgenDescCompiled == "" {
-    log.Infof("boiler: using default gqlgen description")
     c.GqlgenDescCompiled = config.Gqlgen
   }
-  return nil
+  return c
 }
 
 func NewGqlgen(config Config) (*Gqlgen, error) {
-  if err := config.Validate(); err != nil {
-    return nil, err
-  }
+  config = config.WithDefault()
+
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -68,8 +65,8 @@ func (g *Gqlgen) Init(ctx context.Context) error {
   if err = p.Init(ctx); err != nil {
     return fmt.Errorf("p.Init: %w", err)
   }
-  if err = g.createGqlgenYaml(); err != nil {
-    return fmt.Errorf("g.createGqlgenYaml: %w", err)
+  if err = g.createGqlgenConfig(); err != nil {
+    return fmt.Errorf("g.createGqlgenConfig: %w", err)
   }
   if err = g.createGqlgenTools(); err != nil {
     return fmt.Errorf("g.createGqlgenTools: %w", err)
@@ -124,7 +121,7 @@ func (g *Gqlgen) generateGqlgenService(filePath string) error {
 func (g *Gqlgen) regenerateGqlgenService(filePath string) error {
   const methodName = "RegisterService"
 
-  methodFound, err := aster.FindMethodDeclaration(filePath, methodName)
+  methodFound, err := ast.FindMethodDeclaration(filePath, methodName)
   if err != nil {
     return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
   }
@@ -161,17 +158,17 @@ func (g *Gqlgen) createMakefileIfNotExist() error {
   filePath := filepath.Join(g.workDirPath, "Makefile")
 
   if !filer.IsExistedFile(filePath) {
-    if err := templater.ExecTemplateCopy(templates.Makefile, filePath, nil, nil); err != nil {
+    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, nil, nil); err != nil {
       return fmt.Errorf("execTemplateCopy: %w", err)
     }
   }
   return nil
 }
 
-func (g *Gqlgen) createGqlgenYaml() error {
+func (g *Gqlgen) createGqlgenConfig() error {
   filePath := filepath.Join(g.workDirPath, "gqlgen.yaml")
 
-  if err := templater.CopyTemplate(templates.GqlgenYaml, filePath); err != nil {
+  if err := templater.CopyTemplate(templates.GqlgenConfig, filePath); err != nil {
     return fmt.Errorf("copyTemplate: %w", err)
   }
   return nil

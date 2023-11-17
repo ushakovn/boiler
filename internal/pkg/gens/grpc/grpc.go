@@ -21,14 +21,7 @@ type Grpc struct {
 
 type Config struct{}
 
-func (c *Config) Validate() error {
-  return nil
-}
-
-func NewGrpc(config Config) (*Grpc, error) {
-  if err := config.Validate(); err != nil {
-    return nil, err
-  }
+func NewGrpc(_ Config) (*Grpc, error) {
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -59,7 +52,7 @@ func (g *Grpc) Generate(ctx context.Context) error {
   return nil
 }
 
-func (g *Grpc) Init(context.Context) error {
+func (g *Grpc) Init(_ context.Context) error {
   protoDirPath, err := g.createProtoDirectory()
   if err != nil {
     return fmt.Errorf("g.createProtoDirectory: %w", err)
@@ -217,7 +210,7 @@ func (g *Grpc) createMakefileIfNotExist() error {
   filePath := filepath.Join(g.workDirPath, fileName)
 
   if !filer.IsExistedFile(filePath) {
-    if err := templater.ExecTemplateCopy(templates.Makefile, filePath, nil, nil); err != nil {
+    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, nil, nil); err != nil {
       return fmt.Errorf("execTemplateCopy: %w", err)
     }
   }

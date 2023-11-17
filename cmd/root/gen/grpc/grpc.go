@@ -13,8 +13,8 @@ import (
 var CmdGrpc = &cobra.Command{
   Use: "grpc",
 
-  Short: "Generate a gRPC template components",
-  Long:  `Generate a gRPC template components`,
+  Short: "Generate a gRPC components",
+  Long:  `Generate a gRPC components`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()

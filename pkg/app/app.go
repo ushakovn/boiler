@@ -128,7 +128,7 @@ func (a *App) registerGqlgenSchemaServer(params *RegisterParams) {
 
 func (a *App) registerGqlgenSandbox() {
   const (
-    title    = "boiler"
+    title    = "Boiler"
     endpoint = "/query"
   )
   sandbox := gqlgen.SandboxHandler(title, endpoint)

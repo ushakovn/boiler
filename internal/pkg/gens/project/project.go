@@ -8,37 +8,41 @@ import (
   "path/filepath"
   "strings"
 
-  log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/config"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
 
 type Project struct {
   projectDescPath     string
   projectDescCompiled string
+  goModVersion        string
   workDirPath         string
   projectDesc         *projectDesc
-  execFunctions       map[string]execFunc
 }
 
 type Config struct {
+  GoModVersion        string
   ProjectDescPath     string
   ProjectDescCompiled string
 }
 
-func (c *Config) Validate() error {
+func (c Config) WithDefault() Config {
+  const goModVersionDefault = "1.19"
+
+  if c.GoModVersion == "" {
+    c.GoModVersion = goModVersionDefault
+  }
   if c.ProjectDescPath == "" && c.ProjectDescCompiled == "" {
-    log.Infof("boiler: using default project directories")
     c.ProjectDescCompiled = config.Project
   }
-  return nil
+  return c
 }
 
 func NewProject(config Config) (*Project, error) {
-  if err := config.Validate(); err != nil {
-    return nil, err
-  }
+  config = config.WithDefault()
+
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -46,10 +50,9 @@ func NewProject(config Config) (*Project, error) {
   proj := &Project{
     projectDescPath:     config.ProjectDescPath,
     projectDescCompiled: config.ProjectDescCompiled,
+    goModVersion:        config.GoModVersion,
     workDirPath:         workDirPath,
   }
-  proj.setExecFunctions()
-
   return proj, nil
 }
 
@@ -109,16 +112,21 @@ func (g *Project) genFile(file *fileDesc) error {
     return fmt.Errorf("os.CreateFile: %w", err)
   }
   if template := file.Template; template != nil {
-    buf := loadGlobalFileTemplate(template)
+    globalTemplate := loadGlobalCompiledTemplate(template)
+    globalData := g.loadGlobalTemplatesData()
 
-    if err := os.WriteFile(path, buf, os.ModePerm); err != nil {
+    buf, err := templater.ExecTemplate(globalTemplate, globalData, nil)
+    if err != nil {
+      return fmt.Errorf("execTemplate: %w", err)
+    }
+    if err = os.WriteFile(path, buf, os.ModePerm); err != nil {
       return fmt.Errorf("os.WriteFile: %w", err)
     }
   }
   return nil
 }
 
-func loadGlobalFileTemplate(desc *templateDesc) []byte {
+func loadGlobalCompiledTemplate(desc *templateDesc) string {
   var compiled string
 
   // Global file template name
@@ -127,13 +135,13 @@ func loadGlobalFileTemplate(desc *templateDesc) []byte {
   // Project templates
 
   case templates.NameMain:
-    compiled = templates.Main
+    compiled = templates.ProjectMain
 
   case templates.NameGomod:
-    compiled = templates.Gomod
+    compiled = templates.ProjectGomod
 
   case templates.NameMakefile:
-    compiled = templates.Makefile
+    compiled = templates.ProjectMakefile
 
   // Gqlgen Graphql Schema templates
 
@@ -149,21 +157,31 @@ func loadGlobalFileTemplate(desc *templateDesc) []byte {
   case templates.NameGqlgenTypes:
     compiled = templates.GqlgenTypes
 
+  case templates.NameGqlgenEnums:
+    compiled = templates.GqlgenEnums
+
   case templates.NameGqlgenScalars:
     compiled = templates.GqlgenScalars
-    
   }
-  return []byte(compiled)
+
+  return compiled
+}
+
+func (g *Project) loadGlobalTemplatesData() map[string]any {
+  templatesData := map[string]any{
+    "goModVersion": g.goModVersion,
+  }
+  return templatesData
 }
 
 func (g *Project) genDirectory(ctx context.Context, dir *directoryDesc, parentPath string) error {
-  path := filepath.Join(parentPath, dir.Name.Execute(g.execFunctions))
+  path := filepath.Join(parentPath, dir.Name.Value)
 
   if err := os.Mkdir(path, os.ModePerm); err != nil && !filer.IsExistedDirectory(path) {
     return fmt.Errorf("os.Mkdir dir: %w", err)
   }
   for _, file := range dir.Files {
-    file.Path = filepath.Join(parentPath, dir.Name.Execute(g.execFunctions), file.Name)
+    file.Path = filepath.Join(parentPath, dir.Name.Value, file.Name)
 
     if err := g.genFile(file); err != nil {
       return fmt.Errorf("g.genFile file: %w", err)

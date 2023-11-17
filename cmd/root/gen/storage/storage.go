@@ -18,8 +18,8 @@ var (
 var CmdStorage = &cobra.Command{
   Use: "storage",
 
-  Short: "Generate a storage template components",
-  Long:  `Generate a storage template components`,
+  Short: "Generate a storage components",
+  Long:  `Generate a storage components`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
@@ -41,6 +41,8 @@ var CmdStorage = &cobra.Command{
 }
 
 func init() {
-  CmdStorage.Flags().StringVar(&flagPgConfigPath, "pg-conf", "", "path to postgres connection config in json/yaml")
-  CmdStorage.Flags().StringVar(&flagPgDumpPath, "pg-dump", "", "path to postgres dump in sql")
+  CmdStorage.Flags().StringVar(&flagPgConfigPath, "pg-config-path", "", "path to postgres connection config in json/yaml")
+  CmdStorage.Flags().StringVar(&flagPgDumpPath, "pg-dump-path", "", "path to postgres dump in sql")
+
+  CmdStorage.MarkFlagsOneRequired("pg-config-path", "pg-dump-path")
 }

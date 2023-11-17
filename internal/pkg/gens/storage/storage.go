@@ -26,17 +26,7 @@ type Config struct {
   PgDumpPath   string
 }
 
-func (c *Config) Validate() error {
-  if (c.PgDumpPath == "" && c.PgConfigPath == "") || (c.PgDumpPath != "" && c.PgConfigPath != "") {
-    return fmt.Errorf("pg dump path OR pg config path must be specified")
-  }
-  return nil
-}
-
 func NewStorage(config Config) (*Storage, error) {
-  if err := config.Validate(); err != nil {
-    return nil, err
-  }
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -45,19 +35,23 @@ func NewStorage(config Config) (*Storage, error) {
   if err != nil {
     return nil, err
   }
+
   var (
-    filePath string
-    option   sql.PgDumpOption
+    dumpSQL *sql.DumpSQL
+    option  sql.PgDumpOption
   )
-  if filePath = config.PgConfigPath; filePath != "" {
+  if filePath := config.PgConfigPath; filePath != "" {
     option = sql.NewPgDumpOption(sql.WithPgConfigFile, filePath)
   }
-  if filePath = config.PgDumpPath; filePath != "" {
+  if filePath := config.PgDumpPath; filePath != "" {
     option = sql.NewPgDumpOption(sql.WithPgDumpFile, filePath)
   }
-  dumpSQL, err := sql.DumpSchemaSQL(context.Background(), option)
-  if err != nil {
-    return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
+  if option != nil {
+    // If option was set
+    dumpSQL, err = sql.DumpSchemaSQL(context.Background(), option)
+    if err != nil {
+      return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
+    }
   }
 
   return &Storage{
@@ -67,7 +61,14 @@ func NewStorage(config Config) (*Storage, error) {
   }, nil
 }
 
-func (g *Storage) Generate(context.Context) error {
+func (g *Storage) Init(_ context.Context) error {
+  if err := g.createPgConfig(); err != nil {
+    return fmt.Errorf("g.createPgConfig: %w", err)
+  }
+  return nil
+}
+
+func (g *Storage) Generate(_ context.Context) error {
   if err := g.loadSchemaDesc(); err != nil {
     return fmt.Errorf("loadSchemaDesc: %w", err)
   }
@@ -112,6 +113,15 @@ func (g *Storage) Generate(context.Context) error {
   return nil
 }
 
+func (g *Storage) createPgConfig() error {
+  filePath := filepath.Join(g.workDirPath, "pgconfig.yaml")
+
+  if err := templater.ExecTemplateCopy(templates.StorageConfig, filePath, nil, nil); err != nil {
+    return fmt.Errorf("execTemplateCopy: %w", err)
+  }
+  return nil
+}
+
 func createStorageFolders(sourcePath string, destNestedFolders ...string) (string, error) {
   defaultDirParts := append([]string{sourcePath}, destNestedFolders...)
   defaultDir := filepath.Join(defaultDirParts...)
@@ -147,18 +157,18 @@ type storageTemplate struct {
 var storageModelTemplates = []*storageTemplate{
   {
     templateName:     "Interface",
-    compiledTemplate: templates.Interface,
+    compiledTemplate: templates.StorageInterface,
     fileNameBuild: func(modelName string) string {
       modelName = stringer.StringToSnakeCase(modelName)
-      return fmt.Sprint(modelName, ".ifc.go")
+      return fmt.Sprint(modelName, ".interface.go")
     },
   },
   {
     templateName:     "Implementation",
-    compiledTemplate: templates.Implementation,
+    compiledTemplate: templates.StorageImplementation,
     fileNameBuild: func(modelName string) string {
       modelName = stringer.StringToSnakeCase(modelName)
-      return fmt.Sprint(modelName, ".imp.go")
+      return fmt.Sprint(modelName, ".implementation.go")
     },
   },
 }
@@ -166,40 +176,40 @@ var storageModelTemplates = []*storageTemplate{
 var storageCommonTemplates = []*storageTemplate{
   {
     templateName:     "Builders",
-    compiledTemplate: templates.Builders,
+    compiledTemplate: templates.StorageBuilders,
     filePathParts:    []string{"client"},
     fileNameBuild: func(modelName string) string {
-      return "storage.builders.go"
+      return "builders.go"
     },
   },
   {
     templateName:     "Client",
-    compiledTemplate: templates.Client,
+    compiledTemplate: templates.StorageClient,
     filePathParts:    []string{"client"},
     fileNameBuild: func(modelName string) string {
-      return "storage.client.go"
+      return "client.go"
     },
   },
   {
     templateName:     "Options",
-    compiledTemplate: templates.Options,
+    compiledTemplate: templates.StorageOptions,
     fileNameBuild: func(modelName string) string {
-      return "storage.options.go"
+      return "options.go"
     },
   },
   {
     templateName:     "Consts",
-    compiledTemplate: templates.Consts,
+    compiledTemplate: templates.StorageConsts,
     fileNameBuild: func(modelName string) string {
-      return "storage.consts.go"
+      return "consts.go"
     },
   },
   {
     templateName:     "Models",
-    compiledTemplate: templates.Models,
+    compiledTemplate: templates.StorageModels,
     filePathParts:    []string{"models"},
     fileNameBuild: func(modelName string) string {
-      return "storage.models.go"
+      return "models.go"
     },
   },
 }

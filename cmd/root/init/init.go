@@ -8,11 +8,16 @@ import (
   "github.com/spf13/cobra"
   cmdGqlgen "github.com/ushakovn/boiler/cmd/root/init/gqlgen"
   cmdGrpc "github.com/ushakovn/boiler/cmd/root/init/grpc"
+  cmdProtoDeps "github.com/ushakovn/boiler/cmd/root/init/protodeps"
+  cmdStorage "github.com/ushakovn/boiler/cmd/root/init/storage"
   "github.com/ushakovn/boiler/internal/boiler/gen"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
 )
 
-var flagProjectConfigPath string
+var (
+  flagProjectConfigPath string
+  flagGoModVersion      string
+)
 
 var CmdInit = &cobra.Command{
   Use: "init",
@@ -24,6 +29,7 @@ var CmdInit = &cobra.Command{
     ctx := context.Background()
 
     initor, err := gen.NewInitor(project.Config{
+      GoModVersion:    flagGoModVersion,
       ProjectDescPath: flagProjectConfigPath,
     })
     if err != nil {
@@ -39,7 +45,8 @@ var CmdInit = &cobra.Command{
 }
 
 func init() {
-  CmdInit.AddCommand(cmdGrpc.CmdGrpc, cmdGqlgen.CmdGqlgen)
+  CmdInit.AddCommand(cmdGrpc.CmdGrpc, cmdGqlgen.CmdGqlgen, cmdProtoDeps.CmdProtoDeps, cmdStorage.CmdStorage)
 
-  CmdInit.PersistentFlags().StringVar(&flagProjectConfigPath, "proj-conf", "", "path to project directories config in json/yaml")
+  CmdInit.PersistentFlags().StringVar(&flagProjectConfigPath, "project-config-path", "", "path to project directories config in json/yaml")
+  CmdInit.PersistentFlags().StringVar(&flagGoModVersion, "go-mod-version", "", "go mod version for project")
 }

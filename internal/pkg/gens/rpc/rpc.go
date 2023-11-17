@@ -26,17 +26,7 @@ type Config struct {
   RpcDescPath string
 }
 
-func (c *Config) Validate() error {
-  if c.RpcDescPath == "" {
-    return fmt.Errorf("rpc description path not specfied")
-  }
-  return nil
-}
-
 func NewRpc(config Config) (*Rpc, error) {
-  if err := config.Validate(); err != nil {
-    return nil, err
-  }
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -47,7 +37,7 @@ func NewRpc(config Config) (*Rpc, error) {
   }, nil
 }
 
-func (g *Rpc) Generate(context.Context) error {
+func (g *Rpc) Generate(_ context.Context) error {
   if err := g.loadRpcDesc(); err != nil {
     return fmt.Errorf("g.loadRpcDesc: %w", err)
   }
@@ -101,12 +91,12 @@ func (g *Rpc) genRpcHandler() error {
   }
   filePath := filepath.Join(handlerDir, "contracts.go")
 
-  if err = templater.ExecTemplateCopyWithGoFmt(templates.Contracts, filePath, rpcTemplate.Contracts, nil); err != nil {
+  if err = templater.ExecTemplateCopyWithGoFmt(templates.RpcContracts, filePath, rpcTemplate.Contracts, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
   filePath = filepath.Join(handlerDir, "handler.go")
 
-  if err = templater.ExecTemplateCopyWithGoFmt(templates.Handler, filePath, rpcTemplate, nil); err != nil {
+  if err = templater.ExecTemplateCopyWithGoFmt(templates.RpcHandler, filePath, rpcTemplate, nil); err != nil {
     return fmt.Errorf("executeTemplateCopy: %w", err)
   }
 
@@ -116,7 +106,7 @@ func (g *Rpc) genRpcHandler() error {
 
     filePath = filepath.Join(handlerDir, fileName)
 
-    if err = templater.ExecTemplateCopyWithGoFmt(templates.Handle, filePath, handle, nil); err != nil {
+    if err = templater.ExecTemplateCopyWithGoFmt(templates.RpcHandle, filePath, handle, nil); err != nil {
       return fmt.Errorf("executeTemplateCopy: %w", err)
     }
   }

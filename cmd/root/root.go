@@ -27,7 +27,6 @@ var CmdRoot = &cobra.Command{
 `,
 
   PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-
     return execModTidy()
   },
 
@@ -48,7 +47,7 @@ func Execute() {
 func init() {
   CmdRoot.AddCommand(cmdInit.CmdInit, cmdGen.CmdGen)
 
-  CmdRoot.PersistentFlags().BoolVar(&flagDebug, "debug", false, "sets debug logging level")
+  CmdRoot.PersistentFlags().BoolVar(&flagDebug, "enable-debug", false, "sets debug logging level")
 }
 
 func setLogFormatter() {

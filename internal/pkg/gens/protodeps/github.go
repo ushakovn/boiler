@@ -1,4 +1,4 @@
-package clients
+package protodeps
 
 import (
   "context"
@@ -41,7 +41,7 @@ func (r *githubContentResp) DecodeContent() ([]byte, error) {
   return decoded, nil
 }
 
-func (g *Clients) doGithubRequest(ctx context.Context, request string, response any) error {
+func (g *ProtoDeps) doGithubRequestParsed(ctx context.Context, request string, response any) error {
   resp, err := g.githubClient.R().SetContext(ctx).Get(request)
   if err != nil {
     return fmt.Errorf("g.githubClient.Get: %s: %w", request, err)
@@ -55,7 +55,7 @@ func (g *Clients) doGithubRequest(ctx context.Context, request string, response 
   return nil
 }
 
-func (g *Clients) doGithubRequestRaw(ctx context.Context, request string) ([]byte, error) {
+func (g *ProtoDeps) doGithubRequestRaw(ctx context.Context, request string) ([]byte, error) {
   resp, err := g.githubClient.R().SetContext(ctx).Get(request)
   if err != nil {
     return nil, fmt.Errorf("g.githubClient.Get: %s: %w", request, err)

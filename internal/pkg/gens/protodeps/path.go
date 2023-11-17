@@ -1,4 +1,4 @@
-package clients
+package protodeps
 
 import (
   "fmt"
@@ -61,40 +61,40 @@ type parsedGitHubProtoPath struct {
   Commit  string
 }
 
-func parseGitHubProtoPath(protoPath string) *parsedGitHubProtoPath {
+func parseGitHubProtoImport(protoImport string) *parsedGitHubProtoPath {
   // github.com/<owner>/<repo>/<path>.proto@<commit>
-  pathParts := strings.SplitN(protoPath, "/", 4)
+  partsImport := strings.SplitN(protoImport, "/", 4)
 
-  if len(pathParts) != 4 {
-    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoPath)
+  if len(partsImport) != 4 {
+    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoImport)
   }
-  ownerPart := pathParts[1]
-  repoPart := pathParts[2]
-  pathPart := pathParts[3]
+  ownerPart := partsImport[1]
+  repoPart := partsImport[2]
+  pathPart := partsImport[3]
 
   // <path>.proto@<commit>
-  pathParts = strings.SplitN(pathPart, "@", 2)
+  partsImport = strings.SplitN(pathPart, "@", 2)
 
-  if len(pathParts) != 2 {
-    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoPath)
+  if len(partsImport) != 2 {
+    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoImport)
   }
-  pathPart = pathParts[0]
-  commitPart := pathParts[1]
+  pathPart = partsImport[0]
+  commitPart := partsImport[1]
 
   packageParts := strings.Split(pathPart, "/")
 
-  if len(pathParts) == 0 {
-    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoPath)
+  if len(partsImport) == 0 {
+    log.Fatalf("boiler: invalid path: %s. expected pattern: github.com/<owner>/<repo>/<path>.proto@<commit>", protoImport)
   }
   var packagePart string
 
   switch {
   // <path>.proto = <package>/<file>.proto
-  case len(pathParts) >= 2:
+  case len(partsImport) >= 2:
     packagePart = packageParts[len(packageParts)-2]
 
   // <path>.proto = <file>.proto
-  case len(pathParts) >= 1:
+  case len(partsImport) >= 1:
     packagePart = packageParts[len(packageParts)-1]
     packagePart = strings.TrimSuffix(packagePart, ".proto")
   }

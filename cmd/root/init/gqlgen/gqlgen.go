@@ -15,8 +15,8 @@ var flagGqlgenConfigPath string
 var CmdGqlgen = &cobra.Command{
   Use: "gqlgen",
 
-  Short: "Init a GraphQL template components",
-  Long:  `Init a GraphQL template components`,
+  Short: "Init a GraphQL components",
+  Long:  `Init a GraphQL components`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
@@ -37,5 +37,5 @@ var CmdGqlgen = &cobra.Command{
 }
 
 func init() {
-  CmdGqlgen.Flags().StringVar(&flagGqlgenConfigPath, "gql-conf", "", "path to gqlgen directories config in json/yaml")
+  CmdGqlgen.Flags().StringVar(&flagGqlgenConfigPath, "gqlgen-config-path", "", "path to gqlgen directories config in json/yaml")
 }

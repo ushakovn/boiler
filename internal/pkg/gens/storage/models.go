@@ -16,7 +16,6 @@ type schemaDesc struct {
   ModelsPackages   []*goPackageDesc
   BuildersPackages []*goPackageDesc
   ClientPackages   []*goPackageDesc
-  ConstsPackages   []*goPackageDesc
   OptionsPackages  []*goPackageDesc
 }
 
@@ -76,7 +75,6 @@ func (g *Storage) loadSchemaDesc() error {
 
   buildersPackages := buildFilePackages(buildersFileName)
   clientPackages := buildFilePackages(clientFileName)
-  constsPackages := buildFilePackages(constsFileName)
   optionsPackages := buildFilePackages(optionsFileName)
   modelsPackages := buildFilePackages(modelsFileName)
 
@@ -127,7 +125,6 @@ func (g *Storage) loadSchemaDesc() error {
     ModelsPackages:   modelsPackages,
     BuildersPackages: buildersPackages,
     ClientPackages:   clientPackages,
-    ConstsPackages:   constsPackages,
     OptionsPackages:  optionsPackages,
   }
 
@@ -380,10 +377,10 @@ func buildFieldIfStmt(fieldName, fieldTyp string) string {
   var fieldIfStmt string
 
   if matchSliceTyp(fieldTyp) {
-    fieldIfStmt = fmt.Sprintf(templates.InputIfStmtWithLen, fieldName)
+    fieldIfStmt = fmt.Sprintf(templates.StorageInputIfStmtWithLen, fieldName)
   }
   if matchZeroTyp(fieldTyp) {
-    fieldIfStmt = fmt.Sprintf(templates.InputIfStmtWithPtr, fieldName)
+    fieldIfStmt = fmt.Sprintf(templates.StorageInputIfStmtWithPtr, fieldName)
   }
   return fieldIfStmt
 }
@@ -442,11 +439,11 @@ func buildNumericFilterIfStmt(filterName, filterOperator string) string {
     numericFilterOperatorLt,
     numericFilterOperatorLte,
     numericFilterOperatorEq:
-    filterIfStmt = fmt.Sprintf(templates.FilterIfStmtWithPtr, filterName)
+    filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithPtr, filterName)
   case
     numericFilterOperatorIn,
     numericFilterOperatorNotIn:
-    filterIfStmt = fmt.Sprintf(templates.FilterIfStmtWithLen, filterName)
+    filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithLen, filterName)
   }
   return filterIfStmt
 }
@@ -472,7 +469,7 @@ func buildBoolFilterType(fieldZeroTyp string) string {
 }
 
 func buildBoolFilterIfStmt(filterName string) string {
-  return fmt.Sprintf(templates.FilterIfStmtWithPtr, filterName)
+  return fmt.Sprintf(templates.StorageFilterIfStmtWithPtr, filterName)
 }
 
 func buildBoolFilterSqOperator() string {
@@ -496,11 +493,11 @@ func buildStringFilterIfStmt(filterName, filterOperator string) string {
   switch filterOperator {
   case
     stringFilterOperatorEq:
-    filterIfStmt = fmt.Sprintf(templates.FilterIfStmtWithPtr, filterName)
+    filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithPtr, filterName)
   case
     stringFilterOperatorIn,
     stringFilterOperatorNotIn:
-    filterIfStmt = fmt.Sprintf(templates.FilterIfStmtWithLen, filterName)
+    filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithLen, filterName)
   }
   return filterIfStmt
 }

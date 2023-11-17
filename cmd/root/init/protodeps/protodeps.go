@@ -1,4 +1,4 @@
-package grpc
+package protodeps
 
 import (
   "context"
@@ -7,26 +7,26 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
+  "github.com/ushakovn/boiler/internal/pkg/gens/protodeps"
 )
 
-var CmdGrpc = &cobra.Command{
-  Use: "grpc",
+var CmdProtoDeps = &cobra.Command{
+  Use: "proto-deps",
 
-  Short: "Init a gRPC components",
-  Long:  `Init a gRPC components`,
+  Short: "Init a Proto dependencies components",
+  Long:  `Init a Proto dependencies components`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    initor, err := gen.NewInitor(grpc.Config{})
+    generator, err := gen.NewInitor(protodeps.Config{})
     if err != nil {
       return fmt.Errorf("boiler: failed to create initor: %w", err)
     }
-    if err = initor.Init(ctx); err != nil {
+    if err = generator.Init(ctx); err != nil {
       return fmt.Errorf("boiler: initor failed: %w", err)
     }
-    log.Infof("boiler: grpc components initialized")
+    log.Infof("boiler: proto dependencies components initialized")
 
     return nil
   },

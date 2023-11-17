@@ -17,10 +17,8 @@ func SandboxHandler(title string, endpoint string) http.HandlerFunc {
       "Title":           title,
       "InitialEndpoint": endpoint,
     }, dummy)
-
     if _, err := w.Write(sandbox); err != nil {
       panic(err)
     }
   }
 }
-

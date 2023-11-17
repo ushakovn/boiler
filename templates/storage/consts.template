@@ -2,12 +2,6 @@
 
 package storage
 
-import (
-  {{- range .ConstsPackages}}
-  {{.ImportAlias}} "{{.ImportLine}}"
-  {{- end}}
-)
-
 type tableName string
 
 const (

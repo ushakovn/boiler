@@ -13,8 +13,8 @@ import (
 var CmdGqlgen = &cobra.Command{
   Use: "gqlgen",
 
-  Short: "Generate a GraphQL template components",
-  Long:  `Generate a GraphQL template components`,
+  Short: "Generate a GraphQL components",
+  Long:  `Generate a GraphQL components`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()

@@ -17,7 +17,6 @@ type directoryDesc struct {
 
 type nameDesc struct {
   Value string `json:"value" yaml:"value"`
-  Func  string `json:"func" yaml:"func"`
 }
 
 type fileDesc struct {
@@ -30,28 +29,4 @@ type fileDesc struct {
 
 type templateDesc struct {
   Name string `json:"name" yaml:"name"`
-}
-
-type execFunc func() any
-
-func (g *Project) setExecFunctions() {
-  // Write other exec functions
-  g.execFunctions = map[string]execFunc{
-    "appName": func() any {
-      return g.workDirFolder()
-    },
-  }
-}
-
-func (d *nameDesc) Execute(execFunctions map[string]execFunc) string {
-  if d.Value != "" {
-    return d.Value
-  }
-  if f, ok := execFunctions[d.Func]; ok {
-    value, ok := f().(string)
-    if ok {
-      return value
-    }
-  }
-  return ""
 }

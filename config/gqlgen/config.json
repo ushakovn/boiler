@@ -91,6 +91,20 @@
                     }
                   }
                 ]
+              },
+              {
+                "name": {
+                  "value": "enums"
+                },
+                "files": [
+                  {
+                    "name": "enums",
+                    "extension": "graphql",
+                    "template": {
+                      "name": "gqlgen_enums"
+                    }
+                  }
+                ]
               }
             ]
           }

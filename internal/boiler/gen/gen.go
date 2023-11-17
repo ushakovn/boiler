@@ -4,9 +4,9 @@ import (
   "context"
   "fmt"
 
-  "github.com/ushakovn/boiler/internal/pkg/gens/clients"
   "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
   "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
+  "github.com/ushakovn/boiler/internal/pkg/gens/protodeps"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/storage"
 )
@@ -29,8 +29,8 @@ func NewGenerator(config any) (Generator, error) {
     g, err = grpc.NewGrpc(c)
   case gqlgen.Config:
     g, err = gqlgen.NewGqlgen(c)
-  case clients.Config:
-    g, err = clients.NewClients(c)
+  case protodeps.Config:
+    g, err = protodeps.NewProtoDeps(c)
   default:
     err = fmt.Errorf("unsupported generator type")
   }

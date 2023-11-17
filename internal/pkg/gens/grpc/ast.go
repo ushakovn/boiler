@@ -9,7 +9,7 @@ import (
   "os"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/pkg/aster"
+  astFunc "github.com/ushakovn/boiler/internal/pkg/ast"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/templates"
 )
@@ -229,7 +229,7 @@ func regenerateGrpcService(filePath string) error {
   if err := validateGrpcFileName(filePath); err != nil {
     return fmt.Errorf("validateGrpcFileName: %w", err)
   }
-  methodFound, err := aster.FindMethodDeclaration(filePath, methodName)
+  methodFound, err := astFunc.FindMethodDeclaration(filePath, methodName)
   if err != nil {
     return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
   }
