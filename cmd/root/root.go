@@ -26,10 +26,6 @@ var CmdRoot = &cobra.Command{
 |_.__/ \___/|_|_|\___|_|
 `,
 
-  PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-    return execModTidy()
-  },
-
   PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
     return execModTidy()
   },
@@ -63,7 +59,7 @@ func setLogFormatter() {
 }
 
 func execModTidy() error {
-  if err := executor.ExecCommandContext(context.Background(), "go", "mod", "tidy"); err != nil {
+  if err := executor.ExecCmdCtx(context.Background(), "go", "mod", "tidy"); err != nil {
     return fmt.Errorf("boiler: failed to exec go mod tidy: %w", err)
   }
   return nil

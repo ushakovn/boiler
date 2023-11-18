@@ -114,7 +114,7 @@ func (g *Storage) Generate(_ context.Context) error {
 }
 
 func (g *Storage) createPgConfig() error {
-  filePath := filepath.Join(g.workDirPath, "pgconfig.yaml")
+  filePath := filepath.Join(g.workDirPath, "pg_config.yaml")
 
   if err := templater.ExecTemplateCopy(templates.StorageConfig, filePath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)

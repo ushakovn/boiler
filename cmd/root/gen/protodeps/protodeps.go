@@ -11,6 +11,7 @@ import (
 )
 
 var (
+  flagForceGenerate bool
   flagGitHubToken   string
   flagProtoDepsPath string
 )
@@ -41,8 +42,9 @@ var CmdProtoDeps = &cobra.Command{
 }
 
 func init() {
+  CmdProtoDeps.Flags().BoolVar(&flagForceGenerate, "force-generate", false, "vendor and generate all proto dependencies")
   CmdProtoDeps.Flags().StringVar(&flagGitHubToken, "github-token", "", "access token for github api")
   CmdProtoDeps.Flags().StringVar(&flagProtoDepsPath, "proto-deps-path", "", "path to grpc clients file in json/yaml")
 
-  CmdProtoDeps.MarkFlagsRequiredTogether("github-token", "proto-deps-path")
+  _ = CmdProtoDeps.MarkFlagRequired("github-token")
 }

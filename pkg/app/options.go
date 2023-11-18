@@ -3,7 +3,7 @@ package app
 import (
   "net/http"
 
-  "github.com/ushakovn/boiler/internal/pkg/aggr"
+  "github.com/samber/lo"
   "google.golang.org/grpc"
   "google.golang.org/grpc/stats"
   "google.golang.org/grpc/tap"
@@ -48,7 +48,7 @@ func WithGrpcServerOptions(options ...grpc.ServerOption) Option {
 
 func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor) Option {
   return func(o *calledAppOptions) {
-    serverOptions := aggr.Map(interceptors, func(interceptor grpc.UnaryServerInterceptor) grpc.ServerOption {
+    serverOptions := lo.Map(interceptors, func(interceptor grpc.UnaryServerInterceptor, _ int) grpc.ServerOption {
       return grpc.UnaryInterceptor(interceptor)
     })
     o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
@@ -57,7 +57,7 @@ func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor
 
 func WithGrpcStatsHandlers(handlers ...stats.Handler) Option {
   return func(o *calledAppOptions) {
-    serverOptions := aggr.Map(handlers, func(handler stats.Handler) grpc.ServerOption {
+    serverOptions := lo.Map(handlers, func(handler stats.Handler, _ int) grpc.ServerOption {
       return grpc.StatsHandler(handler)
     })
     o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
@@ -66,7 +66,7 @@ func WithGrpcStatsHandlers(handlers ...stats.Handler) Option {
 
 func WithGrpcTapHandlers(handlers ...tap.ServerInHandle) Option {
   return func(o *calledAppOptions) {
-    serverOptions := aggr.Map(handlers, func(handler tap.ServerInHandle) grpc.ServerOption {
+    serverOptions := lo.Map(handlers, func(handler tap.ServerInHandle, _ int) grpc.ServerOption {
       return grpc.InTapHandle(handler)
     })
     o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)

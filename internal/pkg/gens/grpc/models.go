@@ -6,7 +6,7 @@ import (
   "path/filepath"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/pkg/aggr"
+  "github.com/samber/lo"
   "github.com/ushakovn/boiler/internal/pkg/filer"
 )
 
@@ -36,7 +36,7 @@ func (g *Grpc) grpcServerInterfaceToDesc(grpcFilePath string, grpcServer *grpcSe
   serviceName := grpcServer.ServerName
   servicePackages := g.buildServicePackages(grpcFilePath)
 
-  serviceCalls := aggr.Map(grpcServer.ServerCalls, func(grpcServerCall *grpcServerInterfaceCall) *grpcServiceCallDesc {
+  serviceCalls := lo.Map(grpcServer.ServerCalls, func(grpcServerCall *grpcServerInterfaceCall, _ int) *grpcServiceCallDesc {
     return g.grpcServerCallToDesc(serviceName, grpcFilePath, grpcServerCall)
   })
 

@@ -5,8 +5,8 @@ import (
   "encoding/json"
   "fmt"
   "os"
-  "os/exec"
 
+  "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/validator"
   "gopkg.in/yaml.v3"
@@ -122,13 +122,9 @@ func execPgDump(ctx context.Context, config PgConfig) ([]byte, error) {
   if err != nil {
     return nil, fmt.Errorf("conn.pgDump: %w", err)
   }
-  cmd := exec.CommandContext(ctx, name, args...)
-  if cmd.Err != nil {
-    return nil, fmt.Errorf("exec.CommandContext %w", cmd.Err)
-  }
-  buf, err := cmd.Output()
+  buf, err := executor.ExecCmdCtxWithOut(ctx, name, args...)
   if err != nil {
-    return nil, fmt.Errorf("cmd.Output: %w", err)
+    return nil, fmt.Errorf("executor.ExecCmdCtxWithOut: %w", err)
   }
   return buf, nil
 }

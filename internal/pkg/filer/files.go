@@ -9,7 +9,7 @@ import (
   "strings"
 
   log "github.com/sirupsen/logrus"
-  "github.com/ushakovn/boiler/internal/pkg/enver"
+  "github.com/ushakovn/boiler/internal/pkg/env"
 )
 
 func IsExistedDirectory(dirPath string) bool {
@@ -27,8 +27,7 @@ func IsExistedFile(filePath string) bool {
 }
 
 func WorkDirPath() (string, error) {
-  const env = "PWD"
-  path, err := enver.Env(env)
+  path, err := env.Env("PWD")
   if err != nil {
     return "", err
   }

@@ -103,8 +103,8 @@ func (g *Gqlgen) Generate(ctx context.Context) error {
 }
 
 func (g *Gqlgen) generateGqlgenSchema(ctx context.Context) error {
-  if err := executor.ExecCommandContext(ctx, "make", "generate-gqlgen"); err != nil {
-    return fmt.Errorf("executor.ExecCommandContext: %w", err)
+  if err := executor.ExecCmdCtx(ctx, "make", "generate-gqlgen"); err != nil {
+    return fmt.Errorf("executor.ExecCmdCtx: %w", err)
   }
   return nil
 }
@@ -166,7 +166,7 @@ func (g *Gqlgen) createMakefileIfNotExist() error {
 }
 
 func (g *Gqlgen) createGqlgenConfig() error {
-  filePath := filepath.Join(g.workDirPath, "gqlgen.yaml")
+  filePath := filepath.Join(g.workDirPath, "gqlgen_config.yaml")
 
   if err := templater.CopyTemplate(templates.GqlgenConfig, filePath); err != nil {
     return fmt.Errorf("copyTemplate: %w", err)

@@ -5,7 +5,7 @@ import (
   "regexp"
   "strings"
 
-  "github.com/ushakovn/boiler/internal/pkg/aggr"
+  "github.com/samber/lo"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
@@ -228,7 +228,10 @@ func rootDescToRpcTemplates(desc *rootDesc) *rpcTemplates {
     reqs = append(reqs, contractDescToRpcContract(handleDesc.Name, handleDesc.Request))
     resp = append(resp, contractDescToRpcContract(handleDesc.Name, handleDesc.Response))
   }
-  typeDefs := aggr.Map(desc.TypeDefs, typeDefDescToRpcTypeDef)
+
+  typeDefs := lo.Map(desc.TypeDefs, func(typDef *typeDefsDesc, _ int) *rpcTypeDef {
+    return typeDefDescToRpcTypeDef(typDef)
+  })
 
   return &rpcTemplates{
     Handles: handles,
@@ -242,8 +245,10 @@ func rootDescToRpcTemplates(desc *rootDesc) *rpcTemplates {
 
 func contractDescToRpcContract(name string, desc *contractDesc) *rpcContract {
   return &rpcContract{
-    Name:   name,
-    Fields: aggr.Map(desc.Fields, fieldDescToRpcStructField),
+    Name: name,
+    Fields: lo.Map(desc.Fields, func(field *fieldDesc, _ int) *rpcStructField {
+      return fieldDescToRpcStructField(field)
+    }),
   }
 }
 
@@ -256,8 +261,10 @@ func handleDescToRpcHandle(desc *handleDesc) *rpcHandle {
 
 func typeDefDescToRpcTypeDef(desc *typeDefsDesc) *rpcTypeDef {
   return &rpcTypeDef{
-    Name:   stringer.StringToUpperCamelCase(desc.Name),
-    Fields: aggr.Map(desc.Fields, fieldDescToRpcStructField),
+    Name: stringer.StringToUpperCamelCase(desc.Name),
+    Fields: lo.Map(desc.Fields, func(field *fieldDesc, _ int) *rpcStructField {
+      return fieldDescToRpcStructField(field)
+    }),
   }
 }
 
@@ -268,7 +275,7 @@ func fieldDescToRpcStructField(desc *fieldDesc) *rpcStructField {
   structField.Tag = stringer.StringToSnakeCase(desc.Name)
 
   switch {
-  case aggr.MapLookup(scalarTypesMap, desc.Type) || typeScalarSliceRegex.MatchString(desc.Type):
+  case matchScalarTyp(scalarTypesMap, desc.Type) || typeScalarSliceRegex.MatchString(desc.Type):
     // Not convert
     structField.Type = desc.Type
 
@@ -294,3 +301,8 @@ const (
   ptrPrefix   = "*"
   slicePrefix = "[]"
 )
+
+func matchScalarTyp(scalarTypes map[string]struct{}, typ string) bool {
+  _, ok := scalarTypes[typ]
+  return ok
+}

@@ -7,16 +7,20 @@ import (
   "strings"
 )
 
-func ExecCommandContext(ctx context.Context, name string, args ...string) error {
+func ExecCmdCtx(ctx context.Context, name string, args ...string) error {
+  _, err := ExecCmdCtxWithOut(ctx, name, args...)
+  return err
+}
+
+func ExecCmdCtxWithOut(ctx context.Context, name string, args ...string) ([]byte, error) {
   cmd := exec.CommandContext(ctx, name, args...)
   if cmd == nil {
-    return fmt.Errorf("exec.CommandContext: cmd is a nil")
+    return nil, fmt.Errorf("exec.CommandContext: cmd is a nil")
   }
   buf, err := cmd.CombinedOutput()
   if err != nil {
     str := strings.TrimSpace(string(buf))
-    return fmt.Errorf("exec.CommandContext:\n\toutput: %s\n\terror: %s\n\tcmd.Error: %s", str, err, cmd.Err)
+    return nil, fmt.Errorf("exec.CommandContext:\n\toutput: %s\n\terror: %s\n\tcmd.Error: %s", str, err, cmd.Err)
   }
-  return nil
+  return buf, nil
 }
-

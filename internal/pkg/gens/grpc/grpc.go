@@ -167,8 +167,8 @@ func (g *Grpc) collectGrpcFilesPath() ([]string, error) {
 }
 
 func (g *Grpc) generateMakeMkProto(ctx context.Context) error {
-  if err := executor.ExecCommandContext(ctx, "make", "generate-protoc"); err != nil {
-    return fmt.Errorf("executor.ExecCommandContext: %w", err)
+  if err := executor.ExecCmdCtx(ctx, "make", "generate-protoc"); err != nil {
+    return fmt.Errorf("executor.ExecCmdCtx: %w", err)
   }
   return nil
 }

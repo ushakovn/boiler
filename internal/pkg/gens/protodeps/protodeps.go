@@ -23,14 +23,30 @@ type ProtoDeps struct {
 
   githubClient  *resty.Client
   protoDepsPath string
+
+  forceGenerate bool
 }
 
 type Config struct {
+  ForceGenerate bool
   GithubToken   string
   ProtoDepsPath string
 }
 
+func (c Config) WithDefault() Config {
+  if c.ProtoDepsPath == "" {
+    filePath, err := filepath.Abs("proto_deps.yaml")
+    if err != nil {
+      log.Fatalf("boiler: not found proto deps file")
+    }
+    c.ProtoDepsPath = filePath
+  }
+  return c
+}
+
 func NewProtoDeps(config Config) (*ProtoDeps, error) {
+  config = config.WithDefault()
+
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -48,21 +64,26 @@ func NewProtoDeps(config Config) (*ProtoDeps, error) {
 
     githubClient:  githubClient,
     protoDepsPath: config.ProtoDepsPath,
+
+    forceGenerate: config.ForceGenerate,
   }, nil
 }
 
-func (g *ProtoDeps) Init(context.Context) error {
+func (g *ProtoDeps) Init(_ context.Context) error {
   if err := g.createVendorFolder(); err != nil {
     return fmt.Errorf("g.createVendorFolder: %w", err)
   }
   if err := g.createProtoDepsConfig(); err != nil {
     return fmt.Errorf("g.createProtoDepsConfig: %w", err)
   }
+  if err := g.createProtoDepsDump(&protoDependencies{}); err != nil {
+    return fmt.Errorf("g.createProtoDepsDump: %w", err)
+  }
   return nil
 }
 
 func (g *ProtoDeps) createProtoDepsConfig() error {
-  filePath := filepath.Join(g.workDirPath, "protodeps.yaml")
+  filePath := filepath.Join(g.workDirPath, "proto_deps.yaml")
 
   if err := templater.ExecTemplateCopy(templates.ProtoDepsConfig, filePath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)
@@ -77,10 +98,76 @@ func (g *ProtoDeps) createVendorFolder() error {
   return nil
 }
 
+func (g *ProtoDeps) createProtoDepsDump(protoDeps *protoDependencies) error {
+  filePath := filepath.Join(g.workDirPath, ".boiler", "vendor", "proto_deps_dump.yaml")
+
+  if err := templater.ExecTemplateCopy(templates.ProtoDepsDump, filePath, protoDeps, nil); err != nil {
+    return fmt.Errorf("templater.ExecTemplateCopy: %w", err)
+  }
+  return nil
+}
+
+func (g *ProtoDeps) filterProtoDeps(protoDeps *protoDependencies) (*protoDependencies, error) {
+  filePath := filepath.Join(g.workDirPath, ".boiler", "vendor", "proto_deps_dump.yaml")
+
+  protoDepsDump, err := g.collectProtoDeps(filePath)
+  if err != nil {
+    return nil, fmt.Errorf("g.collectProtoDeps: %w", err)
+  }
+
+  // Check local proto dependencies
+  checkProtoDeps := map[string]struct{}{}
+
+  for _, protoDepDump := range protoDepsDump.LocalDeps {
+    checkProtoDeps[protoDepDump.Path] = struct{}{}
+  }
+
+  // Filter local proto dependencies
+  var filteredLocalDeps []*localProtoDependency
+
+  for _, protoDep := range protoDeps.LocalDeps {
+    if _, ok := checkProtoDeps[protoDep.Path]; ok {
+      continue
+    }
+    checkProtoDeps[protoDep.Path] = struct{}{}
+    filteredLocalDeps = append(filteredLocalDeps, protoDep)
+  }
+
+  // Check external proto dependencies
+  checkProtoDeps = map[string]struct{}{}
+
+  for _, protoDepDump := range protoDepsDump.ExternalDeps {
+    checkProtoDeps[protoDepDump.Import] = struct{}{}
+  }
+
+  // Filter external proto dependencies
+  var filteredExternalDeps []*externalProtoDependency
+
+  for _, protoDep := range protoDeps.ExternalDeps {
+    if _, ok := checkProtoDeps[protoDep.Import]; ok {
+      continue
+    }
+    checkProtoDeps[protoDep.Import] = struct{}{}
+    filteredExternalDeps = append(filteredExternalDeps, protoDep)
+  }
+
+  return &protoDependencies{
+    LocalDeps:    filteredLocalDeps,
+    ExternalDeps: filteredExternalDeps,
+  }, nil
+
+}
+
 func (g *ProtoDeps) Generate(ctx context.Context) error {
-  protoDeps, err := g.collectProtoDeps()
+  protoDeps, err := g.collectProtoDeps(g.protoDepsPath)
   if err != nil {
     return fmt.Errorf("g.collectProtoDeps: %w", err)
+  }
+
+  if !g.forceGenerate {
+    if protoDeps, err = g.filterProtoDeps(protoDeps); err != nil {
+      return fmt.Errorf("g.filterProtoDeps: %w", err)
+    }
   }
 
   if err = protoDeps.Validate(); err != nil {
@@ -102,6 +189,10 @@ func (g *ProtoDeps) Generate(ctx context.Context) error {
     if err = g.generateExternalProtoDeps(ctx, dstProtoFolder, protoDeps.ExternalDeps); err != nil {
       return fmt.Errorf("g.generateExternalProtoDeps: %w", err)
     }
+  }
+
+  if err = g.createProtoDepsDump(protoDeps); err != nil {
+    return fmt.Errorf("g.createProtoDepsDump: %w", err)
   }
 
   return nil
@@ -154,15 +245,14 @@ func (g *ProtoDeps) generateLocalProtoDeps(ctx context.Context, dstProtoFolder s
       fmt.Sprint("--go_opt=M", protoDep.Path, "=", dstRelProtoPath),
       fmt.Sprint("--go-grpc_opt=M", protoDep.Path, "=", dstRelProtoPath),
     }
-
     protocOptions = append(protocOptions, options...)
 
     log.Infof("boiler: generate local proto dependency: %s", protoDep.Path)
   }
   protocOptions = append(protocOptions, srcProtoPath...)
 
-  if err := executor.ExecCommandContext(ctx, "protoc", protocOptions...); err != nil {
-    return fmt.Errorf("executor.ExecCommandContext: %w", err)
+  if err := executor.ExecCmdCtx(ctx, "protoc", protocOptions...); err != nil {
+    return fmt.Errorf("executor.ExecCmdCtx: %w", err)
   }
 
   return nil
@@ -237,18 +327,18 @@ func buildGitHubContentRequest(protoImport string) string {
   return contentUrl
 }
 
-func (g *ProtoDeps) collectProtoDeps() (*protoDependencies, error) {
-  fileBuf, err := os.ReadFile(g.protoDepsPath)
+func (g *ProtoDeps) collectProtoDeps(filePath string) (*protoDependencies, error) {
+  fileBuf, err := os.ReadFile(filePath)
   if err != nil {
     return nil, fmt.Errorf("os.ReadFile: %w", err)
   }
-  fileExt := filer.ExtractFileExtension(g.protoDepsPath)
+  fileExt := filer.ExtractFileExtension(filePath)
 
-  deps, err := parseProtoDeps(fileExt, fileBuf)
+  protoDeps, err := parseProtoDeps(fileExt, fileBuf)
   if err != nil {
     return nil, fmt.Errorf("parseProtoDeps: %w", err)
   }
-  return deps, nil
+  return protoDeps, nil
 }
 
 func parseProtoDeps(depsFileExt string, depsFileBuf []byte) (*protoDependencies, error) {
