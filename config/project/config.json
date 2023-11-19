@@ -72,6 +72,34 @@
         "name": {
           "value": "pkg"
         }
+      },
+      {
+        "name": {
+          "value": ".boiler"
+        },
+        "files": [
+          {
+            "name": "docker-compose",
+            "extension": "yaml",
+            "template": {
+              "name": "docker_compose"
+            }
+          },
+          {
+            "name": "docker-compose",
+            "extension": "yaml",
+            "template": {
+              "name": "docker_compose"
+            }
+          },
+          {
+            "name": "boiler_config.yaml",
+            "extension": "yaml",
+            "template": {
+              "name": "boiler_config"
+            }
+          }
+        ]
       }
     ]
   }

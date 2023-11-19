@@ -1,6 +1,7 @@
 package closer
 
 import (
+  "context"
   "os"
   "os/signal"
   "sync"
@@ -9,7 +10,7 @@ import (
 )
 
 type Closer interface {
-  Add(f func() error)
+  Add(f ...func(context.Context) error)
   WaitAll()
   CloseAll()
 }
@@ -17,7 +18,7 @@ type Closer interface {
 type closer struct {
   mu    sync.Mutex
   once  sync.Once
-  calls []func() error
+  calls []func(context.Context) error
   done  chan struct{}
 }
 
@@ -40,10 +41,11 @@ func NewCloser(signals ...os.Signal) Closer {
   return c
 }
 
-func (c *closer) Add(f func() error) {
+func (c *closer) Add(f ...func(context.Context) error) {
   c.mu.Lock()
   defer c.mu.Unlock()
-  c.calls = append(c.calls, f)
+
+  c.calls = append(c.calls, f...)
 }
 
 func (c *closer) WaitAll() {
@@ -51,6 +53,8 @@ func (c *closer) WaitAll() {
 }
 
 func (c *closer) CloseAll() {
+  ctx := context.Background()
+
   c.once.Do(func() {
     c.mu.Lock()
     defer c.mu.Unlock()
@@ -59,8 +63,8 @@ func (c *closer) CloseAll() {
     errCh := make(chan error, callsCount)
 
     for _, call := range c.calls {
-      go func(c func() error) {
-        errCh <- c()
+      go func(c func(ctx context.Context) error) {
+        errCh <- c(ctx)
       }(call)
     }
     var errCount int

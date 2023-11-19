@@ -1,6 +1,7 @@
 package app
 
 import (
+  "context"
   "fmt"
   "net"
   "net/http"
@@ -11,6 +12,7 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/gqlgen"
+  "github.com/ushakovn/boiler/pkg/tracing"
   "google.golang.org/grpc"
   "google.golang.org/grpc/reflection"
 )
@@ -25,6 +27,7 @@ type App struct {
   grpcServer   *grpc.Server
   gqlgenRouter chi.Router
 
+  appCtx    context.Context
   appCloser closer.Closer
 }
 
@@ -38,6 +41,9 @@ func NewApp(calls ...Option) *App {
   // Create gqlgen router with middlewares
   gqlgenRouter := chi.NewRouter().With(options.gqlgenMiddlewares...)
 
+  // Create app context
+  appCtx := context.Background()
+
   // Create app closer
   appCloser := closer.NewCloser(syscall.SIGTERM, syscall.SIGKILL)
 
@@ -49,6 +55,7 @@ func NewApp(calls ...Option) *App {
     grpcServer:   grpcServer,
     gqlgenRouter: gqlgenRouter,
 
+    appCtx:    appCtx,
     appCloser: appCloser,
   }
 }
@@ -56,6 +63,8 @@ func NewApp(calls ...Option) *App {
 func (a *App) Run(services ...Service) {
   a.once.Do(func() {
     a.registerServices(services...)
+    a.registerTracing()
+
     log.Infof("boiler: app bootstrapped")
     a.waitServicesShutdown()
   })
@@ -96,9 +105,9 @@ func (a *App) registerGrpcServer() {
   }
   reflection.Register(a.grpcServer)
 
-  go func() {
-    log.Infof("boiler: grpc server running on port: %d", a.grpcPort)
+  log.Infof("boiler: grpc server running on port: %d", a.grpcPort)
 
+  go func() {
     if err = a.grpcServer.Serve(lister); err != nil {
       log.Fatalf("boiler: grpc server run failed: %v", err)
       a.appCloser.CloseAll()
@@ -109,9 +118,9 @@ func (a *App) registerGrpcServer() {
 func (a *App) registerGqlgenServer() {
   address := fmt.Sprint("localhost", ":", a.gqlgenPort)
 
-  go func() {
-    log.Infof("boiler: gqlgen server running on port: %d", a.gqlgenPort)
+  log.Infof("boiler: gqlgen server running on port: %d", a.gqlgenPort)
 
+  go func() {
     if err := http.ListenAndServe(address, a.gqlgenRouter); err != nil {
       log.Errorf("boiler: gqlgen server run failed: %v", err)
       a.appCloser.CloseAll()
@@ -143,4 +152,15 @@ func (a *App) GqlgenRouter() chi.Router {
   defer a.mu.Unlock()
 
   return a.gqlgenRouter
+}
+
+func (a *App) registerTracing() {
+  const (
+    serviceName = "Boiler"
+    serviceVer  = "v0.0.1"
+  )
+  shutdowns := tracing.InitTracer(a.appCtx, serviceName, serviceVer)
+  log.Infof("boiler: tracing registered")
+
+  a.appCloser.Add(shutdowns...)
 }
