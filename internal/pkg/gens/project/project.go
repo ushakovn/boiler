@@ -143,6 +143,9 @@ func loadGlobalCompiledTemplate(desc *templateDesc) string {
   case templates.NameMakefile:
     compiled = templates.ProjectMakefile
 
+  case templates.NameDockerCompose:
+    compiled = templates.ProjectDockerCompose
+
   // Gqlgen Graphql Schema templates
 
   case templates.NameGqlgenSchema:

@@ -62,38 +62,55 @@ func NewApp(calls ...Option) *App {
 
 func (a *App) Run(services ...Service) {
   a.once.Do(func() {
-    a.registerServices(services...)
-    a.registerTracing()
+    a.registerApp(a.registerParams(), services...)
 
     log.Infof("boiler: app bootstrapped")
-    a.waitServicesShutdown()
+
+    a.waitAppShutdown()
   })
 }
 
-func (a *App) waitServicesShutdown() {
+func (a *App) waitAppShutdown() {
   a.appCloser.WaitAll()
 }
 
-func (a *App) registerServices(services ...Service) {
-  params := &RegisterParams{
+func (a *App) registerApp(params *RegisterParams, services ...Service) {
+  a.registerServices(params, services...)
+  a.registerServicesComponents(params, services...)
+}
+
+func (a *App) registerParams() *RegisterParams {
+  return &RegisterParams{
     grpcServer: a.grpcServer,
   }
+}
+
+func (a *App) registerServices(params *RegisterParams, services ...Service) {
   for _, service := range services {
     service.RegisterService(params)
   }
-  log.Infof("boiler: app services registered")
 
+  log.Infof("boiler: app services registered")
+}
+
+func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
+  // Collect service types
   serviceTypes := params.serviceTypesValues()
 
+  // gRPC components
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
     a.registerGrpcServer()
   }
+  // GraphQL components
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
     a.registerGqlgenSchemaServer(params)
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
   }
-  log.Infof("boiler: app servers registered")
+  // Tracing components
+  a.registerTracer()
+
+  log.Infof("boiler: app services components registered")
 }
 
 func (a *App) registerGrpcServer() {
@@ -154,12 +171,13 @@ func (a *App) GqlgenRouter() chi.Router {
   return a.gqlgenRouter
 }
 
-func (a *App) registerTracing() {
+func (a *App) registerTracer() {
   const (
     serviceName = "Boiler"
     serviceVer  = "v0.0.1"
   )
   shutdowns := tracing.InitTracer(a.appCtx, serviceName, serviceVer)
+
   log.Infof("boiler: tracing registered")
 
   a.appCloser.Add(shutdowns...)

@@ -4,6 +4,7 @@ import (
   "net/http"
 
   "github.com/samber/lo"
+  "github.com/ushakovn/boiler/pkg/tracing"
   "google.golang.org/grpc"
   "google.golang.org/grpc/stats"
   "google.golang.org/grpc/tap"
@@ -19,15 +20,27 @@ type calledAppOptions struct {
   gqlgenMiddlewares []func(http.Handler) http.Handler
 }
 
-func callAppOptions(calls ...Option) *calledAppOptions {
+func defaultOptions() []Option {
   const (
     defaultGrpcPort   = 8082
     defaultGqlgenPort = 8080
   )
-  o := &calledAppOptions{
-    grpcServePort:   defaultGrpcPort,
-    gqlgenServePort: defaultGqlgenPort,
+  options := []Option{
+    // Port options
+    WithGrpcServePort(defaultGrpcPort),
+    WithGqlgenServePort(defaultGqlgenPort),
+
+    // Tracing options
+    WithGrpcUnaryServerInterceptors(tracing.GrpcServerUnaryInterceptor),
+    WithGqlgenMiddlewares(tracing.GqlgenMiddleware),
   }
+  return options
+}
+
+func callAppOptions(calls ...Option) *calledAppOptions {
+  calls = append(calls, defaultOptions()...)
+  o := &calledAppOptions{}
+
   for _, call := range calls {
     call(o)
   }
