@@ -65,6 +65,9 @@ func NewApp(calls ...Option) *App {
     grpcServer:   grpcServer,
     gqlgenRouter: gqlgenRouter,
 
+    gqlgenFieldMWs:     options.gqlgenFieldMiddlewares,
+    gqlgenOperationMWs: options.gqlgenOperationMiddlewares,
+
     appCtx:    appCtx,
     appCloser: appCloser,
   }

@@ -16,12 +16,6 @@ type goPackageDesc struct {
 
 var gqlgenServicePackages = []*goPackageDesc{
   {
-    CustomName:  "gqlgen/handler",
-    ImportLine:  "github.com/99designs/gqlgen/graphql/handler",
-    ImportAlias: "",
-    IsInstall:   true,
-  },
-  {
     CustomName:  "boiler/app",
     ImportLine:  "github.com/ushakovn/boiler/pkg/app",
     ImportAlias: "",
