@@ -99,14 +99,24 @@ func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHan
     // Start context with span
     var span trace.Span
 
-    ctx, span = StartContextWithSpan(ctx, opCtx.RawQuery,
+    var (
+      opTyp  string
+      opName string
+    )
+    if operation := opCtx.Operation; operation != nil {
+      opTyp = opCtx.Operation.Name
+      opName = string(opCtx.Operation.Operation)
+    }
+
+    ctx, span = StartContextWithSpan(ctx, opCtx.OperationName,
       // Start span options
       trace.WithSpanKind(trace.SpanKindServer),
       trace.WithTimestamp(time.Now().UTC()),
 
       // Operation context info
       trace.WithAttributes(
-        attribute.String("operationName", opCtx.OperationName),
+        attribute.String("operationType", opTyp),
+        attribute.String("operationName", opName),
 
         attribute.String("statsOperationStart",
           opCtx.Stats.OperationStart.Format(time.RFC3339),
