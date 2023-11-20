@@ -87,6 +87,7 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
     trace.WithStackTrace(true),
     trace.WithTimestamp(time.Now().UTC()),
   )
+  // Handle request
   return handler(spanCtx, req)
 }
 
@@ -99,7 +100,10 @@ func GqlgenMiddleware(next http.Handler) http.Handler {
       // Extract operation context
       opCtx := graphql.GetOperationContext(reqCtx)
 
-      spanCtx, span := StartContextWithSpan(reqCtx, opCtx.RawQuery,
+      // Start context with span
+      var span trace.Span
+
+      reqCtx, span = StartContextWithSpan(reqCtx, opCtx.RawQuery,
         // Start span options
         trace.WithSpanKind(trace.SpanKindServer),
         trace.WithTimestamp(time.Now().UTC()),
@@ -132,7 +136,8 @@ func GqlgenMiddleware(next http.Handler) http.Handler {
         trace.WithStackTrace(true),
         trace.WithTimestamp(time.Now().UTC()),
       )
-      next.ServeHTTP(w, r.WithContext(spanCtx))
     }
+    // Handle request
+    next.ServeHTTP(w, r.WithContext(reqCtx))
   })
 }

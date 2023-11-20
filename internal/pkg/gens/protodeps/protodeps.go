@@ -76,7 +76,7 @@ func (g *ProtoDeps) Init(_ context.Context) error {
   if err := g.createProtoDepsConfig(); err != nil {
     return fmt.Errorf("g.createProtoDepsConfig: %w", err)
   }
-  if err := g.createProtoDepsDump(&protoDependencies{}); err != nil {
+  if err := g.createProtoDepsDump(newProtoDependencies()); err != nil {
     return fmt.Errorf("g.createProtoDepsDump: %w", err)
   }
   return nil
@@ -179,20 +179,22 @@ func (g *ProtoDeps) Generate(ctx context.Context) error {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
 
-  if len(protoDeps.LocalDeps) > 0 {
+  if protoDeps.HasLocalDeps() {
     if err = g.generateLocalProtoDeps(ctx, dstProtoFolder, protoDeps.LocalDeps); err != nil {
       return fmt.Errorf("g.generateLocalProtoDeps: %w", err)
     }
   }
 
-  if len(protoDeps.ExternalDeps) > 0 {
+  if protoDeps.HasExternalDeps() {
     if err = g.generateExternalProtoDeps(ctx, dstProtoFolder, protoDeps.ExternalDeps); err != nil {
       return fmt.Errorf("g.generateExternalProtoDeps: %w", err)
     }
   }
 
-  if err = g.createProtoDepsDump(protoDeps); err != nil {
-    return fmt.Errorf("g.createProtoDepsDump: %w", err)
+  if protoDeps.HasDeps() {
+    if err = g.createProtoDepsDump(protoDeps); err != nil {
+      return fmt.Errorf("g.createProtoDepsDump: %w", err)
+    }
   }
 
   return nil

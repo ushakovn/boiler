@@ -56,3 +56,19 @@ func (d *externalProtoDependency) Validate() error {
   }
   return nil
 }
+
+func newProtoDependencies() *protoDependencies {
+  return &protoDependencies{}
+}
+
+func (d *protoDependencies) HasLocalDeps() bool {
+  return len(d.LocalDeps) != 0
+}
+
+func (d *protoDependencies) HasExternalDeps() bool {
+  return len(d.LocalDeps) != 0
+}
+
+func (d *protoDependencies) HasDeps() bool {
+  return d.HasLocalDeps() || d.HasExternalDeps()
+}
