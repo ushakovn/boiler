@@ -8,6 +8,8 @@ import (
   "sync"
   "syscall"
 
+  "github.com/99designs/gqlgen/graphql"
+  "github.com/99designs/gqlgen/graphql/handler"
   "github.com/go-chi/chi/v5"
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
@@ -18,15 +20,23 @@ import (
 )
 
 type App struct {
+  // Sync
   once sync.Once
   mu   sync.Mutex
 
+  // gRPC
   grpcPort   int
-  gqlgenPort int
+  grpcServer *grpc.Server
 
-  grpcServer   *grpc.Server
+  // GraphQL
+  gqlgenPort   int
   gqlgenRouter chi.Router
 
+  gqlgenServer       *handler.Server
+  gqlgenFieldMWs     []graphql.FieldMiddleware
+  gqlgenOperationMWs []graphql.OperationMiddleware
+
+  // Shutdown
   appCtx    context.Context
   appCloser closer.Closer
 }
@@ -104,6 +114,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // GraphQL components
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
     a.registerGqlgenSchemaServer(params)
+    a.registerGqlgenAroundMWs()
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
   }
@@ -146,10 +157,11 @@ func (a *App) registerGqlgenServer() {
 }
 
 func (a *App) registerGqlgenSchemaServer(params *RegisterParams) {
-  if params.gqlgenSchemaServer == nil {
-    panic("boiler: gqlgen schema server is a nil")
+  if params.gqlgenSchema == nil {
+    panic("boiler: gqlgen schema is a nil")
   }
-  a.gqlgenRouter.Handle("/query", *params.gqlgenSchemaServer)
+  a.gqlgenServer = handler.NewDefaultServer(params.gqlgenSchema)
+  a.gqlgenRouter.Handle("/query", a.gqlgenServer)
 }
 
 func (a *App) registerGqlgenSandbox() {
@@ -161,6 +173,15 @@ func (a *App) registerGqlgenSandbox() {
   a.gqlgenRouter.Handle("/", sandbox)
 
   log.Infof("boiler: gqlgen sanbox registered for: %s endpoint", endpoint)
+}
+
+func (a *App) registerGqlgenAroundMWs() {
+  for _, aroundOperations := range a.gqlgenOperationMWs {
+    a.gqlgenServer.AroundOperations(aroundOperations)
+  }
+  for _, aroundFields := range a.gqlgenFieldMWs {
+    a.gqlgenServer.AroundFields(aroundFields)
+  }
 }
 
 // GqlgenRouter MUTATE APP ROUTER IN YOUR OWN RISK

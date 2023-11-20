@@ -3,6 +3,7 @@ package app
 import (
   "net/http"
 
+  "github.com/99designs/gqlgen/graphql"
   "github.com/samber/lo"
   "github.com/ushakovn/boiler/pkg/tracing"
   "google.golang.org/grpc"
@@ -13,11 +14,16 @@ import (
 type Option func(o *calledAppOptions)
 
 type calledAppOptions struct {
+  // gRPC
   grpcServePort     int
   grpcServerOptions []grpc.ServerOption
 
+  // GraphQL
   gqlgenServePort   int
   gqlgenMiddlewares []func(http.Handler) http.Handler
+
+  gqlgenFieldMiddlewares     []graphql.FieldMiddleware
+  gqlgenOperationMiddlewares []graphql.OperationMiddleware
 }
 
 func defaultOptions() []Option {
@@ -32,7 +38,7 @@ func defaultOptions() []Option {
 
     // Tracing options
     WithGrpcUnaryServerInterceptors(tracing.GrpcServerUnaryInterceptor),
-    WithGqlgenMiddlewares(tracing.GqlgenMiddleware),
+    WithGqlgenOperationMiddlewares(tracing.GqlgenOperationMiddleware),
   }
   return options
 }
@@ -92,8 +98,20 @@ func WithGqlgenServePort(port int) Option {
   }
 }
 
-func WithGqlgenMiddlewares(middleware ...func(http.Handler) http.Handler) Option {
+func WithGqlgenMiddlewares(middlewares ...func(http.Handler) http.Handler) Option {
   return func(o *calledAppOptions) {
-    o.gqlgenMiddlewares = append(o.gqlgenMiddlewares, middleware...)
+    o.gqlgenMiddlewares = append(o.gqlgenMiddlewares, middlewares...)
+  }
+}
+
+func WithGqlgenFieldMiddlewares(middlewares ...graphql.FieldMiddleware) Option {
+  return func(o *calledAppOptions) {
+    o.gqlgenFieldMiddlewares = append(o.gqlgenFieldMiddlewares, middlewares...)
+  }
+}
+
+func WithGqlgenOperationMiddlewares(middlewares ...graphql.OperationMiddleware) Option {
+  return func(o *calledAppOptions) {
+    o.gqlgenOperationMiddlewares = append(o.gqlgenOperationMiddlewares, middlewares...)
   }
 }

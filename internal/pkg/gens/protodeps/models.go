@@ -66,7 +66,7 @@ func (d *protoDependencies) HasLocalDeps() bool {
 }
 
 func (d *protoDependencies) HasExternalDeps() bool {
-  return len(d.LocalDeps) != 0
+  return len(d.ExternalDeps) != 0
 }
 
 func (d *protoDependencies) HasDeps() bool {

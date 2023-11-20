@@ -5,7 +5,5 @@ func (s *Implementation) RegisterService(params *app.RegisterParams) {
   schema := generated.NewExecutableSchema(generated.Config{
     Resolvers: s.Resolver,
   })
-  server := handler.NewDefaultServer(schema)
-
-  params.SetGqlgenSchemaServer(server)
+  params.SetGqlgenExecutableSchema(schema)
 }

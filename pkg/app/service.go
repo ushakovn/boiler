@@ -1,8 +1,7 @@
 package app
 
 import (
-  "net/http"
-
+  "github.com/99designs/gqlgen/graphql"
   "google.golang.org/grpc"
 )
 
@@ -24,9 +23,12 @@ type Service interface {
 }
 
 type RegisterParams struct {
-  serviceTypes       []*ServiceType
-  grpcServer         *grpc.Server
-  gqlgenSchemaServer *http.Handler
+  // Services types
+  serviceTypes []*ServiceType
+  // gRPC
+  grpcServer *grpc.Server
+  // GraphQL
+  gqlgenSchema graphql.ExecutableSchema
 }
 
 func (p *RegisterParams) SetServiceType(serviceType ServiceType) {
@@ -43,11 +45,8 @@ func (p *RegisterParams) GrpcServiceRegistrar() grpc.ServiceRegistrar {
   return p.grpcServer
 }
 
-func (p *RegisterParams) SetGqlgenSchemaServer(schemaServer http.Handler) {
-  if schemaServer == nil {
-    panic("boiler: gqlgen schema server is a nil")
-  }
-  p.gqlgenSchemaServer = &schemaServer
+func (p *RegisterParams) SetGqlgenExecutableSchema(schema graphql.ExecutableSchema) {
+  p.gqlgenSchema = schema
 }
 
 func (p *RegisterParams) serviceTypesValues() map[ServiceType]struct{} {

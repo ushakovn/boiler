@@ -26,6 +26,7 @@ var CmdProtoDeps = &cobra.Command{
     ctx := context.Background()
 
     generator, err := gen.NewGenerator(protodeps.Config{
+      ForceGenerate: flagForceGenerate,
       GithubToken:   flagGitHubToken,
       ProtoDepsPath: flagProtoDepsPath,
     })

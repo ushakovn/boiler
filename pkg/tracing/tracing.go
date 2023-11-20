@@ -2,7 +2,6 @@ package tracing
 
 import (
   "context"
-  "net/http"
   "sync"
   "time"
 
@@ -91,53 +90,49 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
   return handler(spanCtx, req)
 }
 
-func GqlgenMiddleware(next http.Handler) http.Handler {
+func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHandler) graphql.ResponseHandler {
   // Tracing middleware
-  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    reqCtx := r.Context()
+  if graphql.HasOperationContext(ctx) {
+    // Extract operation context
+    opCtx := graphql.GetOperationContext(ctx)
 
-    if graphql.HasOperationContext(reqCtx) {
-      // Extract operation context
-      opCtx := graphql.GetOperationContext(reqCtx)
+    // Start context with span
+    var span trace.Span
 
-      // Start context with span
-      var span trace.Span
+    ctx, span = StartContextWithSpan(ctx, opCtx.RawQuery,
+      // Start span options
+      trace.WithSpanKind(trace.SpanKindServer),
+      trace.WithTimestamp(time.Now().UTC()),
 
-      reqCtx, span = StartContextWithSpan(reqCtx, opCtx.RawQuery,
-        // Start span options
-        trace.WithSpanKind(trace.SpanKindServer),
-        trace.WithTimestamp(time.Now().UTC()),
+      // Operation context info
+      trace.WithAttributes(
+        attribute.String("operationName", opCtx.OperationName),
 
-        // Operation context info
-        trace.WithAttributes(
-          attribute.String("operationName", opCtx.OperationName),
-
-          attribute.String("statsOperationStart",
-            opCtx.Stats.OperationStart.Format(time.RFC3339),
-          ),
-
-          attribute.StringSlice("statsRead", []string{
-            opCtx.Stats.Read.Start.Format(time.RFC3339),
-            opCtx.Stats.Read.End.Format(time.RFC3339),
-          }),
-
-          attribute.StringSlice("statsParsing", []string{
-            opCtx.Stats.Parsing.Start.Format(time.RFC3339),
-            opCtx.Stats.Parsing.End.Format(time.RFC3339),
-          }),
-
-          attribute.StringSlice("statsParsing", []string{
-            opCtx.Stats.Validation.Start.Format(time.RFC3339),
-            opCtx.Stats.Validation.End.Format(time.RFC3339),
-          }),
+        attribute.String("statsOperationStart",
+          opCtx.Stats.OperationStart.Format(time.RFC3339),
         ),
-      )
-      defer span.End(
-        trace.WithStackTrace(true),
-        trace.WithTimestamp(time.Now().UTC()),
-      )
-    }
-    // Handle request
-    next.ServeHTTP(w, r.WithContext(reqCtx))
-  })
+
+        attribute.StringSlice("statsRead", []string{
+          opCtx.Stats.Read.Start.Format(time.RFC3339),
+          opCtx.Stats.Read.End.Format(time.RFC3339),
+        }),
+
+        attribute.StringSlice("statsParsing", []string{
+          opCtx.Stats.Parsing.Start.Format(time.RFC3339),
+          opCtx.Stats.Parsing.End.Format(time.RFC3339),
+        }),
+
+        attribute.StringSlice("statsParsing", []string{
+          opCtx.Stats.Validation.Start.Format(time.RFC3339),
+          opCtx.Stats.Validation.End.Format(time.RFC3339),
+        }),
+      ),
+    )
+    defer span.End(
+      trace.WithStackTrace(true),
+      trace.WithTimestamp(time.Now().UTC()),
+    )
+  }
+  // Handle request
+  return handler(ctx)
 }
