@@ -16,6 +16,7 @@ import (
   semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
   "go.opentelemetry.io/otel/trace"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/metadata"
   "google.golang.org/grpc/status"
 )
 
@@ -93,6 +94,8 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
     trace.WithStackTrace(true),
     trace.WithTimestamp(time.Now().UTC()),
   )
+  spanCtx = metadata.AppendToOutgoingContext(spanCtx, "trace-id", span.SpanContext().TraceID().String())
+
   // Handle request
   if resp, err = handler(spanCtx, req); err != nil {
     // Set span error status
@@ -102,7 +105,6 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
     span.SetAttributes(attribute.String("grpcError", errString))
     span.SetAttributes(attribute.String("grpcStatusCode", status.Code(err).String()))
   }
-  // Return response and error
   return resp, err
 }
 
@@ -161,18 +163,18 @@ func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHan
 
 func GqlgenResponseMiddleware(ctx context.Context, handler graphql.ResponseHandler) *graphql.Response {
   span := SpanFromContext(ctx)
-  // Handle request
-  resp := handler(ctx)
+  graphql.RegisterExtension(ctx, "traceID", span.SpanContext().TraceID().String())
+  // Handle errors
+  errors := graphql.GetErrors(ctx)
 
-  if len(resp.Errors) != 0 {
+  if len(errors) != 0 {
     // Set span error status
-    errString := resp.Errors.Error()
+    errString := errors.Error()
     span.SetStatus(otelCodes.Error, errString)
     // Set GraphQL error attributes
     span.SetAttributes(attribute.String("graphqlError", errString))
   }
-  graphql.RegisterExtension(ctx, "traceID", span.SpanContext().TraceID())
 
-  // Return response
-  return resp
+  // Handle request
+  return handler(ctx)
 }
