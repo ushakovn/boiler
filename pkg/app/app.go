@@ -68,6 +68,7 @@ func NewApp(calls ...Option) *App {
 
     gqlgenFieldMWs:     options.gqlgenFieldMWs,
     gqlgenOperationMWs: options.gqlgenOperationMWs,
+    gqlgenResponseMWs:  options.gqlgenResponseMWs,
 
     appCtx:    appCtx,
     appCloser: appCloser,

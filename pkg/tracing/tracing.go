@@ -102,6 +102,7 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
     span.SetAttributes(attribute.String("grpcError", errString))
     span.SetAttributes(attribute.String("grpcStatusCode", status.Code(err).String()))
   }
+  // Return response and error
   return resp, err
 }
 
@@ -160,16 +161,18 @@ func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHan
 
 func GqlgenResponseMiddleware(ctx context.Context, handler graphql.ResponseHandler) *graphql.Response {
   span := SpanFromContext(ctx)
-  errors := graphql.GetErrors(ctx)
+  // Handle request
+  resp := handler(ctx)
 
-  if len(errors) != 0 {
+  if len(resp.Errors) != 0 {
     // Set span error status
-    errString := errors.Error()
+    errString := resp.Errors.Error()
     span.SetStatus(otelCodes.Error, errString)
     // Set GraphQL error attributes
     span.SetAttributes(attribute.String("graphqlError", errString))
   }
   graphql.RegisterExtension(ctx, "traceID", span.SpanContext().TraceID())
 
-  return handler(ctx)
+  // Return response
+  return resp
 }
