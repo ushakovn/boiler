@@ -19,11 +19,12 @@ type calledAppOptions struct {
   grpcServerOptions []grpc.ServerOption
 
   // GraphQL
-  gqlgenServePort   int
-  gqlgenMiddlewares []func(http.Handler) http.Handler
+  gqlgenServePort int
+  gqlgenMWs       []func(http.Handler) http.Handler
 
-  gqlgenFieldMiddlewares     []graphql.FieldMiddleware
-  gqlgenOperationMiddlewares []graphql.OperationMiddleware
+  gqlgenFieldMWs     []graphql.FieldMiddleware
+  gqlgenOperationMWs []graphql.OperationMiddleware
+  gqlgenResponseMWs  []graphql.ResponseMiddleware
 }
 
 func defaultOptions() []Option {
@@ -39,6 +40,7 @@ func defaultOptions() []Option {
     // Tracing options
     WithGrpcUnaryServerInterceptors(tracing.GrpcServerUnaryInterceptor),
     WithGqlgenOperationMiddlewares(tracing.GqlgenOperationMiddleware),
+    WithGqlgenResponseMiddlewares(tracing.GqlgenResponseMiddleware),
   }
   return options
 }
@@ -100,18 +102,24 @@ func WithGqlgenServePort(port int) Option {
 
 func WithGqlgenMiddlewares(middlewares ...func(http.Handler) http.Handler) Option {
   return func(o *calledAppOptions) {
-    o.gqlgenMiddlewares = append(o.gqlgenMiddlewares, middlewares...)
+    o.gqlgenMWs = append(o.gqlgenMWs, middlewares...)
   }
 }
 
 func WithGqlgenFieldMiddlewares(middlewares ...graphql.FieldMiddleware) Option {
   return func(o *calledAppOptions) {
-    o.gqlgenFieldMiddlewares = append(o.gqlgenFieldMiddlewares, middlewares...)
+    o.gqlgenFieldMWs = append(o.gqlgenFieldMWs, middlewares...)
   }
 }
 
 func WithGqlgenOperationMiddlewares(middlewares ...graphql.OperationMiddleware) Option {
   return func(o *calledAppOptions) {
-    o.gqlgenOperationMiddlewares = append(o.gqlgenOperationMiddlewares, middlewares...)
+    o.gqlgenOperationMWs = append(o.gqlgenOperationMWs, middlewares...)
+  }
+}
+
+func WithGqlgenResponseMiddlewares(middlewares ...graphql.ResponseMiddleware) Option {
+  return func(o *calledAppOptions) {
+    o.gqlgenResponseMWs = append(o.gqlgenResponseMWs, middlewares...)
   }
 }

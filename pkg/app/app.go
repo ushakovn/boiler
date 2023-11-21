@@ -31,10 +31,11 @@ type App struct {
   // GraphQL
   gqlgenPort   int
   gqlgenRouter chi.Router
+  gqlgenServer *handler.Server
 
-  gqlgenServer       *handler.Server
   gqlgenFieldMWs     []graphql.FieldMiddleware
   gqlgenOperationMWs []graphql.OperationMiddleware
+  gqlgenResponseMWs  []graphql.ResponseMiddleware
 
   // Shutdown
   appCtx    context.Context
@@ -49,7 +50,7 @@ func NewApp(calls ...Option) *App {
   grpcServer := grpc.NewServer(options.grpcServerOptions...)
 
   // Create gqlgen router with middlewares
-  gqlgenRouter := chi.NewRouter().With(options.gqlgenMiddlewares...)
+  gqlgenRouter := chi.NewRouter().With(options.gqlgenMWs...)
 
   // Create app context
   appCtx := context.Background()
@@ -65,8 +66,8 @@ func NewApp(calls ...Option) *App {
     grpcServer:   grpcServer,
     gqlgenRouter: gqlgenRouter,
 
-    gqlgenFieldMWs:     options.gqlgenFieldMiddlewares,
-    gqlgenOperationMWs: options.gqlgenOperationMiddlewares,
+    gqlgenFieldMWs:     options.gqlgenFieldMWs,
+    gqlgenOperationMWs: options.gqlgenOperationMWs,
 
     appCtx:    appCtx,
     appCloser: appCloser,
@@ -184,6 +185,9 @@ func (a *App) registerGqlgenAroundMWs() {
   }
   for _, aroundFields := range a.gqlgenFieldMWs {
     a.gqlgenServer.AroundFields(aroundFields)
+  }
+  for _, aroundFields := range a.gqlgenResponseMWs {
+    a.gqlgenServer.AroundResponses(aroundFields)
   }
 }
 

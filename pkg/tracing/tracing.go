@@ -77,6 +77,11 @@ func StartContextSpan(ctx context.Context, name string, opts ...trace.SpanStartO
   return ctx
 }
 
+func SpanFromContext(ctx context.Context) trace.Span {
+  // Wrap span from context
+  return trace.SpanFromContext(ctx)
+}
+
 func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
   // Tracing interceptor
   spanCtx, span := StartContextWithSpan(ctx, info.FullMethod,
@@ -90,7 +95,7 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
   )
   // Handle request
   if resp, err = handler(spanCtx, req); err != nil {
-    // Set error status
+    // Set span error status
     errString := err.Error()
     span.SetStatus(otelCodes.Error, errString)
     // Set gRPC error attributes
@@ -102,64 +107,69 @@ func GrpcServerUnaryInterceptor(ctx context.Context, req any, info *grpc.UnarySe
 
 func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHandler) graphql.ResponseHandler {
   // Tracing middleware
-  return func(ctx context.Context) *graphql.Response {
-    if graphql.HasOperationContext(ctx) {
-      // Extract operation context
-      opCtx := graphql.GetOperationContext(ctx)
-
-      var (
-        opTyp  string
-        opName string
-      )
-      if operation := opCtx.Operation; operation != nil {
-        opTyp = opCtx.Operation.Name
-        opName = string(opCtx.Operation.Operation)
-      }
-
-      spanCtx, span := StartContextWithSpan(ctx, opCtx.OperationName,
-        // Start span options
-        trace.WithSpanKind(trace.SpanKindServer),
-        trace.WithTimestamp(time.Now().UTC()),
-
-        // Operation context info
-        trace.WithAttributes(
-          attribute.String("operationType", opTyp),
-          attribute.String("operationName", opName),
-
-          attribute.String("statsOperationStart",
-            opCtx.Stats.OperationStart.Format(time.RFC3339),
-          ),
-
-          attribute.StringSlice("statsRead", []string{
-            opCtx.Stats.Read.Start.Format(time.RFC3339),
-            opCtx.Stats.Read.End.Format(time.RFC3339),
-          }),
-
-          attribute.StringSlice("statsParsing", []string{
-            opCtx.Stats.Parsing.Start.Format(time.RFC3339),
-            opCtx.Stats.Parsing.End.Format(time.RFC3339),
-          }),
-
-          attribute.StringSlice("statsParsing", []string{
-            opCtx.Stats.Validation.Start.Format(time.RFC3339),
-            opCtx.Stats.Validation.End.Format(time.RFC3339),
-          }),
-        ),
-      )
-      defer span.End(
-        trace.WithStackTrace(true),
-        trace.WithTimestamp(time.Now().UTC()),
-      )
-      resp := handler(spanCtx)(spanCtx)
-
-      if len(resp.Errors) != 0 {
-        // Set error status
-        errString := resp.Errors.Error()
-        span.SetStatus(otelCodes.Error, errString)
-        // Set GraphQL error attributes
-        span.SetAttributes(attribute.String("graphqlError", errString))
-      }
+  if graphql.HasOperationContext(ctx) {
+    // Extract operation context
+    opCtx := graphql.GetOperationContext(ctx)
+    var (
+      opTyp  string
+      opName string
+    )
+    if operation := opCtx.Operation; operation != nil {
+      opTyp = opCtx.Operation.Name
+      opName = string(opCtx.Operation.Operation)
     }
-    return handler(ctx)(ctx)
+    var span trace.Span
+
+    ctx, span = StartContextWithSpan(ctx, opCtx.OperationName,
+      // Start span options
+      trace.WithSpanKind(trace.SpanKindServer),
+      trace.WithTimestamp(time.Now().UTC()),
+
+      // Operation context info
+      trace.WithAttributes(
+        attribute.String("operationType", opTyp),
+        attribute.String("operationName", opName),
+
+        attribute.String("statsOperationStart",
+          opCtx.Stats.OperationStart.Format(time.RFC3339),
+        ),
+
+        attribute.StringSlice("statsRead", []string{
+          opCtx.Stats.Read.Start.Format(time.RFC3339),
+          opCtx.Stats.Read.End.Format(time.RFC3339),
+        }),
+
+        attribute.StringSlice("statsParsing", []string{
+          opCtx.Stats.Parsing.Start.Format(time.RFC3339),
+          opCtx.Stats.Parsing.End.Format(time.RFC3339),
+        }),
+
+        attribute.StringSlice("statsParsing", []string{
+          opCtx.Stats.Validation.Start.Format(time.RFC3339),
+          opCtx.Stats.Validation.End.Format(time.RFC3339),
+        }),
+      ),
+    )
+    defer span.End(
+      trace.WithStackTrace(true),
+      trace.WithTimestamp(time.Now().UTC()),
+    )
   }
+  return handler(ctx)
+}
+
+func GqlgenResponseMiddleware(ctx context.Context, handler graphql.ResponseHandler) *graphql.Response {
+  span := SpanFromContext(ctx)
+  errors := graphql.GetErrors(ctx)
+
+  if len(errors) != 0 {
+    // Set span error status
+    errString := errors.Error()
+    span.SetStatus(otelCodes.Error, errString)
+    // Set GraphQL error attributes
+    span.SetAttributes(attribute.String("graphqlError", errString))
+  }
+  graphql.RegisterExtension(ctx, "traceID", span.SpanContext().TraceID())
+
+  return handler(ctx)
 }
