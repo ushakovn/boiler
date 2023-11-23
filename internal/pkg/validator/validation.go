@@ -1,9 +1,28 @@
 package validator
 
 import (
+  "errors"
   "fmt"
   "reflect"
+  "strings"
 )
+
+type ValidateFunc func() error
+
+func Validate(fs ...ValidateFunc) error {
+  errStrParts := make([]string, 0, len(fs))
+
+  for _, f := range fs {
+    if err := f(); err != nil {
+      errStrParts = append(errStrParts, err.Error())
+    }
+  }
+  if len(errStrParts) != 0 {
+    errStr := strings.Join(errStrParts, "\n")
+    return errors.New(errStr)
+  }
+  return nil
+}
 
 func ValidateStructWithTags[T any](structPtr T, tagKeys ...string) error {
   if len(tagKeys) == 0 {

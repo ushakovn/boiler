@@ -22,15 +22,15 @@ type externalProtoDependency struct {
 }
 
 func (d *protoDependencies) Validate() error {
-  validators := make([]validator.Validator, 0, len(d.LocalDeps)+len(d.ExternalDeps))
+  fs := make([]validator.ValidateFunc, 0, len(d.LocalDeps)+len(d.ExternalDeps))
 
   for _, protoDep := range d.LocalDeps {
-    validators = append(validators, protoDep)
+    fs = append(fs, protoDep.Validate)
   }
   for _, protoDep := range d.ExternalDeps {
-    validators = append(validators, protoDep)
+    fs = append(fs, protoDep.Validate)
   }
-  return validator.Validate(validators...)
+  return validator.Validate(fs...)
 }
 
 func (d *localProtoDependency) Validate() error {
