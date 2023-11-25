@@ -4,7 +4,7 @@ import (
   "net/http"
 
   "github.com/99designs/gqlgen/graphql"
-  "github.com/samber/lo"
+  grpcMW "github.com/grpc-ecosystem/go-grpc-middleware"
   recover "github.com/ushakovn/boiler/pkg/recover/middlewares"
   tracing "github.com/ushakovn/boiler/pkg/tracing/middlewares"
   "google.golang.org/grpc"
@@ -18,6 +18,10 @@ type calledAppOptions struct {
   // gRPC
   grpcServePort     int
   grpcServerOptions []grpc.ServerOption
+
+  grpcStatsHandler       stats.Handler
+  grpcTapInHandler       tap.ServerInHandle
+  grpcServerInterceptors []grpc.UnaryServerInterceptor
 
   // GraphQL
   gqlgenServePort int
@@ -37,6 +41,7 @@ func defaultOptions() []Option {
     // Port options
     WithGrpcServePort(defaultGrpcPort),
     WithGqlgenServePort(defaultGqlgenPort),
+
 
     // Panic recover options
     WithGrpcUnaryServerInterceptors(recover.GrpcServerUnaryInterceptor),
@@ -60,42 +65,51 @@ func callAppOptions(calls ...Option) *calledAppOptions {
   return o
 }
 
+func buildGrpcServerOptions(options *calledAppOptions) []grpc.ServerOption {
+  // Set stats handler
+  if h := options.grpcStatsHandler; h != nil {
+    options.grpcServerOptions = append(options.grpcServerOptions, grpc.StatsHandler(h))
+  }
+  // Set tap in handler
+  if h := options.grpcTapInHandler; h != nil {
+    options.grpcServerOptions = append(options.grpcServerOptions, grpc.InTapHandle(h))
+  }
+  // Set interceptors chain
+  if len(options.grpcServerInterceptors) > 0 {
+    chain := grpcMW.ChainUnaryServer(options.grpcServerInterceptors...)
+    options.grpcServerOptions = append(options.grpcServerOptions, grpc.UnaryInterceptor(chain))
+  }
+  return options.grpcServerOptions
+}
+
 func WithGrpcServePort(port int) Option {
   return func(o *calledAppOptions) {
     o.grpcServePort = port
   }
 }
 
+func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor) Option {
+  return func(o *calledAppOptions) {
+    o.grpcServerInterceptors = append(o.grpcServerInterceptors, interceptors...)
+  }
+}
+
+func WithGrpcStatsHandlers(handler stats.Handler) Option {
+  return func(o *calledAppOptions) {
+    o.grpcStatsHandler = handler
+  }
+}
+
+func WithGrpcTapHandler(handler tap.ServerInHandle) Option {
+  return func(o *calledAppOptions) {
+    o.grpcTapInHandler = handler
+  }
+}
+
+// WithGrpcServerOptions USE IN YOUR OWN RISK
 func WithGrpcServerOptions(options ...grpc.ServerOption) Option {
   return func(o *calledAppOptions) {
     o.grpcServerOptions = append(o.grpcServerOptions, options...)
-  }
-}
-
-func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor) Option {
-  return func(o *calledAppOptions) {
-    serverOptions := lo.Map(interceptors, func(interceptor grpc.UnaryServerInterceptor, _ int) grpc.ServerOption {
-      return grpc.UnaryInterceptor(interceptor)
-    })
-    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
-  }
-}
-
-func WithGrpcStatsHandlers(handlers ...stats.Handler) Option {
-  return func(o *calledAppOptions) {
-    serverOptions := lo.Map(handlers, func(handler stats.Handler, _ int) grpc.ServerOption {
-      return grpc.StatsHandler(handler)
-    })
-    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
-  }
-}
-
-func WithGrpcTapHandlers(handlers ...tap.ServerInHandle) Option {
-  return func(o *calledAppOptions) {
-    serverOptions := lo.Map(handlers, func(handler tap.ServerInHandle, _ int) grpc.ServerOption {
-      return grpc.InTapHandle(handler)
-    })
-    o.grpcServerOptions = append(o.grpcServerOptions, serverOptions...)
   }
 }
 

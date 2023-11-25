@@ -47,10 +47,13 @@ func NewApp(calls ...Option) *App {
   // Call all options
   options := callAppOptions(calls...)
 
-  // Create grpc server with options
-  grpcServer := grpc.NewServer(options.grpcServerOptions...)
+  // Build gRPC server options
+  grpcServerOptions := buildGrpcServerOptions(options)
 
-  // Create gqlgen router with middlewares
+  // Create gRPC server with options
+  grpcServer := grpc.NewServer(grpcServerOptions...)
+
+  // Create GraphQL router with middlewares
   gqlgenRouter := chi.NewRouter().With(options.gqlgenMWs...)
 
   // Create app context
@@ -203,7 +206,7 @@ func (a *App) registerGqlgenAroundMWs() {
   }
 }
 
-// GqlgenRouter MUTATE APP ROUTER IN YOUR OWN RISK
+// GqlgenRouter USE IN YOUR OWN RISK
 func (a *App) GqlgenRouter() chi.Router {
   a.mu.Lock()
   defer a.mu.Unlock()
