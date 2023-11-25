@@ -43,25 +43,21 @@ func (g *GenConfig) Init(_ context.Context) error {
   return nil
 }
 
-func (g *GenConfig) Generate(ctx context.Context) error {
-  // TODO
-
+func (g *GenConfig) Generate(_ context.Context) error {
   configDesc, err := g.loadGenConfigDesc()
   if err != nil {
-    return fmt.Errorf("g.loadGenConfigDesc: %w", err)
+    return err
   }
-
   configFolder, err := filer.CreateNestedFolders(g.workDirPath, "internal", "config")
   if err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
-
   templatesFuncMap := template.FuncMap{
     "toLowerCamelCase": stringer.StringToLowerCamelCase,
     "toUpperCamelCase": stringer.StringToUpperCamelCase,
     "toSnakeCase":      stringer.StringToSnakeCase,
+    "toCapitalizeCase": stringer.StringToCapitalizeCase,
   }
-
   for _, cnf := range configTemplates {
     filePath := filepath.Join(configFolder, cnf.fileName)
 
@@ -69,7 +65,6 @@ func (g *GenConfig) Generate(ctx context.Context) error {
       return fmt.Errorf("execTemplateCopy: %w", err)
     }
   }
-
   return nil
 }
 
@@ -81,10 +76,10 @@ type configTemplate struct {
 var configTemplates = []*configTemplate{
   {
     fileName:         "groups.go",
-    compiledTemplate: "", // TODO
+    compiledTemplate: templates.GenConfigGroups,
   },
   {
     fileName:         "config.go",
-    compiledTemplate: "", // TODO
+    compiledTemplate: templates.GenConfigConfig,
   },
 }

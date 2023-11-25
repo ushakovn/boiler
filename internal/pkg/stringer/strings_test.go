@@ -154,3 +154,40 @@ func Test_StringToLowerCamelCase(t *testing.T) {
     })
   }
 }
+
+func Test_StringToCapitalizeCase(t *testing.T) {
+  type testCase struct {
+    s        string
+    expected string
+  }
+  testCases := []*testCase{
+    {
+      s:        "snake_cased_string",
+      expected: "SNAKE_CASED_STRING",
+    },
+    {
+      s:        "camel",
+      expected: "CAMEL",
+    },
+    {
+      s:        "Camel",
+      expected: "CAMEL",
+    },
+    {
+      s:        "BatchUploadPhotosV2",
+      expected: "BATCH_UPLOAD_PHOTOS_V2",
+    },
+    {
+      s:        "BatchUploadPhotos2",
+      expected: "BATCH_UPLOAD_PHOTOS2",
+    },
+  }
+  for _, tt := range testCases {
+    tt := tt
+
+    t.Run(tt.s, func(t *testing.T) {
+      actual := StringToCapitalizeCase(tt.s)
+      assert.Equal(t, tt.expected, actual)
+    })
+  }
+}

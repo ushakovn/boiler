@@ -2,6 +2,7 @@ package gen
 
 import (
   "github.com/spf13/cobra"
+  cmdConfig "github.com/ushakovn/boiler/cmd/root/gen/config"
   cmdGqlgen "github.com/ushakovn/boiler/cmd/root/gen/gqlgen"
   cmdGrpc "github.com/ushakovn/boiler/cmd/root/gen/grpc"
   cmdClients "github.com/ushakovn/boiler/cmd/root/gen/protodeps"
@@ -16,5 +17,11 @@ var CmdGen = &cobra.Command{
 }
 
 func init() {
-  CmdGen.AddCommand(cmdGrpc.CmdGrpc, cmdStorage.CmdStorage, cmdGqlgen.CmdGqlgen, cmdClients.CmdProtoDeps)
+  CmdGen.AddCommand(
+    cmdGrpc.CmdGrpc,
+    cmdStorage.CmdStorage,
+    cmdGqlgen.CmdGqlgen,
+    cmdClients.CmdProtoDeps,
+    cmdConfig.CmdConfig,
+  )
 }

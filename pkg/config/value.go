@@ -13,7 +13,7 @@ type Value interface {
   Uint32() uint32
   Uint64() uint64
   Float32() float32
-  float64() float64
+  Float64() float64
   String() string
   Bool() bool
   Time() time.Time
@@ -48,7 +48,7 @@ func (c configValue) Float32() float32 {
   return cast.ToFloat32(c.value)
 }
 
-func (c configValue) float64() float64 {
+func (c configValue) Float64() float64 {
   return cast.ToFloat64(c.value)
 }
 

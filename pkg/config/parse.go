@@ -9,7 +9,7 @@ import (
   "gopkg.in/yaml.v3"
 )
 
-func parseConfig() (*configParsed, error) {
+func ParseConfig() (*Parsed, error) {
   configPath := filepath.Join(".boiler", "config.yaml")
 
   absConfigPath, err := filepath.Abs(configPath)
@@ -20,7 +20,7 @@ func parseConfig() (*configParsed, error) {
   if err != nil {
     return nil, fmt.Errorf("config file read failed: %w", err)
   }
-  parsed := &configParsed{}
+  parsed := &Parsed{}
 
   if err = yaml.Unmarshal(configBuf, parsed); err != nil {
     return nil, fmt.Errorf("yaml unmarshal failed: %w", err)
@@ -28,7 +28,7 @@ func parseConfig() (*configParsed, error) {
   return parsed, err
 }
 
-func collectAppInfo(appSection configAppSection) AppInfo {
+func collectAppInfo(appSection *AppSection) AppInfo {
   return AppInfo{
     Name:        appSection.Name,
     Version:     appSection.Version,
@@ -36,7 +36,7 @@ func collectAppInfo(appSection configAppSection) AppInfo {
   }
 }
 
-func collectConfigValues(customSection configCustomSection) (configValues, error) {
+func collectConfigValues(customSection CustomSection) (configValues, error) {
   values := configValues{}
 
   for csKey, csVal := range customSection {
@@ -74,7 +74,7 @@ func castConfigValue(typ, rawValue string) (any, error) {
   case "uint64":
     value, err = cast.ToUint64E(rawValue)
   case "string":
-    value, err = cast.ToSliceE(rawValue)
+    value, err = cast.ToStringE(rawValue)
   case "bool":
     value, err = cast.ToBoolE(rawValue)
   case "time":

@@ -31,12 +31,12 @@ func ClientConfig() Client {
 
 func InitClientConfig() {
   once.Do(func() {
-    parsed, err := parseConfig()
+    parsed, err := ParseConfig()
     if err != nil {
-      log.Fatalf("config: parsing failed: %v", err)
+      log.Fatalf("config: parsing failed:\n%v", err)
     }
     if err = parsed.Validate(); err != nil {
-      log.Fatalf("config: validation failed: %v", err)
+      log.Fatalf("config: validation failed:\n%v", err)
     }
     app := collectAppInfo(parsed.App)
 

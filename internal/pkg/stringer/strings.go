@@ -142,6 +142,38 @@ func StringToLowerCase(s string) string {
   return string(out)
 }
 
+func StringToCapitalizeCase(s string) string {
+  if IsCamelCase(s) {
+    return CamelCaseToCapitalizeCase(s)
+  }
+  if IsSnakeCase(s) {
+    return SnakeCaseToCapitalizeCase(s)
+  }
+  return ""
+}
+
+func CamelCaseToCapitalizeCase(s string) string {
+  count := len([]rune(s))
+  out := make([]rune, 0, len([]rune(s)))
+
+  for index, ch := range s {
+    if index != 0 && index != count-1 && unicode.IsUpper(ch) {
+      out = append(out, '_')
+    }
+    out = append(out, unicode.ToUpper(ch))
+  }
+  return string(out)
+}
+
+func SnakeCaseToCapitalizeCase(s string) string {
+  out := make([]rune, 0, len([]rune(s)))
+
+  for _, ch := range s {
+    out = append(out, unicode.ToUpper(ch))
+  }
+  return string(out)
+}
+
 func IsWrongCase(s string) bool {
   isCamel := IsCamelCase(s)
   isSnake := IsSnakeCase(s)

@@ -155,7 +155,7 @@ func AppendStringToFile(filePath, rawString string) error {
     "\n", rawString, "\n",
   }
   for _, target := range targetStrings {
-    // Write any target string
+    // WriteWithBreak any target string
     if _, err = file.WriteString(target); err != nil {
       return fmt.Errorf("file.WriteString: %w", err)
     }

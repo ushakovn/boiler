@@ -1,4 +1,4 @@
-package protodeps
+package config
 
 import (
   "context"
@@ -7,26 +7,26 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   "github.com/ushakovn/boiler/internal/boiler/gen"
-  "github.com/ushakovn/boiler/internal/pkg/gens/protodeps"
+  "github.com/ushakovn/boiler/internal/pkg/gens/config"
 )
 
-var CmdProtoDeps = &cobra.Command{
-  Use: "proto-deps",
+var CmdConfig = &cobra.Command{
+  Use: "config",
 
-  Short: "Init a Proto dependencies components",
-  Long:  `Init a Proto dependencies components`,
+  Short: "Init a boiler app config",
+  Long:  `Init a boiler app config`,
 
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    initor, err := gen.NewInitor(protodeps.Config{})
+    initor, err := gen.NewInitor(config.Config{})
     if err != nil {
       return fmt.Errorf("boiler: failed to create initor: %w", err)
     }
     if err = initor.Init(ctx); err != nil {
       return fmt.Errorf("boiler: initor failed: %w", err)
     }
-    log.Infof("boiler: proto dependencies components initialized")
+    log.Infof("boiler: app config initialized")
 
     return nil
   },

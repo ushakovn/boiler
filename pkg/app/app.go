@@ -14,7 +14,7 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/gqlgen"
-  "github.com/ushakovn/boiler/pkg/tracing"
+  "github.com/ushakovn/boiler/pkg/tracing/tracer"
   "google.golang.org/grpc"
   "google.golang.org/grpc/reflection"
 )
@@ -205,7 +205,7 @@ func (a *App) registerTracer() {
     serviceName = "Boiler"
     serviceVer  = "v0.0.1"
   )
-  shutdowns := tracing.InitTracer(a.appCtx, serviceName, serviceVer)
+  shutdowns := tracer.InitTracer(a.appCtx, serviceName, serviceVer)
 
   log.Infof("boiler: tracing registered")
 

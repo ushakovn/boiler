@@ -2,6 +2,7 @@ package init
 
 import (
   "github.com/spf13/cobra"
+  cmdConfig "github.com/ushakovn/boiler/cmd/root/init/config"
   cmdGqlgen "github.com/ushakovn/boiler/cmd/root/init/gqlgen"
   cmdGrpc "github.com/ushakovn/boiler/cmd/root/init/grpc"
   cmdProtoDeps "github.com/ushakovn/boiler/cmd/root/init/protodeps"
@@ -16,5 +17,11 @@ var CmdInit = &cobra.Command{
 }
 
 func init() {
-  CmdInit.AddCommand(cmdGrpc.CmdGrpc, cmdGqlgen.CmdGqlgen, cmdProtoDeps.CmdProtoDeps, cmdStorage.CmdStorage)
+  CmdInit.AddCommand(
+    cmdGrpc.CmdGrpc,
+    cmdGqlgen.CmdGqlgen,
+    cmdProtoDeps.CmdProtoDeps,
+    cmdStorage.CmdStorage,
+    cmdConfig.CmdConfig,
+  )
 }
