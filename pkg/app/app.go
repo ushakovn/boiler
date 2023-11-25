@@ -13,6 +13,7 @@ import (
   "github.com/go-chi/chi/v5"
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
+  "github.com/ushakovn/boiler/pkg/config"
   "github.com/ushakovn/boiler/pkg/gqlgen"
   "github.com/ushakovn/boiler/pkg/tracing/tracer"
   "google.golang.org/grpc"
@@ -76,6 +77,12 @@ func NewApp(calls ...Option) *App {
 }
 
 func (a *App) Run(services ...Service) {
+  defer func() {
+    if rec := recover(); rec != nil {
+      log.Errorf("boiler: app panic recovered: %v", rec)
+    }
+  }()
+
   a.once.Do(func() {
     a.registerApp(a.registerParams(), services...)
 
@@ -104,7 +111,6 @@ func (a *App) registerServices(params *RegisterParams, services ...Service) {
   for _, service := range services {
     service.RegisterService(params)
   }
-
   log.Infof("boiler: app services registered")
 }
 
@@ -116,6 +122,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
     a.registerGrpcServer()
   }
+
   // GraphQL components
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
     a.registerGqlgenSchemaServer(params)
@@ -123,6 +130,10 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
   }
+
+  // Config components
+  a.registerConfigClient()
+
   // Tracing components
   a.registerTracer()
 
@@ -200,14 +211,15 @@ func (a *App) GqlgenRouter() chi.Router {
   return a.gqlgenRouter
 }
 
+func (a *App) registerConfigClient() {
+  config.InitClientConfig()
+  log.Infof("boiler: config client registered")
+}
+
 func (a *App) registerTracer() {
-  const (
-    serviceName = "Boiler"
-    serviceVer  = "v0.0.1"
-  )
-  shutdowns := tracer.InitTracer(a.appCtx, serviceName, serviceVer)
+  info := config.ClientConfig().GetAppInfo()
+  shutdowns := tracer.InitTracer(a.appCtx, info.Name, info.Version)
 
   log.Infof("boiler: tracing registered")
-
   a.appCloser.Add(shutdowns...)
 }

@@ -1,8 +1,10 @@
 package config
 
 import (
-  "log"
+  "path/filepath"
   "sync"
+
+  log "github.com/sirupsen/logrus"
 )
 
 // Suppress unused variable
@@ -15,6 +17,7 @@ var (
 )
 
 type Client interface {
+  GetAppInfo() AppInfo
   GetValue(configKey string) Value
 }
 
@@ -31,7 +34,19 @@ func ClientConfig() Client {
 
 func InitClientConfig() {
   once.Do(func() {
-    parsed, err := ParseConfig()
+    mu.Lock()
+    defer mu.Unlock()
+
+    configPath := filepath.Join(".boiler", "config.yaml")
+
+    if !findConfig(configPath) {
+      log.Warnf("config: file not found: %s", configPath)
+      // Use noop client if config not found
+      client = newNoopClient()
+      return
+    }
+
+    parsed, err := ParseConfig(configPath)
     if err != nil {
       log.Fatalf("config: parsing failed:\n%v", err)
     }
@@ -44,9 +59,8 @@ func InitClientConfig() {
     if err != nil {
       log.Fatalf("boiler: values collecting failed: %v", err)
     }
-    mu.Lock()
-    defer mu.Unlock()
 
+    // Use default client
     client = newClient(app, values)
   })
 }
@@ -72,4 +86,25 @@ func (c *configClient) GetValue(configKey string) Value {
 
 func (c *configClient) GetAppInfo() AppInfo {
   return c.app
+}
+
+type noopConfigClient struct{}
+
+func newNoopClient() *noopConfigClient {
+  return &noopConfigClient{}
+}
+
+func (c *noopConfigClient) GetValue(string) Value {
+  return &configValue{}
+}
+
+func (c *noopConfigClient) GetAppInfo() AppInfo {
+  const (
+    name    = "Boiler"
+    version = "v0.0.1"
+  )
+  return AppInfo{
+    Name:    name,
+    Version: version,
+  }
 }

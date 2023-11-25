@@ -6,12 +6,15 @@ import (
   "path/filepath"
 
   "github.com/spf13/cast"
+  "github.com/ushakovn/boiler/internal/pkg/filer"
   "gopkg.in/yaml.v3"
 )
 
-func ParseConfig() (*Parsed, error) {
-  configPath := filepath.Join(".boiler", "config.yaml")
+func findConfig(configPath string) bool {
+  return filer.IsExistedFile(configPath)
+}
 
+func ParseConfig(configPath string) (*Parsed, error) {
   absConfigPath, err := filepath.Abs(configPath)
   if err != nil {
     return nil, fmt.Errorf("config file not found for path: %s", configPath)

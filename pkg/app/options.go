@@ -5,7 +5,8 @@ import (
 
   "github.com/99designs/gqlgen/graphql"
   "github.com/samber/lo"
-  mw "github.com/ushakovn/boiler/pkg/tracing/middlewares"
+  recover "github.com/ushakovn/boiler/pkg/recover/middlewares"
+  tracing "github.com/ushakovn/boiler/pkg/tracing/middlewares"
   "google.golang.org/grpc"
   "google.golang.org/grpc/stats"
   "google.golang.org/grpc/tap"
@@ -37,10 +38,14 @@ func defaultOptions() []Option {
     WithGrpcServePort(defaultGrpcPort),
     WithGqlgenServePort(defaultGqlgenPort),
 
+    // Panic recover options
+    WithGrpcUnaryServerInterceptors(recover.GrpcServerUnaryInterceptor),
+    WithGqlgenOperationMiddlewares(recover.GqlgenOperationMiddleware),
+
     // Tracing options
-    WithGrpcUnaryServerInterceptors(mw.GrpcServerUnaryInterceptor),
-    WithGqlgenOperationMiddlewares(mw.GqlgenOperationMiddleware),
-    WithGqlgenResponseMiddlewares(mw.GqlgenResponseMiddleware),
+    WithGrpcUnaryServerInterceptors(tracing.GrpcServerUnaryInterceptor),
+    WithGqlgenOperationMiddlewares(tracing.GqlgenOperationMiddleware),
+    WithGqlgenResponseMiddlewares(tracing.GqlgenResponseMiddleware),
   }
   return options
 }

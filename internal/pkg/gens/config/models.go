@@ -2,6 +2,7 @@ package config
 
 import (
   "fmt"
+  "path/filepath"
   "strings"
 
   "github.com/ushakovn/boiler/pkg/config"
@@ -37,7 +38,9 @@ type goPackageDesc struct {
 }
 
 func (g *GenConfig) loadGenConfigDesc() (*genConfigDesc, error) {
-  parsed, err := config.ParseConfig()
+  configPath := filepath.Join(".boiler", "config.yaml")
+
+  parsed, err := config.ParseConfig(configPath)
   if err != nil {
     return nil, fmt.Errorf("config parsing failed:\n%v", err)
   }
