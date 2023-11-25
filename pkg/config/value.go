@@ -61,9 +61,9 @@ func (c configValue) Bool() bool {
 }
 
 func (c configValue) Time() time.Time {
-  return cast.ToTime(c)
+  return cast.ToTime(c.value)
 }
 
 func (c configValue) Duration() time.Duration {
-  return cast.ToDuration(c)
+  return cast.ToDuration(c.value)
 }
