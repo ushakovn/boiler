@@ -10,6 +10,7 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
+  "github.com/ushakovn/boiler/internal/pkg/makefile"
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
@@ -71,8 +72,8 @@ func (g *Gqlgen) Init(ctx context.Context) error {
   if err = g.createGqlgenTools(); err != nil {
     return fmt.Errorf("g.createGqlgenTools: %w", err)
   }
-  if err = g.createMakeMkTarget(); err != nil {
-    return fmt.Errorf("g.createMakeMkTarget: %w", err)
+  if err = g.createMakeMkTargetIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
   }
   if err = g.createMakefileIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
@@ -91,13 +92,16 @@ func (g *Gqlgen) Generate(ctx context.Context) error {
   filePath := filepath.Join(folderPath, "service.go")
 
   if filer.IsExistedFile(filePath) {
-    if err := g.regenerateGqlgenService(filePath); err != nil {
+    if err = g.regenerateGqlgenService(filePath); err != nil {
       return fmt.Errorf("g.regenerateGqlgenService: %w", err)
     }
   } else {
-    if err := g.generateGqlgenService(filePath); err != nil {
+    if err = g.generateGqlgenService(filePath); err != nil {
       return fmt.Errorf("g.generateGqlgenService: %w", err)
     }
+  }
+  if err = g.createMakeMkTargetIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
   }
   return nil
 }
@@ -121,11 +125,11 @@ func (g *Gqlgen) generateGqlgenService(filePath string) error {
 func (g *Gqlgen) regenerateGqlgenService(filePath string) error {
   const methodName = "RegisterService"
 
-  methodFound, err := ast.FindMethodDeclaration(filePath, methodName)
+  ok, err := ast.ContainsMethodDecl(filePath, methodName)
   if err != nil {
-    return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
+    return fmt.Errorf("aster.ContainsMethodDecl: %w", err)
   }
-  if methodFound {
+  if ok {
     return nil
   }
   if err = filer.AppendStringToFile(filePath, templates.GqlgenRegisterService); err != nil {
@@ -137,18 +141,42 @@ func (g *Gqlgen) regenerateGqlgenService(filePath string) error {
 func (g *Gqlgen) createMakeMkTargetIfNotExist() error {
   filePath := filepath.Join(g.workDirPath, "make.mk")
 
-  if !filer.IsExistedFile(filePath) {
-    if err := g.createMakeMkTarget(); err != nil {
+  type makeMkTarget struct {
+    targetName       string
+    compiledTemplate string
+  }
+
+  targets := []*makeMkTarget{
+    {
+      targetName:       templates.GqlgenMakeMkBinDepsName,
+      compiledTemplate: templates.GqlgenMakeMkBinDeps,
+    },
+    {
+      targetName:       templates.GqlgenMakeMkGenerateName,
+      compiledTemplate: templates.GqlgenMakeMkGenerate,
+    },
+  }
+
+  for _, target := range targets {
+    ok, err := makefile.ContainsTarget(filePath, target.targetName)
+    if err != nil {
+      return fmt.Errorf("makefile.ContainsTarget: %w", err)
+    }
+    if ok {
+      continue
+    }
+    if err = g.createMakeMkTarget(target.compiledTemplate); err != nil {
       return fmt.Errorf("g.createMakeMkTarget: %w", err)
     }
   }
+
   return nil
 }
 
-func (g *Gqlgen) createMakeMkTarget() error {
+func (g *Gqlgen) createMakeMkTarget(makeMkTemplate string) error {
   makeMkPath := filepath.Join(g.workDirPath, "make.mk")
 
-  if err := filer.AppendStringToFile(makeMkPath, templates.GqlgenMakeMk); err != nil {
+  if err := filer.AppendStringToFile(makeMkPath, makeMkTemplate); err != nil {
     return fmt.Errorf("filer.AppendStringToFile: %w", err)
   }
   return nil
@@ -166,7 +194,11 @@ func (g *Gqlgen) createMakefileIfNotExist() error {
 }
 
 func (g *Gqlgen) createGqlgenConfig() error {
-  filePath := filepath.Join(g.workDirPath, "gqlgen_config.yaml")
+  folderPath, err := filer.CreateNestedFolders(g.workDirPath, ".config")
+  if err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  filePath := filepath.Join(folderPath, "gqlgen_config.yaml")
 
   if err := templater.CopyTemplate(templates.GqlgenConfig, filePath); err != nil {
     return fmt.Errorf("copyTemplate: %w", err)

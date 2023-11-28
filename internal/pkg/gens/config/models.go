@@ -38,7 +38,7 @@ type goPackageDesc struct {
 }
 
 func (g *GenConfig) loadGenConfigDesc() (*genConfigDesc, error) {
-  configPath := filepath.Join(".boiler", "config.yaml")
+  configPath := filepath.Join(".config", "app_config.yaml")
 
   parsed, err := config.ParseConfig(configPath)
   if err != nil {

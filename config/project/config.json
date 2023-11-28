@@ -75,7 +75,7 @@
       },
       {
         "name": {
-          "value": ".boiler"
+          "value": ".cicd"
         },
         "files": [
           {

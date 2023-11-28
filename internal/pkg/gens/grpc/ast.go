@@ -229,11 +229,11 @@ func regenerateGrpcService(filePath string) error {
   if err := validateGrpcFileName(filePath); err != nil {
     return fmt.Errorf("validateGrpcFileName: %w", err)
   }
-  methodFound, err := astFunc.FindMethodDeclaration(filePath, methodName)
+  ok, err := astFunc.ContainsMethodDecl(filePath, methodName)
   if err != nil {
-    return fmt.Errorf("aster.FindMethodDeclaration: %w", err)
+    return fmt.Errorf("aster.ContainsMethodDecl: %w", err)
   }
-  if methodFound {
+  if ok {
     return nil
   }
   if err = filer.AppendStringToFile(filePath, templates.GrpcRegisterService); err != nil {

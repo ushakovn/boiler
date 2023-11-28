@@ -37,7 +37,7 @@ func InitClientConfig() {
     mu.Lock()
     defer mu.Unlock()
 
-    configPath := filepath.Join(".boiler", "config.yaml")
+    configPath := filepath.Join(".config", "app_config.yaml")
 
     if !findConfig(configPath) {
       log.Warnf("config: file not found: %s", configPath)

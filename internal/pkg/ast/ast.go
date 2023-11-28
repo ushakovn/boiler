@@ -9,7 +9,7 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/filer"
 )
 
-func FindMethodDeclaration(filePath string, methodName string) (bool, error) {
+func ContainsMethodDecl(filePath string, methodName string) (bool, error) {
   if fileExtension := filer.ExtractFileExtension(filePath); fileExtension != "go" {
     return false, fmt.Errorf("not a .go file specified: extension: %s", fileExtension)
   }

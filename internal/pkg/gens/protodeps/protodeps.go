@@ -12,6 +12,7 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/makefile"
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
   "gopkg.in/yaml.v3"
@@ -35,11 +36,13 @@ type Config struct {
 
 func (c Config) WithDefault() Config {
   if c.ProtoDepsPath == "" {
-    filePath, err := filepath.Abs("proto_deps.yaml")
+    filePath := filepath.Join(".config", "proto_deps_config.yaml")
+
+    absFilePath, err := filepath.Abs(filePath)
     if err != nil {
       log.Fatalf("boiler: not found proto deps file")
     }
-    c.ProtoDepsPath = filePath
+    c.ProtoDepsPath = absFilePath
   }
   return c
 }
@@ -79,27 +82,37 @@ func (g *ProtoDeps) Init(_ context.Context) error {
   if err := g.createProtoDepsDump(newProtoDependencies()); err != nil {
     return fmt.Errorf("g.createProtoDepsDump: %w", err)
   }
+  if err := g.createMakeMkTargetIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
+  }
+  if err := g.createMakefileIfNotExist(); err != nil {
+    return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
+  }
   return nil
 }
 
 func (g *ProtoDeps) createProtoDepsConfig() error {
-  filePath := filepath.Join(g.workDirPath, "proto_deps.yaml")
+  folderPath, err := filer.CreateNestedFolders(g.workDirPath, ".config")
+  if err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  filePath := filepath.Join(folderPath, "proto_deps_config.yaml")
 
-  if err := templater.ExecTemplateCopy(templates.ProtoDepsConfig, filePath, nil, nil); err != nil {
+  if err = templater.ExecTemplateCopy(templates.ProtoDepsConfig, filePath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)
   }
   return nil
 }
 
 func (g *ProtoDeps) createVendorFolder() error {
-  if _, err := filer.CreateNestedFolders(g.workDirPath, ".boiler", "vendor"); err != nil {
+  if _, err := filer.CreateNestedFolders(g.workDirPath, "proto"); err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
   return nil
 }
 
 func (g *ProtoDeps) createProtoDepsDump(protoDeps *protoDependencies) error {
-  filePath := filepath.Join(g.workDirPath, ".boiler", "vendor", "proto_deps_dump.yaml")
+  filePath := filepath.Join(g.workDirPath, "proto", "proto_deps_dump.yaml")
 
   if err := templater.ExecTemplateCopy(templates.ProtoDepsDump, filePath, protoDeps, nil); err != nil {
     return fmt.Errorf("templater.ExecTemplateCopy: %w", err)
@@ -108,54 +121,18 @@ func (g *ProtoDeps) createProtoDepsDump(protoDeps *protoDependencies) error {
 }
 
 func (g *ProtoDeps) filterProtoDeps(protoDeps *protoDependencies) (*protoDependencies, error) {
-  filePath := filepath.Join(g.workDirPath, ".boiler", "vendor", "proto_deps_dump.yaml")
+  filePath := filepath.Join(g.workDirPath, "proto", "proto_deps_dump.yaml")
 
   protoDepsDump, err := g.collectProtoDeps(filePath)
   if err != nil {
     return nil, fmt.Errorf("g.collectProtoDeps: %w", err)
   }
 
-  // Check local proto dependencies
-  checkProtoDeps := map[string]struct{}{}
-
-  for _, protoDepDump := range protoDepsDump.LocalDeps {
-    checkProtoDeps[protoDepDump.Path] = struct{}{}
-  }
-
-  // Filter local proto dependencies
-  var filteredLocalDeps []*localProtoDependency
-
-  for _, protoDep := range protoDeps.LocalDeps {
-    if _, ok := checkProtoDeps[protoDep.Path]; ok {
-      continue
-    }
-    checkProtoDeps[protoDep.Path] = struct{}{}
-    filteredLocalDeps = append(filteredLocalDeps, protoDep)
-  }
-
-  // Check external proto dependencies
-  checkProtoDeps = map[string]struct{}{}
-
-  for _, protoDepDump := range protoDepsDump.ExternalDeps {
-    checkProtoDeps[protoDepDump.Import] = struct{}{}
-  }
-
-  // Filter external proto dependencies
-  var filteredExternalDeps []*externalProtoDependency
-
-  for _, protoDep := range protoDeps.ExternalDeps {
-    if _, ok := checkProtoDeps[protoDep.Import]; ok {
-      continue
-    }
-    checkProtoDeps[protoDep.Import] = struct{}{}
-    filteredExternalDeps = append(filteredExternalDeps, protoDep)
-  }
-
   return &protoDependencies{
-    LocalDeps:    filteredLocalDeps,
-    ExternalDeps: filteredExternalDeps,
+    AppDeps:      filterExternalProtoDeps(protoDeps.AppDeps, protoDepsDump.AppDeps),
+    ExternalDeps: filterExternalProtoDeps(protoDeps.ExternalDeps, protoDepsDump.ExternalDeps),
+    LocalDeps:    filterLocalProtoDeps(protoDeps.LocalDeps, protoDepsDump.LocalDeps),
   }, nil
-
 }
 
 func (g *ProtoDeps) Generate(ctx context.Context) error {
@@ -164,39 +141,100 @@ func (g *ProtoDeps) Generate(ctx context.Context) error {
     return fmt.Errorf("g.collectProtoDeps: %w", err)
   }
 
+  if err = protoDeps.Validate(); err != nil {
+    return fmt.Errorf("protoDeps.Validate: %w", err)
+  }
+
+  if err = protoDeps.checkDuplicates(); err != nil {
+    return fmt.Errorf("protoDeps.checkDuplicates:\n%v", err)
+  }
+
+  // Create proto deps non-filtered copy
+  protoDepsCopy := copyProtoDeps(protoDeps)
+
   if !g.forceGenerate {
     if protoDeps, err = g.filterProtoDeps(protoDeps); err != nil {
       return fmt.Errorf("g.filterProtoDeps: %w", err)
     }
   }
 
-  if err = protoDeps.Validate(); err != nil {
-    return fmt.Errorf("protoDeps.Validate: %w", err)
-  }
-
-  dstProtoFolder, err := filer.CreateNestedFolders(g.workDirPath, "pkg", "pb")
-  if err != nil {
-    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
-  }
-
-  if protoDeps.HasLocalDeps() {
-    if err = g.generateLocalProtoDeps(ctx, dstProtoFolder, protoDeps.LocalDeps); err != nil {
-      return fmt.Errorf("g.generateLocalProtoDeps: %w", err)
-    }
-  }
-
-  if protoDeps.HasExternalDeps() {
-    if err = g.generateExternalProtoDeps(ctx, dstProtoFolder, protoDeps.ExternalDeps); err != nil {
-      return fmt.Errorf("g.generateExternalProtoDeps: %w", err)
-    }
-  }
-
   if protoDeps.HasDeps() {
-    if err = g.createProtoDepsDump(protoDeps); err != nil {
+
+    if protoDeps.HasAppDeps() {
+      if err = g.vendorAppProtoDeps(ctx, protoDeps.AppDeps); err != nil {
+        return fmt.Errorf("g.vendorAppProtoDeps: %w", err)
+      }
+    }
+
+    if protoDeps.HasLocalDeps() || protoDeps.HasExternalDeps() {
+
+      dstProtoFolder, err := g.createDstProtoFolder()
+      if err != nil {
+        return fmt.Errorf("g.createDstProtoFolder: %w", err)
+      }
+
+      if protoDeps.HasLocalDeps() {
+        if err = g.generateLocalProtoDeps(ctx, dstProtoFolder, protoDeps.LocalDeps); err != nil {
+          return fmt.Errorf("g.generateLocalProtoDeps: %w", err)
+        }
+      }
+
+      if protoDeps.HasExternalDeps() {
+        if err = g.generateExternalProtoDeps(ctx, dstProtoFolder, protoDeps.ExternalDeps); err != nil {
+          return fmt.Errorf("g.generateExternalProtoDeps: %w", err)
+        }
+      }
+    }
+
+    // Dump proto deps non-filtered copy
+    if err = g.createProtoDepsDump(protoDepsCopy); err != nil {
       return fmt.Errorf("g.createProtoDepsDump: %w", err)
     }
   }
 
+  return nil
+}
+
+func (g *ProtoDeps) createDstProtoFolder() (string, error) {
+  folderPath, err := filer.CreateNestedFolders(g.workDirPath, "pkg", "pb")
+  if err != nil {
+    return "", fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  return folderPath, nil
+}
+
+func (g *ProtoDeps) createMakeMkTargetIfNotExist() error {
+  filePath := filepath.Join(g.workDirPath, "make.mk")
+
+  ok, err := makefile.ContainsTarget(filePath, templates.ProtoDepsMakeMkBinDepsName)
+  if err != nil {
+    return fmt.Errorf("makefile.ContainsTarget: %w", err)
+  }
+  if !ok {
+    if err = g.createMakeMkTarget(); err != nil {
+      return fmt.Errorf("g.createMakeMkTarget: %w", err)
+    }
+  }
+  return nil
+}
+
+func (g *ProtoDeps) createMakeMkTarget() error {
+  makeMkPath := filepath.Join(g.workDirPath, "make.mk")
+
+  if err := filer.AppendStringToFile(makeMkPath, templates.ProtoDepsMakeMk); err != nil {
+    return fmt.Errorf("filer.AppendStringToFile: %w", err)
+  }
+  return nil
+}
+
+func (g *ProtoDeps) createMakefileIfNotExist() error {
+  filePath := filepath.Join(g.workDirPath, "Makefile")
+
+  if !filer.IsExistedFile(filePath) {
+    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, nil, nil); err != nil {
+      return fmt.Errorf("execTemplateCopy: %w", err)
+    }
+  }
   return nil
 }
 
@@ -260,6 +298,17 @@ func (g *ProtoDeps) generateLocalProtoDeps(ctx context.Context, dstProtoFolder s
   return nil
 }
 
+func (g *ProtoDeps) vendorAppProtoDeps(ctx context.Context, protoDeps []*externalProtoDependency) error {
+  for _, appProtoDep := range protoDeps {
+    log.Infof("boiler: vendor app proto dependency: %s", appProtoDep.Import)
+
+    if _, err := g.vendorExternalProtoDep(ctx, appProtoDep); err != nil {
+      return fmt.Errorf("g.vendorExternalProtoDep: %w", err)
+    }
+  }
+  return nil
+}
+
 func (g *ProtoDeps) vendorExternalProtoDep(ctx context.Context, protoDep *externalProtoDependency) (*localProtoDependency, error) {
   loadedProto, err := g.loadExternalProtoDep(ctx, protoDep)
   if err != nil {
@@ -267,7 +316,7 @@ func (g *ProtoDeps) vendorExternalProtoDep(ctx context.Context, protoDep *extern
   }
   parsedImport := parseGitHubProtoImport(protoDep.Import)
 
-  nestedFolders := []string{".boiler", "vendor", parsedImport.Owner, parsedImport.Repo, parsedImport.Package}
+  nestedFolders := []string{"proto", parsedImport.Owner, parsedImport.Repo, parsedImport.Package}
 
   folderPath, err := filer.CreateNestedFolders(g.workDirPath, nestedFolders...)
   if err != nil {
@@ -327,6 +376,13 @@ func buildGitHubContentRequest(protoImport string) string {
   contentUrl = fmt.Sprint(contentUrl, "?ref=", parsed.Commit)
 
   return contentUrl
+}
+
+func copyProtoDeps(srcProtoDeps *protoDependencies) *protoDependencies {
+  if srcProtoDeps == nil {
+    return nil
+  }
+  return &(*srcProtoDeps)
 }
 
 func (g *ProtoDeps) collectProtoDeps(filePath string) (*protoDependencies, error) {

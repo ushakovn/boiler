@@ -2,7 +2,6 @@ package protodeps
 
 import (
   "fmt"
-  "path/filepath"
   "strings"
 
   log "github.com/sirupsen/logrus"
@@ -15,7 +14,7 @@ type parsedLocalProtoPath struct {
 }
 
 func parseLocalProtoPath(protoPath string) *parsedLocalProtoPath {
-  pathPrefix := filepath.Join(".boiler", "vendor")
+  const pathPrefix = "proto"
 
   protoPath = strings.TrimPrefix(protoPath, fmt.Sprint(pathPrefix, "/"))
   pathParts := strings.Split(protoPath, "/")

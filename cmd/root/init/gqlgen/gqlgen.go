@@ -7,8 +7,10 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   "github.com/ushakovn/boiler/internal/boiler/gen"
+  "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
+  "github.com/ushakovn/boiler/templates"
 )
 
 var (
@@ -60,6 +62,10 @@ var CmdGqlgen = &cobra.Command{
 
     return nil
   },
+
+  PostRunE: func(cmd *cobra.Command, args []string) error {
+    return execMakeGqlgenBinDeps()
+  },
 }
 
 func init() {
@@ -67,4 +73,13 @@ func init() {
 
   CmdGqlgen.Flags().StringVar(&flagProjectConfigPath, "project-config-path", "", "path to project directories config in json/yaml")
   CmdGqlgen.Flags().StringVar(&flagGoModVersion, "go-mod-version", "", "go mod version for project")
+}
+
+func execMakeGqlgenBinDeps() error {
+  output, err := executor.ExecCmdCtxWithOut(context.Background(), "make", templates.GqlgenMakeMkBinDepsName)
+  if err != nil {
+    return fmt.Errorf("boiler: failed to exec: make %s", templates.GqlgenMakeMkBinDepsName)
+  }
+  log.Infof("boiler: %s", string(output))
+  return nil
 }

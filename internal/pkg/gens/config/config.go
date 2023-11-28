@@ -31,11 +31,11 @@ func NewGenConfig(_ Config) (*GenConfig, error) {
 }
 
 func (g *GenConfig) Init(_ context.Context) error {
-  configFolder, err := filer.CreateNestedFolders(g.workDirPath, ".boiler")
+  configFolder, err := filer.CreateNestedFolders(g.workDirPath, ".config")
   if err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
-  configPath := filepath.Join(configFolder, "config.yaml")
+  configPath := filepath.Join(configFolder, "app_config.yaml")
 
   if err = templater.ExecTemplateCopy(templates.GenConfigEmpty, configPath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)

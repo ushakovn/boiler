@@ -7,8 +7,10 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   "github.com/ushakovn/boiler/internal/boiler/gen"
+  "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/project"
+  "github.com/ushakovn/boiler/templates"
 )
 
 var (
@@ -54,9 +56,22 @@ var CmdGrpc = &cobra.Command{
 
     return nil
   },
+
+  PostRunE: func(cmd *cobra.Command, args []string) error {
+    return execMakeGrpcBinDeps()
+  },
 }
 
 func init() {
   CmdGrpc.Flags().StringVar(&flagProjectConfigPath, "project-config-path", "", "path to project directories config in json/yaml")
   CmdGrpc.Flags().StringVar(&flagGoModVersion, "go-mod-version", "", "go mod version for project")
+}
+
+func execMakeGrpcBinDeps() error {
+  output, err := executor.ExecCmdCtxWithOut(context.Background(), "make", templates.GrpcMakeMkBinDepsName)
+  if err != nil {
+    return fmt.Errorf("boiler: failed to exec: make %s", templates.GrpcMakeMkBinDepsName)
+  }
+  log.Infof("boiler: %s", string(output))
+  return nil
 }

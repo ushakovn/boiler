@@ -114,9 +114,13 @@ func (g *Storage) Generate(_ context.Context) error {
 }
 
 func (g *Storage) createPgConfig() error {
-  filePath := filepath.Join(g.workDirPath, "pg_config.yaml")
+  folderPath, err := filer.CreateNestedFolders(g.workDirPath, ".config")
+  if err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  filePath := filepath.Join(folderPath, "pg_config.yaml")
 
-  if err := templater.ExecTemplateCopy(templates.StorageConfig, filePath, nil, nil); err != nil {
+  if err = templater.ExecTemplateCopy(templates.StorageConfig, filePath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)
   }
   return nil

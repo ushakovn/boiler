@@ -9,6 +9,7 @@ import (
 
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/makefile"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
@@ -37,12 +38,16 @@ func NewGrpc(_ Config) (*Grpc, error) {
 }
 
 func (g *Grpc) Generate(ctx context.Context) error {
-  if err := g.createMakeMkTargetIfNotExist(); err != nil {
+  if err := g.createMakeMkTargetsIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
   }
   if err := g.createMakefileIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
   }
+  // UNUSED
+  //if err := g.createDocDirectoryIfNotExist(); err != nil {
+  //  return fmt.Errorf("g.createDocDirectoryIfNotExist: %w", err)
+  //}
   if err := g.generateMakeMkProto(ctx); err != nil {
     return fmt.Errorf("g.generateMakeMkProto: %w", err)
   }
@@ -60,7 +65,7 @@ func (g *Grpc) Init(_ context.Context) error {
   if err = g.createServiceProtoFile(protoDirPath); err != nil {
     return fmt.Errorf("g.createServiceProtoFile: %w", err)
   }
-  if err = g.createMakeMkTargetIfNotExist(); err != nil {
+  if err = g.createMakeMkTargetsIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakeMkTargetIfNotExist: %w", err)
   }
   if err = g.createMakefileIfNotExist(); err != nil {
@@ -173,26 +178,50 @@ func (g *Grpc) generateMakeMkProto(ctx context.Context) error {
   return nil
 }
 
-func (g *Grpc) createMakeMkTargetIfNotExist() error {
+func (g *Grpc) createMakeMkTargetsIfNotExist() error {
   const fileName = "make.mk"
   filePath := filepath.Join(g.workDirPath, fileName)
 
-  if !filer.IsExistedFile(filePath) {
-    if err := g.createMakeMkTarget(); err != nil {
+  type makeMkTarget struct {
+    targetName       string
+    compiledTemplate string
+  }
+
+  targets := []*makeMkTarget{
+    {
+      targetName:       templates.GrpcMakeMkBinDepsName,
+      compiledTemplate: templates.GrpcMakeMkBinDeps,
+    },
+    {
+      targetName:       templates.GrpcMakeMkGenerateName,
+      compiledTemplate: templates.GrpcMakeMkGenerate,
+    },
+  }
+
+  for _, target := range targets {
+    ok, err := makefile.ContainsTarget(filePath, target.targetName)
+    if err != nil {
+      return fmt.Errorf("makefile.ContainsTarget: %w", err)
+    }
+    if ok {
+      continue
+    }
+    if err = g.createMakeMkTarget(target.compiledTemplate); err != nil {
       return fmt.Errorf("g.createMakeMkTarget: %w", err)
     }
   }
+
   return nil
 }
 
-func (g *Grpc) createMakeMkTarget() error {
+func (g *Grpc) createMakeMkTarget(makeMkTemplate string) error {
   const fileName = "make.mk"
   goPackageTrim := g.goModuleName
 
   templateData := map[string]any{
     "goPackageTrim": goPackageTrim,
   }
-  executedBuf, err := templater.ExecTemplate(templates.GrpcMakeMk, templateData, nil)
+  executedBuf, err := templater.ExecTemplate(makeMkTemplate, templateData, nil)
   if err != nil {
     return fmt.Errorf("executeTemplate")
   }
@@ -223,6 +252,25 @@ func (g *Grpc) createProtoDirectory() (string, error) {
     return "", fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
   return protoDirPath, nil
+}
+
+func (g *Grpc) createDocDirectoryIfNotExist() error {
+  docDirPath := filepath.Join(g.workDirPath, "doc")
+
+  if filer.IsExistedDirectory(docDirPath) {
+    return nil
+  }
+  if err := g.createDocDirectory(docDirPath); err != nil {
+    return fmt.Errorf("g.createDocDirectory: %w", err)
+  }
+  return nil
+}
+
+func (g *Grpc) createDocDirectory(docDirPath string) error {
+  if _, err := filer.CreateNestedFolders(docDirPath); err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  return nil
 }
 
 func (g *Grpc) createServiceProtoFile(protoDirPath string) error {
