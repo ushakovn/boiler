@@ -68,10 +68,10 @@ func init() {
 }
 
 func execMakeGrpcBinDeps() error {
-  output, err := executor.ExecCmdCtxWithOut(context.Background(), "make", templates.GrpcMakeMkBinDepsName)
-  if err != nil {
+  ctx := context.Background()
+
+  if err := executor.ExecCmdCtx(ctx, "make", templates.GrpcMakeMkBinDepsName); err != nil {
     return fmt.Errorf("boiler: failed to exec: make %s", templates.GrpcMakeMkBinDepsName)
   }
-  log.Infof("boiler: %s", string(output))
   return nil
 }

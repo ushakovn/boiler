@@ -76,10 +76,10 @@ func init() {
 }
 
 func execMakeGqlgenBinDeps() error {
-  output, err := executor.ExecCmdCtxWithOut(context.Background(), "make", templates.GqlgenMakeMkBinDepsName)
-  if err != nil {
+  ctx := context.Background()
+
+  if err := executor.ExecCmdCtx(ctx, "make", templates.GqlgenMakeMkBinDepsName); err != nil {
     return fmt.Errorf("boiler: failed to exec: make %s", templates.GqlgenMakeMkBinDepsName)
   }
-  log.Infof("boiler: %s", string(output))
   return nil
 }

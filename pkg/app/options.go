@@ -42,7 +42,6 @@ func defaultOptions() []Option {
     WithGrpcServePort(defaultGrpcPort),
     WithGqlgenServePort(defaultGqlgenPort),
 
-
     // Panic recover options
     WithGrpcUnaryServerInterceptors(recover.GrpcServerUnaryInterceptor),
     WithGqlgenOperationMiddlewares(recover.GqlgenOperationMiddleware),

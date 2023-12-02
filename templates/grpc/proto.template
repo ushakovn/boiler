@@ -6,6 +6,15 @@ package {{.serviceName}};
 
 option go_package = "{{.goPackage}}";
 
+// Use proto imports:
+//   Execute:   boiler proto-deps init & boiler proto-deps gen --github-token=<GITHUB_TOKEN>;
+//   Uncomment: imports declarations.
+
+// import "proto/ushakovn-org/protobuf/validate/validate.proto";
+// import "proto/ushakovn-org/protobuf/protobuf/timestamp.proto";
+// import "proto/ushakovn-org/protobuf/protobuf/duration.proto";
+// import "proto/ushakovn-org/protobuf/api/annotations.proto";
+
 service DummyService {
   rpc GetDummy(GetDummyRequest) returns (GetDummyResponse);
 }

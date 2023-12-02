@@ -2,9 +2,10 @@
 
 # App proto dependencies section; DO NOT EDIT.
 app_deps:
-    - import: github.com/bufbuild/protoc-gen-validate/validate/validate.proto@main
-    - import: github.com/protocolbuffers/protobuf/src/google/protobuf/timestamp.proto@main
-    - import: github.com/protocolbuffers/protobuf/src/google/protobuf/duration.proto@main
+    - import: github.com/ushakovn-org/protobuf/protoc-gen-validate/validate/validate.proto@main
+    - import: github.com/ushakovn-org/protobuf/google/protobuf/timestamp.proto@main
+    - import: github.com/ushakovn-org/protobuf/google/protobuf/duration.proto@main
+    - import: github.com/ushakovn-org/protobuf/google/api/annotations.proto@main
 
 # Local proto dependencies section
 local_deps:
