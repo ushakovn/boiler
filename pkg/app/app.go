@@ -7,10 +7,12 @@ import (
   "net/http"
   "sync"
   "syscall"
+  "time"
 
   "github.com/99designs/gqlgen/graphql"
   "github.com/99designs/gqlgen/graphql/handler"
   "github.com/go-chi/chi/v5"
+  runtimeGrpc "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/config"
@@ -28,6 +30,9 @@ type App struct {
   // gRPC
   grpcPort   int
   grpcServer *grpc.Server
+
+  // gRPC HTTP proxy
+  grpcHttpProxyPort int
 
   // GraphQL
   gqlgenPort   int
@@ -60,14 +65,20 @@ func NewApp(calls ...Option) *App {
   appCtx := context.Background()
 
   // Create app closer
-  appCloser := closer.NewCloser(syscall.SIGTERM, syscall.SIGKILL)
+  appCloser := closer.NewCloser(
+    syscall.SIGTERM,
+    syscall.SIGKILL,
+    syscall.SIGINT,
+  )
 
   // Return app
   return &App{
     grpcPort:   options.grpcServePort,
-    gqlgenPort: options.gqlgenServePort,
+    grpcServer: grpcServer,
 
-    grpcServer:   grpcServer,
+    grpcHttpProxyPort: options.grpcHttpProxyPort,
+
+    gqlgenPort:   options.gqlgenServePort,
     gqlgenRouter: gqlgenRouter,
 
     gqlgenFieldMWs:     options.gqlgenFieldMWs,
@@ -105,14 +116,23 @@ func (a *App) registerApp(params *RegisterParams, services ...Service) {
 }
 
 func (a *App) registerParams() *RegisterParams {
+  grpcParams := &GrpcParams{
+    grpcServer:            a.grpcServer,
+    grpcServerPort:        a.grpcPort,
+    grpcClientOptions:     defaultGrpcClientOptions(),
+    grpcHttpProxyServeMux: runtimeGrpc.NewServeMux(),
+  }
   return &RegisterParams{
-    grpcServer: a.grpcServer,
+    appCtx:     a.appCtx,
+    grpcParams: grpcParams,
   }
 }
 
 func (a *App) registerServices(params *RegisterParams, services ...Service) {
   for _, service := range services {
-    service.RegisterService(params)
+    if err := service.RegisterService(params); err != nil {
+      log.Fatalf("boiler: app service registration failed: %v", err)
+    }
   }
   log.Infof("boiler: app services registered")
 }
@@ -121,14 +141,20 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // Collect service types
   serviceTypes := params.serviceTypesValues()
 
+  // Confirm service types
+  if _, ok := serviceTypes[UnknownServiceTyp]; ok {
+    log.Fatalf("boiler: encountered unknown service type")
+  }
+
   // gRPC components
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
     a.registerGrpcServer()
+    a.registerGrpcHttpProxyServer(params.Grpc())
   }
 
   // GraphQL components
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
-    a.registerGqlgenSchemaServer(params)
+    a.registerGqlgenSchemaServer(params.Gqlgen())
     a.registerGqlgenAroundMWs()
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
@@ -156,7 +182,55 @@ func (a *App) registerGrpcServer() {
 
   go func() {
     if err = a.grpcServer.Serve(lister); err != nil {
-      log.Fatalf("boiler: grpc server run failed: %v", err)
+      log.Errorf("boiler: grpc server run failed: %v", err)
+      a.appCloser.CloseAll()
+    }
+  }()
+
+  // Graceful shutdown for gRPC server
+  a.appCloser.Add(func(ctx context.Context) error {
+    log.Infof("boiler: grpc server trying graceful shutdown")
+
+    const timeout = 5 * time.Second
+
+    timeoutCtx, cancel := context.WithTimeout(a.appCtx, timeout)
+    defer cancel()
+
+    doneCh := make(chan struct{})
+
+    go func() {
+      a.grpcServer.GracefulStop()
+      doneCh <- struct{}{}
+    }()
+
+    for {
+      select {
+      case <-timeoutCtx.Done():
+        log.Infof("boiler: grpc server was not stopped for %s timeout", timeout.String())
+        a.grpcServer.Stop()
+        log.Infof("boiler: grpc server stopped forced")
+        return nil
+
+      case <-doneCh:
+        log.Infof("boiler: grpc server stopped gracefully")
+      }
+    }
+  })
+}
+
+func (a *App) registerGrpcHttpProxyServer(params *GrpcParams) {
+  mux := params.GrpcHttpProxyServeMux()
+  if mux == nil {
+    // gRPC proxy server was not set
+    return
+  }
+  address := fmt.Sprint("localhost", ":", a.grpcHttpProxyPort)
+
+  log.Infof("boiler: grpc http proxy running on port: %d", a.grpcHttpProxyPort)
+
+  go func() {
+    if err := http.ListenAndServe(address, mux); err != nil {
+      log.Errorf("boiler: grpc http proxy server run failed: %v", err)
       a.appCloser.CloseAll()
     }
   }()
@@ -175,11 +249,8 @@ func (a *App) registerGqlgenServer() {
   }()
 }
 
-func (a *App) registerGqlgenSchemaServer(params *RegisterParams) {
-  if params.gqlgenSchema == nil {
-    panic("boiler: gqlgen schema is a nil")
-  }
-  a.gqlgenServer = handler.NewDefaultServer(params.gqlgenSchema)
+func (a *App) registerGqlgenSchemaServer(params *GqlgenParams) {
+  a.gqlgenServer = handler.NewDefaultServer(params.GqlgenSchema())
   a.gqlgenRouter.Handle("/query", a.gqlgenServer)
 }
 

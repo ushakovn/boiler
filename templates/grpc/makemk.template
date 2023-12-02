@@ -18,6 +18,7 @@ generate-protoc:
 	--go_out=. --go_opt=paths=import --go_opt=module={{.goPackageTrim}} \
 	--go-grpc_out=. --go-grpc_opt=paths=import --go-grpc_opt=module={{.goPackageTrim}} \
 	--grpc-gateway_out=. --grpc-gateway_opt=paths=import --grpc-gateway_opt=module={{.goPackageTrim}} \
+	--grpc-gateway_opt generate_unbound_methods=true \
 	--validate_out="lang=go,module={{.goPackageTrim}},paths=import:." \
 	\
 	./api/**/*.proto

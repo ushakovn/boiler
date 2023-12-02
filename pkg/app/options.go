@@ -8,6 +8,7 @@ import (
   recover "github.com/ushakovn/boiler/pkg/recover/middlewares"
   tracing "github.com/ushakovn/boiler/pkg/tracing/middlewares"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/credentials/insecure"
   "google.golang.org/grpc/stats"
   "google.golang.org/grpc/tap"
 )
@@ -17,6 +18,7 @@ type Option func(o *calledAppOptions)
 type calledAppOptions struct {
   // gRPC
   grpcServePort     int
+  grpcHttpProxyPort int
   grpcServerOptions []grpc.ServerOption
 
   grpcStatsHandler       stats.Handler
@@ -34,12 +36,14 @@ type calledAppOptions struct {
 
 func defaultOptions() []Option {
   const (
-    defaultGrpcPort   = 8082
-    defaultGqlgenPort = 8080
+    defaultGrpcPort          = 8082
+    defaultGrpcHttpProxyPort = 8084
+    defaultGqlgenPort        = 8080
   )
   options := []Option{
     // Port options
     WithGrpcServePort(defaultGrpcPort),
+    WithGrpcHttpProxyPort(defaultGrpcHttpProxyPort),
     WithGqlgenServePort(defaultGqlgenPort),
 
     // Panic recover options
@@ -81,9 +85,22 @@ func buildGrpcServerOptions(options *calledAppOptions) []grpc.ServerOption {
   return options.grpcServerOptions
 }
 
+func defaultGrpcClientOptions() []grpc.DialOption {
+  return []grpc.DialOption{
+    // Without TLS/SSL
+    grpc.WithTransportCredentials(insecure.NewCredentials()),
+  }
+}
+
 func WithGrpcServePort(port int) Option {
   return func(o *calledAppOptions) {
     o.grpcServePort = port
+  }
+}
+
+func WithGrpcHttpProxyPort(port int) Option {
+  return func(o *calledAppOptions) {
+    o.grpcHttpProxyPort = port
   }
 }
 
@@ -93,7 +110,7 @@ func WithGrpcUnaryServerInterceptors(interceptors ...grpc.UnaryServerInterceptor
   }
 }
 
-func WithGrpcStatsHandlers(handler stats.Handler) Option {
+func WithGrpcStatsHandler(handler stats.Handler) Option {
   return func(o *calledAppOptions) {
     o.grpcStatsHandler = handler
   }
