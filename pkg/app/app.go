@@ -17,6 +17,7 @@ import (
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/config"
   "github.com/ushakovn/boiler/pkg/gqlgen"
+  "github.com/ushakovn/boiler/pkg/logger"
   "github.com/ushakovn/boiler/pkg/tracing/tracer"
   "google.golang.org/grpc"
   "google.golang.org/grpc/reflection"
@@ -49,6 +50,9 @@ type App struct {
 }
 
 func NewApp(calls ...Option) *App {
+  // Set log options
+  logger.SetDefaultLogOptions()
+
   // Call all options
   options := callAppOptions(calls...)
 
