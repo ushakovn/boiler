@@ -217,6 +217,7 @@ func (a *App) registerGrpcServer() {
 
       case <-doneCh:
         log.Infof("boiler: grpc server stopped gracefully")
+        return nil
       }
     }
   })
