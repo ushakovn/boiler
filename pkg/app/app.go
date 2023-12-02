@@ -126,9 +126,12 @@ func (a *App) registerParams() *RegisterParams {
     grpcClientOptions:     defaultGrpcClientOptions(),
     grpcHttpProxyServeMux: runtimeGrpc.NewServeMux(),
   }
+  gqlgenParams := &GqlgenParams{}
+
   return &RegisterParams{
-    appCtx:     a.appCtx,
-    grpcParams: grpcParams,
+    appCtx:       a.appCtx,
+    grpcParams:   grpcParams,
+    gqlgenParams: gqlgenParams,
   }
 }
 
