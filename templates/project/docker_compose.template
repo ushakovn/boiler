@@ -6,17 +6,17 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus_config.yml:/etc/prometheus/prometheus.yaml
+      - ./prometheus_config.yaml:/etc/prometheus/prometheus.yml
     ports:
-      - "19090:9090"
+      - "9090:9090"
     networks:
       - boiler-network
   grafana:
     image: grafana/grafana-oss:9.4.3
     ports:
-      - "13000:3000"
+      - "3000:3000"
     volumes:
-      - boiler-grafana:/var/lib/grafana
+      - boiler-volume:/var/lib/grafana
     networks:
       - boiler-network
 
@@ -36,4 +36,4 @@ networks:
 
 # Boiler docker volume
 volumes:
-  boiler-grafana:
+  boiler-volume:
