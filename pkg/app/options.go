@@ -4,7 +4,8 @@ import (
   "net/http"
 
   "github.com/99designs/gqlgen/graphql"
-  grpcMW "github.com/grpc-ecosystem/go-grpc-middleware"
+  mw "github.com/grpc-ecosystem/go-grpc-middleware"
+  metrics "github.com/ushakovn/boiler/pkg/metrics/middlewares"
   recover "github.com/ushakovn/boiler/pkg/recover/middlewares"
   tracing "github.com/ushakovn/boiler/pkg/tracing/middlewares"
   "google.golang.org/grpc"
@@ -50,6 +51,10 @@ func defaultOptions() []Option {
     WithGrpcUnaryServerInterceptors(recover.GrpcServerUnaryInterceptor),
     WithGqlgenOperationMiddlewares(recover.GqlgenOperationMiddleware),
 
+    // Metrics options
+    WithGrpcUnaryServerInterceptors(metrics.GrpcServerUnaryInterceptor),
+    WithGqlgenOperationMiddlewares(metrics.GqlgenOperationMiddleware),
+
     // Tracing options
     WithGrpcUnaryServerInterceptors(tracing.GrpcServerUnaryInterceptor),
     WithGqlgenOperationMiddlewares(tracing.GqlgenOperationMiddleware),
@@ -79,7 +84,7 @@ func buildGrpcServerOptions(options *calledAppOptions) []grpc.ServerOption {
   }
   // Set interceptors chain
   if len(options.grpcServerInterceptors) > 0 {
-    chain := grpcMW.ChainUnaryServer(options.grpcServerInterceptors...)
+    chain := mw.ChainUnaryServer(options.grpcServerInterceptors...)
     options.grpcServerOptions = append(options.grpcServerOptions, grpc.UnaryInterceptor(chain))
   }
   return options.grpcServerOptions

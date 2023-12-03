@@ -49,8 +49,8 @@ func GqlgenOperationMiddleware(ctx context.Context, handler graphql.OperationHan
       opName string
     )
     if operation := opCtx.Operation; operation != nil {
-      opTyp = opCtx.Operation.Name
-      opName = string(opCtx.Operation.Operation)
+      opTyp = string(operation.Operation)
+      opName = operation.Name
     }
     var span trace.Span
 

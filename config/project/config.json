@@ -79,6 +79,13 @@
         },
         "files": [
           {
+            "name": "prometheus_config",
+            "extension": "yaml",
+            "template": {
+              "name": "prometheus_config"
+            }
+          },
+          {
             "name": "docker_compose",
             "extension": "yaml",
             "template": {

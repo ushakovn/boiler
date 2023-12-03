@@ -100,7 +100,7 @@ func (c *noopConfigClient) GetValue(string) Value {
 
 func (c *noopConfigClient) GetAppInfo() AppInfo {
   const (
-    name    = "Boiler"
+    name    = "app"
     version = "v0.0.1"
   )
   return AppInfo{

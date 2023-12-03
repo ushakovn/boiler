@@ -18,9 +18,12 @@ import (
   "github.com/ushakovn/boiler/pkg/config"
   "github.com/ushakovn/boiler/pkg/gqlgen"
   "github.com/ushakovn/boiler/pkg/logger"
+  mw "github.com/ushakovn/boiler/pkg/metrics/middlewares"
   "github.com/ushakovn/boiler/pkg/tracing/tracer"
   "google.golang.org/grpc"
   "google.golang.org/grpc/reflection"
+
+  metrics "github.com/ushakovn/boiler/pkg/metrics/handler"
 )
 
 type App struct {
@@ -44,6 +47,9 @@ type App struct {
   gqlgenOperationMWs []graphql.OperationMiddleware
   gqlgenResponseMWs  []graphql.ResponseMiddleware
 
+  // Duty HTTP router
+  dutyHttpRouter chi.Router
+
   // Shutdown
   appCtx    context.Context
   appCloser closer.Closer
@@ -64,6 +70,9 @@ func NewApp(calls ...Option) *App {
 
   // Create GraphQL router with middlewares
   gqlgenRouter := chi.NewRouter().With(options.gqlgenMWs...)
+
+  // Create duty HTTP router
+  dutyHttpRouter := chi.NewRouter()
 
   // Create app context
   appCtx := context.Background()
@@ -88,6 +97,8 @@ func NewApp(calls ...Option) *App {
     gqlgenFieldMWs:     options.gqlgenFieldMWs,
     gqlgenOperationMWs: options.gqlgenOperationMWs,
     gqlgenResponseMWs:  options.gqlgenResponseMWs,
+
+    dutyHttpRouter: dutyHttpRouter,
 
     appCtx:    appCtx,
     appCloser: appCloser,
@@ -170,8 +181,11 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // Config components
   a.registerConfigClient()
 
-  // Tracing components
-  a.registerTracer()
+  // Observability components
+  a.registerObservability()
+
+  // Run duty HTTP router
+  a.runHttpDutyRouter()
 
   log.Infof("boiler: app services components registered")
 }
@@ -304,4 +318,32 @@ func (a *App) registerTracer() {
 
   log.Infof("boiler: tracing registered")
   a.appCloser.Add(shutdowns...)
+}
+
+func (a *App) registerMetrics() {
+  metrics.WithMetricsHandler(a.dutyHttpRouter)
+  mw.InitMetrics()
+
+  log.Infof("boiler: metrics handler registered")
+}
+
+func (a *App) registerObservability() {
+  // Tracing components
+  a.registerTracer()
+  // Metrics components
+  a.registerMetrics()
+}
+
+func (a *App) runHttpDutyRouter() {
+  const dutyServePort = 8092
+  address := fmt.Sprint("localhost", ":", dutyServePort)
+
+  log.Infof("boiler: http duty server running on port: %d", dutyServePort)
+
+  go func() {
+    if err := http.ListenAndServe(address, a.dutyHttpRouter); err != nil {
+      log.Errorf("boiler: http duty server run failed: %v", err)
+    }
+    a.appCloser.CloseAll()
+  }()
 }
