@@ -2,6 +2,7 @@ package app
 
 import (
   "context"
+  "encoding/json"
   "fmt"
   "net"
   "net/http"
@@ -184,6 +185,9 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // Observability components
   a.registerObservability()
 
+  // Developer help components
+  a.registerHelpHandler()
+
   // Run duty HTTP router
   a.runHttpDutyRouter()
 
@@ -346,4 +350,38 @@ func (a *App) runHttpDutyRouter() {
     }
     a.appCloser.CloseAll()
   }()
+}
+
+func (a *App) registerHelpHandler() {
+  marshaledHelp, err := a.marshalHelpInfo()
+  if err != nil {
+    log.Fatalf("boiler: marshal help info failed: %v", err)
+  }
+  handleHelp := func(w http.ResponseWriter, r *http.Request) {
+    if _, err = w.Write(marshaledHelp); err != nil {
+      http.Error(w, "", http.StatusInternalServerError)
+    }
+  }
+  a.dutyHttpRouter.Handle("/help", http.HandlerFunc(handleHelp))
+}
+
+func (a *App) marshalHelpInfo() ([]byte, error) {
+  type HelpInfo struct {
+    DutyHttpPort      int `json:"duty_http_port"`
+    GqlgenPort        int `json:"gqlgen_port"`
+    GrpcPort          int `json:"grpc_port"`
+    GrpcHttpProxyPort int `json:"grpc_http_proxy_port"`
+  }
+  const dutyServePort = 8092
+
+  marshaledHelp, err := json.Marshal(&HelpInfo{
+    DutyHttpPort:      dutyServePort,
+    GqlgenPort:        a.gqlgenPort,
+    GrpcPort:          a.grpcPort,
+    GrpcHttpProxyPort: a.grpcHttpProxyPort,
+  })
+  if err != nil {
+    return nil, fmt.Errorf("json.Marshal: %w", err)
+  }
+  return marshaledHelp, nil
 }
