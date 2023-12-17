@@ -1,6 +1,7 @@
 package metrics
 
 import (
+  "context"
   "strings"
 
   "github.com/prometheus/client_golang/prometheus"
@@ -12,8 +13,12 @@ const (
   defaultNamespace = "boiler"
 )
 
+var (
+  defaultCtx = context.Background()
+)
+
 func subsystemFromConfig() string {
-  name := config.ClientConfig().GetAppInfo().Name
+  name := config.ClientConfig(defaultCtx).GetAppInfo().Name
   name = strings.ToLower(name)
   return name
 }

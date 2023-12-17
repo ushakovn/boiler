@@ -13,29 +13,32 @@ import (
   "go.opentelemetry.io/otel/trace"
 )
 
-// Suppress unused variable
-var _ = tracer
+type (
+  ctxKey struct{}
+)
 
 var (
-  mu     sync.Mutex
   once   sync.Once
   tracer trace.Tracer
 )
 
-func Tracer() trace.Tracer {
-  // Lock before returning
-  mu.Lock()
-  defer mu.Unlock()
-
+func Tracer(ctx context.Context) trace.Tracer {
+  if ctxTracer, ok := ctx.Value(ctxKey{}).(trace.Tracer); ok {
+    return ctxTracer
+  }
   if tracer == nil {
-    panic("tracer: tracer not initialized")
+    return noopTracer
   }
   return tracer
 }
 
+func ContextWithTracer(parent context.Context, tracer trace.Tracer) context.Context {
+  return context.WithValue(parent, ctxKey{}, tracer)
+}
+
 func StartContextWithSpan(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
   // Context and span
-  return Tracer().Start(ctx, name, opts...)
+  return Tracer(ctx).Start(ctx, name, opts...)
 }
 
 func StartContextSpan(ctx context.Context, name string, opts ...trace.SpanStartOption) context.Context {
@@ -78,9 +81,6 @@ func InitTracer(ctx context.Context, serviceName, serviceVer string) (shutdowns 
     shutdowns = append(shutdowns, exporter.Shutdown)
 
     otel.SetTracerProvider(tr)
-
-    mu.Lock()
-    defer mu.Unlock()
 
     tracer = otel.Tracer(serviceName)
   })

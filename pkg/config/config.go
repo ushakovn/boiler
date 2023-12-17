@@ -1,17 +1,18 @@
 package config
 
 import (
+  "context"
   "path/filepath"
   "sync"
 
   log "github.com/sirupsen/logrus"
 )
 
-// Suppress unused variable
-var _ = client
+type (
+  ctxKey struct{}
+)
 
 var (
-  mu     sync.Mutex
   once   sync.Once
   client Client
 )
@@ -21,22 +22,22 @@ type Client interface {
   GetValue(configKey string) Value
 }
 
-func ClientConfig() Client {
-  // Lock before returning
-  mu.Lock()
-  defer mu.Unlock()
-
+func ClientConfig(ctx context.Context) Client {
+  if ctxClient, ok := ctx.Value(ctxKey{}).(Client); ok {
+    return ctxClient
+  }
   if client == nil {
-    panic("config: client not initialized")
+    return noopClient
   }
   return client
 }
 
+func ContextWithClientConfig(parent context.Context, client Client) context.Context {
+  return context.WithValue(parent, ctxKey{}, client)
+}
+
 func InitClientConfig() {
   once.Do(func() {
-    mu.Lock()
-    defer mu.Unlock()
-
     configPath := filepath.Join(".config", "app_config.yaml")
 
     if !findConfig(configPath) {
@@ -88,23 +89,3 @@ func (c *configClient) GetAppInfo() AppInfo {
   return c.app
 }
 
-type noopConfigClient struct{}
-
-func newNoopClient() *noopConfigClient {
-  return &noopConfigClient{}
-}
-
-func (c *noopConfigClient) GetValue(string) Value {
-  return &configValue{}
-}
-
-func (c *noopConfigClient) GetAppInfo() AppInfo {
-  const (
-    name    = "app"
-    version = "v0.0.1"
-  )
-  return AppInfo{
-    Name:    name,
-    Version: version,
-  }
-}

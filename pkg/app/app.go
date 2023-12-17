@@ -317,7 +317,7 @@ func (a *App) registerConfigClient() {
 }
 
 func (a *App) registerTracer() {
-  info := config.ClientConfig().GetAppInfo()
+  info := config.ClientConfig(a.appCtx).GetAppInfo()
   shutdowns := tracer.InitTracer(a.appCtx, info.Name, info.Version)
 
   log.Infof("boiler: tracing registered")

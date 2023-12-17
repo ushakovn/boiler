@@ -19,8 +19,8 @@ const (
 
 {{- range $cg := .ConfigGroups}}
 {{- range .GroupKeys}}
-func (c {{toLowerCamelCase $cg.GroupName}}ConfigGroup) {{toUpperCamelCase .KeyNameTrim}}() {{.ValueType}} {
-  return configValue(string({{toCapitalizeCase .KeyName}})).{{.ValueCall}}()
+func (c {{toLowerCamelCase $cg.GroupName}}ConfigGroup) {{toUpperCamelCase .KeyNameTrim}}(ctx context.Context) {{.ValueType}} {
+  return configValue(ctx, string({{toCapitalizeCase .KeyName}})).{{.ValueCall}}()
 }
 {{end}}
 {{- end}}

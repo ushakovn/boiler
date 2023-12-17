@@ -23,7 +23,6 @@ type mwMetrics struct {
 
 var (
   m    *mwMetrics
-  mu   sync.Mutex
   once sync.Once
 )
 
@@ -34,7 +33,7 @@ func InitMetrics() {
     grpcRequestDurationHistogram := metrics.NewHistogramVec(
       "grpc_request_duration_seconds_histogram",
       "Histogram of gRPC request duration in seconds",
-      prometheus.LinearBuckets(0, 0.300, 4),
+      []float64{0.1, 0.3, 0.5, 1.0},
       []string{"method", "code"},
     )
     // RPS metric for gRPC
@@ -48,7 +47,7 @@ func InitMetrics() {
     gqlgenRequestDurationHistogram := metrics.NewHistogramVec(
       "gqlgen_request_duration_seconds_histogram",
       "Histogram of GraphQL request duration in seconds",
-      prometheus.LinearBuckets(0, 0.300, 4),
+      []float64{0.1, 0.3, 0.5, 1.0},
       []string{"method"},
     )
 
@@ -58,9 +57,6 @@ func InitMetrics() {
       "Counter of GraphQL requests",
       []string{"method"},
     )
-
-    mu.Lock()
-    defer mu.Unlock()
 
     m = &mwMetrics{
       grpcReqDur:   grpcRequestDurationHistogram,

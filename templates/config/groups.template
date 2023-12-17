@@ -32,6 +32,6 @@ type (
   {{- end}}
 )
 
-func configValue(configKey string) config.Value {
-  return config.ClientConfig().GetValue(configKey)
+func configValue(ctx context.Context, configKey string) config.Value {
+  return config.ClientConfig(ctx).GetValue(configKey)
 }

@@ -131,4 +131,9 @@ var groupsPackages = []*goPackageDesc{
     ImportLine: "github.com/ushakovn/boiler/pkg/config",
     IsInstall:  true,
   },
+  {
+    CustomName: "go/context",
+    ImportLine: "context",
+    IsBuiltin:  true,
+  },
 }
