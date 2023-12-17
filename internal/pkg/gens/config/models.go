@@ -123,6 +123,11 @@ var configPackages = []*goPackageDesc{
     ImportLine: "time",
     IsBuiltin:  true,
   },
+  {
+    CustomName: "go/context",
+    ImportLine: "context",
+    IsBuiltin:  true,
+  },
 }
 
 var groupsPackages = []*goPackageDesc{
