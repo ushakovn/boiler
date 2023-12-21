@@ -4,6 +4,7 @@ import (
   "bytes"
   "context"
   "fmt"
+  "strings"
   "unicode"
 
   "github.com/ushakovn/boiler/internal/pkg/filer"
@@ -62,7 +63,7 @@ func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
     Tables: stack.NewStack[*DumpTable](),
   }
   for _, table := range dump.Tables.Elems() {
-    if _, ok := systemTablesNames[table.Name]; ok {
+    if _, ok := systemTablesNames[table.Name]; ok || hasBoilerSystemPrefix(table.Name) {
       continue
     }
     sanitized.Tables.Push(table)
@@ -117,4 +118,8 @@ var sqlStickyTokens = map[rune]struct{}{
 var systemTablesNames = map[string]struct{}{
   "goose_db_version": {},
   "db_version":       {},
+}
+
+func hasBoilerSystemPrefix(tableName string) bool {
+  return strings.HasPrefix(tableName, "__boiler")
 }

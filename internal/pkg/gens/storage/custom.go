@@ -3,7 +3,6 @@ package storage
 import (
   "fmt"
   "path/filepath"
-  "time"
 
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
@@ -169,11 +168,9 @@ var rocketLockStorageTemplates = []*storageTemplate{
     filePathParts: []string{"../../../migrations"},
 
     fileNameBuild: func(modelName string) string {
-      const timestampFormat = "20060102150405"
-      now := time.Now().Format(timestampFormat)
-
-      return fmt.Sprintf("%s_%s", now, "boiler_rocket_lock.sql")
+      return "boiler_rocket_lock.sql"
     },
+
     notGoTemplate: true,
   },
 }
