@@ -23,3 +23,7 @@ func NewUpdateBuilder() sq.UpdateBuilder {
 func NewDeleteBuilder() sq.DeleteBuilder {
   return sq.DeleteBuilder{}.PlaceholderFormat(sq.Dollar)
 }
+
+func NewBuildedExpr(sql string, args ...any) sq.Sqlizer {
+	return sq.Expr(sql, args...)
+}

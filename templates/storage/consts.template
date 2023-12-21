@@ -6,7 +6,7 @@ type tableName string
 
 const (
   {{- range .Models}}
-  {{.ModelName}}_TableName = "{{.SqlTableName}}"
+  {{.ModelName}}_TableName tableName = "{{.SqlTableName}}"
   {{- end}}
 )
 

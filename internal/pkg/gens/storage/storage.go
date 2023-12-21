@@ -69,6 +69,16 @@ func (g *Storage) Init(_ context.Context) error {
 }
 
 func (g *Storage) Generate(_ context.Context) error {
+  if err := g.generateStorages(); err != nil {
+    return fmt.Errorf("g.generateStorages: %w", err)
+  }
+  if err := g.generateCustomStorages(); err != nil {
+    return fmt.Errorf("g.generateCustomStorages: %w", err)
+  }
+  return nil
+}
+
+func (g *Storage) generateStorages() error {
   if err := g.loadSchemaDesc(); err != nil {
     return fmt.Errorf("loadSchemaDesc: %w", err)
   }
@@ -156,24 +166,19 @@ type storageTemplate struct {
   compiledTemplate string
   filePathParts    []string
   fileNameBuild    func(modelName string) string
+  notGoTemplate    bool
 }
 
 var storageModelTemplates = []*storageTemplate{
   {
     templateName:     "Interface",
     compiledTemplate: templates.StorageInterface,
-    fileNameBuild: func(modelName string) string {
-      modelName = stringer.StringToSnakeCase(modelName)
-      return fmt.Sprint(modelName, ".interface.go")
-    },
+    fileNameBuild:    buildInterfaceFileName,
   },
   {
     templateName:     "Implementation",
     compiledTemplate: templates.StorageImplementation,
-    fileNameBuild: func(modelName string) string {
-      modelName = stringer.StringToSnakeCase(modelName)
-      return fmt.Sprint(modelName, ".implementation.go")
-    },
+    fileNameBuild:    buildImplementationFileName,
   },
 }
 
@@ -216,4 +221,14 @@ var storageCommonTemplates = []*storageTemplate{
       return "models.go"
     },
   },
+}
+
+func buildInterfaceFileName(modelName string) string {
+  modelName = stringer.StringToSnakeCase(modelName)
+  return fmt.Sprint(modelName, ".interface.go")
+}
+
+func buildImplementationFileName(modelName string) string {
+  modelName = stringer.StringToSnakeCase(modelName)
+  return fmt.Sprint(modelName, ".implementation.go")
 }

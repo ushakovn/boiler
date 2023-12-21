@@ -1,0 +1,4 @@
+type RocketLock struct {
+  LockID      string    `db:"lock_id"`
+  LockedUntil time.Time `db:"locked_until"`
+}

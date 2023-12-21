@@ -78,18 +78,18 @@ func (g *Storage) loadSchemaDesc() error {
   optionsPackages := buildFilePackages(optionsFileName)
   modelsPackages := buildFilePackages(modelsFileName)
 
-  implementationPackages := append(
+  implementationPackages := mergeGoPackages(
     buildFilePackages(implementationFileName),
-    buildCrossFilePackages(g.goModuleName, implementationFileName)...,
+    buildCrossFilePackages(g.goModuleName, implementationFileName),
   )
 
   modelUniquePackages := map[string]struct{}{}
 
   for _, model := range models {
 
-    interfacePackages := append(
+    interfacePackages := mergeGoPackages(
       buildFilePackages(interfaceFileName),
-      buildCrossFilePackages(g.goModuleName, interfaceFileName)...,
+      buildCrossFilePackages(g.goModuleName, interfaceFileName),
     )
     interfaceUniquePackages := map[string]struct{}{}
 
@@ -577,6 +577,16 @@ func buildFilePackages(fileName string) []*goPackageDesc {
   return packagesDesc
 }
 
+func buildPackagesForNames(packagesNames []string) []*goPackageDesc {
+  packagesDesc := make([]*goPackageDesc, 0, len(packagesNames))
+
+  for _, packageName := range packagesNames {
+    interfacePackage := importPackagesByNames[packageName]
+    packagesDesc = append(packagesDesc, interfacePackage)
+  }
+  return packagesDesc
+}
+
 func buildFieldPackages(fieldTyp string) ([]*goPackageDesc, bool) {
   var (
     fieldPackages []*goPackageDesc
@@ -636,6 +646,20 @@ func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
   return crossFilePackages
 }
 
+func mergeGoPackages(goPackages ...[]*goPackageDesc) []*goPackageDesc {
+  var count int
+
+  for _, p := range goPackages {
+    count += len(p)
+  }
+  merged := make([]*goPackageDesc, 0, count)
+
+  for _, p := range goPackages {
+    merged = append(merged, p...)
+  }
+  return merged
+}
+
 const (
   constsFileName         = "consts"
   clientFileName         = "client"
@@ -682,6 +706,7 @@ const (
   sqlscanPackageName     = "sqlscan"
   databaseSqlPackageName = "sql"
   errorsPackageName      = "errors"
+  logrusPackageName      = "logrus"
 )
 
 var importPackagesByNames = map[string]*goPackageDesc{
@@ -726,5 +751,11 @@ var importPackagesByNames = map[string]*goPackageDesc{
     CustomName: "go/errors",
     ImportLine: "errors",
     IsBuiltin:  true,
+  },
+  logrusPackageName: {
+    CustomName:  "sirupsen/logrus",
+    ImportLine:  "github.com/sirupsen/logrus",
+    ImportAlias: "log",
+    IsInstall:   true,
   },
 }

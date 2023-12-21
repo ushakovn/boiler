@@ -8,7 +8,7 @@ import (
   {{- end}}
 )
 
-var ErrZeroRowsRetrieved = errors.New("zero rows retrieved")
+var ErrModelNotFound = errors.New("model not found")
 
 type Client interface {
   Pinger
@@ -49,7 +49,7 @@ func DoQueryContext[Model any](ctx context.Context, querier Querier, builder Bui
     return nil, fmt.Errorf("sqlscan.Select: %w", err)
   }
   if len(models) == 0 {
-    return nil, ErrZeroRowsRetrieved
+    return nil, ErrModelNotFound
   }
   return models, nil
 }

@@ -25,7 +25,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.
       string({{.FieldName}}_{{$modelName}}_Field),
       {{- end}}
     ).
-    From({{$modelName}}_TableName)
+    From(string({{$modelName}}_TableName))
 
   if err := input.Pagination.validate(); err != nil {
     return nil, fmt.Errorf("pagination.Validate: %w", err)
@@ -58,7 +58,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
       string({{.FieldName}}_{{$modelName}}_Field),
       {{- end}}
     ).
-    From({{$modelName}}_TableName)
+    From(string({{$modelName}}_TableName))
 
   if filters := input.Filters; filters != nil {
     {{- range $modelField := .ModelFields}}
@@ -80,7 +80,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.Context, input Put{{$modelName}}Input) (*models.{{$modelName}}, error) {
   builder := client.NewInsertBuilder().
-    Into({{$modelName}}_TableName)
+    Into(string({{$modelName}}_TableName))
 
   fields := map[string]any{
     {{- range .ModelFields}}
@@ -115,7 +115,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.C
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {
   builder := client.NewUpdateBuilder().
-    Table({{$modelName}}_TableName)
+    Table(string({{$modelName}}_TableName))
 
   fields := map[string]any{
     {{- range .ModelFields}}
@@ -155,7 +155,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
   builder := client.NewDeleteBuilder().
-    From({{$modelName}}_TableName).
+    From(string({{$modelName}}_TableName)).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
     Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).

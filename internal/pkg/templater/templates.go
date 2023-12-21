@@ -6,6 +6,8 @@ import (
   "go/format"
   "os"
   "text/template"
+
+  "github.com/samber/lo"
 )
 
 func CopyTemplate(templateCompiled string, filePath string) error {
@@ -70,4 +72,8 @@ func ExecTemplateCopyWithGoFmt(templateCompiled, filePath string, dataPtr any, f
     return fmt.Errorf("os.WriteFile: %w", err)
   }
   return nil
+}
+
+func ExecTemplateCopyFunc(notGoTemplate bool) func(templateCompiled, filePath string, dataPtr any, funcMap template.FuncMap) error {
+  return lo.Ternary(notGoTemplate, ExecTemplateCopy, ExecTemplateCopyWithGoFmt)
 }
