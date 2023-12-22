@@ -147,6 +147,8 @@ var rocketLockPackagesNames = &customModelPackagesNames{
     errorsPackageName,
     logrusPackageName,
     fmtPackageName,
+    pgClientPackageName,
+    pgErrorsPackageName,
   },
 }
 

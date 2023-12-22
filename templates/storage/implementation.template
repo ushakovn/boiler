@@ -9,17 +9,17 @@ import (
 )
 
 type {{toLowerCamelCase $modelName}}Storage struct {
-  client client.Client
+  client pg.Client
 }
 
-func New{{$modelName}}Storage(client client.Client) {{$modelName}}Storage {
+func New{{$modelName}}Storage(client pg.Client) {{$modelName}}Storage {
   return &{{toLowerCamelCase $modelName}}Storage{
     client: client,
   }
 }
 
 func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName}}Input) ([]*models.{{$modelName}}, error) {
-  builder := client.NewSelectBuilder().
+  builder := br.NewSelectBuilder().
     Columns(
       {{- range .ModelFields}}
       string({{.FieldName}}_{{$modelName}}_Field),
@@ -48,11 +48,11 @@ func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.
     {{- end}}
   }
 
-  return client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
+  return pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
 }
 
 func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := client.NewSelectBuilder().
+  builder := br.NewSelectBuilder().
     Columns(
       {{- range .ModelFields}}
       string({{.FieldName}}_{{$modelName}}_Field),
@@ -70,7 +70,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
     {{- end}}
   }
 
-  model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
+  model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
   if err != nil {
     return nil, err
   }
@@ -79,7 +79,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
 }
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.Context, input Put{{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := client.NewInsertBuilder().
+  builder := br.NewInsertBuilder().
     Into(string({{$modelName}}_TableName))
 
   fields := map[string]any{
@@ -100,7 +100,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.C
 
   builder = builder.SetMap(fields)
 
-  if err := client.DoExecContext(ctx, s.client, builder); err != nil {
+  if err := pg.DoExecContext(ctx, s.client.Executor(ctx), builder); err != nil {
     return nil, err
   }
 
@@ -114,7 +114,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.C
 }
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := client.NewUpdateBuilder().
+  builder := br.NewUpdateBuilder().
     Table(string({{$modelName}}_TableName))
 
   fields := map[string]any{
@@ -146,7 +146,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
     {{- end}}
     {{- end}}
 
-  model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
+  model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
   if err != nil {
     return nil, err
   }
@@ -154,7 +154,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
 }
 
 func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
-  builder := client.NewDeleteBuilder().
+  builder := br.NewDeleteBuilder().
     From(string({{$modelName}}_TableName)).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
@@ -163,7 +163,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx contex
     {{- end}}
     {{- end}}
 
-  model, err := client.DoQueryContext[*models.{{$modelName}}](ctx, s.client, builder)
+  model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
   if err != nil {
     return nil, err
   }

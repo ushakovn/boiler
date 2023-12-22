@@ -187,22 +187,6 @@ var storageModelTemplates = []*storageTemplate{
 
 var storageCommonTemplates = []*storageTemplate{
   {
-    templateName:     "Builders",
-    compiledTemplate: templates.StorageBuilders,
-    filePathParts:    []string{"client"},
-    fileNameBuild: func(modelName string) string {
-      return "builders.go"
-    },
-  },
-  {
-    templateName:     "Client",
-    compiledTemplate: templates.StorageClient,
-    filePathParts:    []string{"client"},
-    fileNameBuild: func(modelName string) string {
-      return "client.go"
-    },
-  },
-  {
     templateName:     "Options",
     compiledTemplate: templates.StorageOptions,
     fileNameBuild: func(modelName string) string {

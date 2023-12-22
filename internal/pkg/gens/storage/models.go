@@ -15,7 +15,6 @@ type schemaDesc struct {
   Models           []*modelDesc
   ModelsPackages   []*goPackageDesc
   BuildersPackages []*goPackageDesc
-  ClientPackages   []*goPackageDesc
   OptionsPackages  []*goPackageDesc
 }
 
@@ -74,7 +73,6 @@ func (g *Storage) loadSchemaDesc() error {
   }
 
   buildersPackages := buildFilePackages(buildersFileName)
-  clientPackages := buildFilePackages(clientFileName)
   optionsPackages := buildFilePackages(optionsFileName)
   modelsPackages := buildFilePackages(modelsFileName)
 
@@ -86,7 +84,6 @@ func (g *Storage) loadSchemaDesc() error {
   modelUniquePackages := map[string]struct{}{}
 
   for _, model := range models {
-
     interfacePackages := mergeGoPackages(
       buildFilePackages(interfaceFileName),
       buildCrossFilePackages(g.goModuleName, interfaceFileName),
@@ -124,7 +121,6 @@ func (g *Storage) loadSchemaDesc() error {
     Models:           models,
     ModelsPackages:   modelsPackages,
     BuildersPackages: buildersPackages,
-    ClientPackages:   clientPackages,
     OptionsPackages:  optionsPackages,
   }
 
@@ -616,7 +612,7 @@ func buildFilterFieldPackages(filterTyp string) ([]*goPackageDesc, bool) {
 func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
   crossFileNames := map[string][]string{
     interfaceFileName:      {modelsFileName},
-    implementationFileName: {modelsFileName, clientFileName},
+    implementationFileName: {modelsFileName},
   }[fileName]
 
   var (
@@ -662,7 +658,6 @@ func mergeGoPackages(goPackages ...[]*goPackageDesc) []*goPackageDesc {
 
 const (
   constsFileName         = "consts"
-  clientFileName         = "client"
   buildersFileName       = "builders"
   optionsFileName        = "options"
   modelsFileName         = "models"
@@ -671,13 +666,6 @@ const (
 )
 
 var importPackagesByFiles = map[string][]string{
-  clientFileName: {
-    contextPackageName,
-    databaseSqlPackageName,
-    errorsPackageName,
-    fmtPackageName,
-    sqlscanPackageName,
-  },
   buildersFileName: {
     squirrelPackageName,
   },
@@ -692,21 +680,27 @@ var importPackagesByFiles = map[string][]string{
     contextPackageName,
     fmtPackageName,
     squirrelPackageName,
+    pgClientPackageName,
+    pgBuilderPackageName,
   },
   modelsFileName: {},
   constsFileName: {},
 }
 
 const (
-  contextPackageName     = "context"
-  fmtPackageName         = "fmt"
-  zeroPackageName        = "zero"
-  timePackageName        = "time"
-  squirrelPackageName    = "squirrel"
-  sqlscanPackageName     = "sqlscan"
-  databaseSqlPackageName = "sql"
-  errorsPackageName      = "errors"
+  contextPackageName = "context"
+  fmtPackageName     = "fmt"
+  zeroPackageName    = "zero"
+  timePackageName    = "time"
+  errorsPackageName  = "errors"
+
   logrusPackageName      = "logrus"
+  databaseSqlPackageName = "sql"
+  squirrelPackageName    = "squirrel"
+
+  pgClientPackageName  = "pg-client"
+  pgBuilderPackageName = "pg-builder"
+  pgErrorsPackageName  = "pg-errors"
 )
 
 var importPackagesByNames = map[string]*goPackageDesc{
@@ -736,12 +730,6 @@ var importPackagesByNames = map[string]*goPackageDesc{
     ImportAlias: "sq",
     IsInstall:   true,
   },
-  sqlscanPackageName: {
-    CustomName:  "scany/sqlscan",
-    ImportLine:  "github.com/georgysavva/scany/v2/sqlscan",
-    ImportAlias: "sc",
-    IsInstall:   true,
-  },
   databaseSqlPackageName: {
     CustomName: "database/sql",
     ImportLine: "database/sql",
@@ -756,6 +744,24 @@ var importPackagesByNames = map[string]*goPackageDesc{
     CustomName:  "sirupsen/logrus",
     ImportLine:  "github.com/sirupsen/logrus",
     ImportAlias: "log",
+    IsInstall:   true,
+  },
+  pgClientPackageName: {
+    CustomName:  "boiler/pg-client",
+    ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/client",
+    ImportAlias: "pg",
+    IsInstall:   true,
+  },
+  pgBuilderPackageName: {
+    CustomName:  "boiler/pg-builder",
+    ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/builder",
+    ImportAlias: "br",
+    IsInstall:   true,
+  },
+  pgErrorsPackageName: {
+    CustomName:  "boiler/pg-errors",
+    ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/errors",
+    ImportAlias: "pe",
     IsInstall:   true,
   },
 }
