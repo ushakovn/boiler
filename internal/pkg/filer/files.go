@@ -12,6 +12,21 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/env"
 )
 
+func IsExistedPattern(fileDirPath, fileNamePattern string) bool {
+  entries, err := os.ReadDir(fileDirPath)
+  if err != nil {
+    return false
+  }
+  for _, entry := range entries {
+    entryName := entry.Name()
+
+    if strings.Contains(entryName, fileNamePattern) {
+      return true
+    }
+  }
+  return false
+}
+
 func IsExistedDirectory(dirPath string) bool {
   if info, err := os.Stat(dirPath); err == nil && info.IsDir() {
     return true

@@ -3,7 +3,10 @@ package storage
 import (
   "fmt"
   "path/filepath"
+  "strings"
 
+  "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/goose"
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
@@ -35,20 +38,20 @@ func (g *Storage) generateCustomStorages() error {
   }
 
   for _, model := range customSchema.CustomModels {
-
     modelTemplates, ok := storageTemplatesByCustomModelNames[model.ModelName]
     if !ok {
       return fmt.Errorf("storage templates not found for custom model: %s", model.ModelName)
     }
-
     for _, modelTemplate := range modelTemplates {
-
       filePath, err = createStorageFolders(storagePath, modelTemplate.filePathParts...)
       if err != nil {
         return fmt.Errorf("createStorageFolders: %w", err)
       }
       filePath = filepath.Join(filePath, modelTemplate.fileNameBuild(model.ModelName))
 
+      if modelTemplate.preBuildCheck != nil && !modelTemplate.preBuildCheck(filePath) {
+        continue
+      }
       execFunc := templater.ExecTemplateCopyFunc(modelTemplate.notGoTemplate)
 
       if err = execFunc(modelTemplate.compiledTemplate, filePath, model, nil); err != nil {
@@ -60,25 +63,30 @@ func (g *Storage) generateCustomStorages() error {
 }
 
 func (g *Storage) buildCustomSchemaDesc() (*customSchemaDesc, error) {
-  modelNames := []string{
-    rocketLock,
-  }
-  customModelsDesc := make([]*customModelDesc, 0, len(modelNames))
+  models := make([]*customModelDesc, 0, len(customModelsNames))
 
-  for _, modelName := range modelNames {
-    customModel, err := g.buildCustomModelDesc(modelName)
+  packagesNames := map[string]struct{}{}
+  var modelsPackages []*goPackageDesc
+
+  for _, modelName := range customModelsNames {
+    model, err := g.buildCustomModelDesc(modelName)
     if err != nil {
       return nil, fmt.Errorf("g.buildCustomModelDesc: %w", err)
     }
-    customModelsDesc = append(customModelsDesc, customModel)
+    models = append(models, model)
+
+    for _, goPackage := range model.ModelPackages {
+      if _, ok := packagesNames[goPackage.CustomName]; ok {
+        continue
+      }
+      modelsPackages = append(modelsPackages, goPackage)
+      packagesNames[goPackage.CustomName] = struct{}{}
+    }
   }
 
-  // TODO: collect distinct packages
-  commonPackages := customModelsDesc[0].ModelPackages
-
   return &customSchemaDesc{
-    CustomModels:         customModelsDesc,
-    CustomModelsPackages: commonPackages,
+    CustomModels:         models,
+    CustomModelsPackages: modelsPackages,
   }, nil
 }
 
@@ -117,8 +125,12 @@ type customModelPackagesNames struct {
   Implementation []string
 }
 
+var customModelsNames = []string{
+  rocketLock,
+}
+
 const (
-  rocketLock = "boiler_rocket_lock"
+  rocketLock = "rocket_lock"
 )
 
 var rocketLockPackagesNames = &customModelPackagesNames{
@@ -168,7 +180,16 @@ var rocketLockStorageTemplates = []*storageTemplate{
     filePathParts: []string{"../../../migrations"},
 
     fileNameBuild: func(modelName string) string {
-      return "boiler_rocket_lock.sql"
+      gooseFileName := goose.BuildFileName(modelName)
+      return gooseFileName
+    },
+
+    preBuildCheck: func(filePath string) bool {
+      gooseFileName := filer.ExtractFileName(filePath)
+      fileName := goose.ExtractFileName(gooseFileName)
+
+      fileDirPath := strings.TrimSuffix(filePath, fmt.Sprint("/", gooseFileName))
+      return !filer.IsExistedPattern(fileDirPath, fileName)
     },
 
     notGoTemplate: true,

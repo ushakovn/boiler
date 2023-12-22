@@ -14,9 +14,9 @@ var (
 )
 
 type RocketLocksStorage interface {
-  CreateLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error)
-  DeleteLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error)
-  WithLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error
+  CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error)
+  DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error)
+  WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error
 }
 
 type CreateRocketLockInput struct {

@@ -12,8 +12,8 @@ type rocketLocksStorage struct {
   client client.Client
 }
 
-func (s *rocketLocksStorage) CreateLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
-  query := `INSERT INTO __boiler_rocket_locks(lock_id, locked_until)
+func (s *rocketLocksStorage) CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
+  query := `INSERT INTO rocket_locks(lock_id, locked_until)
             VALUES ($1, NOW() + INTERVAL $2)
             ON CONFLICT DO UPDATE SET locked_until = NOW() + INTERVAL $2
             WHERE locked_until < NOW()
@@ -32,8 +32,8 @@ func (s *rocketLocksStorage) CreateLock(ctx context.Context, input CreateRocketL
   return model[0], nil
 }
 
-func (s *rocketLocksStorage) DeleteLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
-  query := `DELETE FROM __boiler_rocket_locks
+func (s *rocketLocksStorage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
+  query := `DELETE FROM rocket_locks
             WHERE lock_id = $1
             RETURNING lock_id, locked_until`
 
@@ -50,8 +50,8 @@ func (s *rocketLocksStorage) DeleteLock(ctx context.Context, input DeleteRocketL
   return model[0], nil
 }
 
-func (s *rocketLocksStorage) WithLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error {
-  if _, err := s.CreateLock(ctx, CreateRocketLockInput{
+func (s *rocketLocksStorage) WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error {
+  if _, err := s.CreateRocketLock(ctx, CreateRocketLockInput{
     LockID:  input.LockID,
     LockTTL: input.LockTTL,
   }); err != nil {
@@ -59,7 +59,7 @@ func (s *rocketLocksStorage) WithLock(ctx context.Context, input WithRocketLockI
   }
 
   defer func() {
-    if _, err := s.DeleteLock(ctx, DeleteRocketLockInput{
+    if _, err := s.DeleteRocketLock(ctx, DeleteRocketLockInput{
       LockID: input.LockID,
     }); err != nil {
       log.Errorf("rocketLocksStorage: WithLock: s.DeleteLock: %v", err)

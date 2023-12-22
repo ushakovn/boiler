@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-CREATE TABLE __boiler_rocket_locks(
+CREATE TABLE rocket_locks(
     lock_id      TEXT NOT NULL PRIMARY KEY,
     locked_until TIMESTAMP WITHOUT TIME ZONE
 );
@@ -13,6 +13,6 @@ CREATE TABLE __boiler_rocket_locks(
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-DROP TABLE __boiler_rocket_locks;
+DROP TABLE rocket_locks;
 
 -- +goose StatementEnd

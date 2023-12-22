@@ -164,9 +164,12 @@ func createStorageFolders(sourcePath string, destNestedFolders ...string) (strin
 type storageTemplate struct {
   templateName     string
   compiledTemplate string
-  filePathParts    []string
-  fileNameBuild    func(modelName string) string
-  notGoTemplate    bool
+
+  filePathParts []string
+  fileNameBuild func(modelName string) string
+
+  preBuildCheck func(filePath string) bool
+  notGoTemplate bool
 }
 
 var storageModelTemplates = []*storageTemplate{
