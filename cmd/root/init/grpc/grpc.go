@@ -16,6 +16,7 @@ import (
 var (
   flagProjectConfigPath string
   flagGoModVersion      string
+  flagGoModName         string
 )
 
 var CmdGrpc = &cobra.Command{
@@ -43,6 +44,7 @@ var CmdGrpc = &cobra.Command{
     ctx := context.Background()
 
     initor, err := gen.NewInitor(project.Config{
+      GoModName:       flagGoModName,
       GoModVersion:    flagGoModVersion,
       ProjectDescPath: flagProjectConfigPath,
     })
@@ -64,7 +66,8 @@ var CmdGrpc = &cobra.Command{
 
 func init() {
   CmdGrpc.Flags().StringVar(&flagProjectConfigPath, "project-config-path", "", "path to project directories config in json/yaml")
-  CmdGrpc.Flags().StringVar(&flagGoModVersion, "go-mod-version", "", "go mod version for project")
+  CmdGrpc.Flags().StringVar(&flagGoModVersion, "go-version", "", "go version for project")
+  CmdGrpc.Flags().StringVar(&flagGoModName, "go-module", "", "go module name for project")
 }
 
 func execMakeGrpcBinDeps() error {

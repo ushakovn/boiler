@@ -18,19 +18,26 @@ type Project struct {
   projectDescPath     string
   projectDescCompiled string
   goModVersion        string
+  goModName           string
   workDirPath         string
   projectDesc         *projectDesc
 }
 
 type Config struct {
+  GoModName           string
   GoModVersion        string
   ProjectDescPath     string
   ProjectDescCompiled string
 }
 
 func (c Config) WithDefault() Config {
-  const goModVersionDefault = "1.19"
-
+  const (
+    goModNameDefault    = "main"
+    goModVersionDefault = "1.19"
+  )
+  if c.GoModName == "" {
+    c.GoModName = goModNameDefault
+  }
   if c.GoModVersion == "" {
     c.GoModVersion = goModVersionDefault
   }
@@ -51,6 +58,7 @@ func NewProject(config Config) (*Project, error) {
     projectDescPath:     config.ProjectDescPath,
     projectDescCompiled: config.ProjectDescCompiled,
     goModVersion:        config.GoModVersion,
+    goModName:           config.GoModName,
     workDirPath:         workDirPath,
   }
   return proj, nil
@@ -177,6 +185,7 @@ func loadGlobalCompiledTemplate(desc *templateDesc) string {
 
 func (g *Project) loadGlobalTemplatesData() map[string]any {
   templatesData := map[string]any{
+    "goModName":    g.goModName,
     "goModVersion": g.goModVersion,
   }
   return templatesData

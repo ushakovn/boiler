@@ -20,6 +20,7 @@ var (
 var (
   flagProjectConfigPath string
   flagGoModVersion      string
+  flagGoModName         string
 )
 
 var CmdGqlgen = &cobra.Command{
@@ -49,6 +50,7 @@ var CmdGqlgen = &cobra.Command{
     ctx := context.Background()
 
     initor, err := gen.NewInitor(project.Config{
+      GoModName:       flagGoModName,
       GoModVersion:    flagGoModVersion,
       ProjectDescPath: flagProjectConfigPath,
     })
@@ -72,7 +74,8 @@ func init() {
   CmdGqlgen.Flags().StringVar(&flagGqlgenConfigPath, "gqlgen-config-path", "", "path to gqlgen directories config in json/yaml")
 
   CmdGqlgen.Flags().StringVar(&flagProjectConfigPath, "project-config-path", "", "path to project directories config in json/yaml")
-  CmdGqlgen.Flags().StringVar(&flagGoModVersion, "go-mod-version", "", "go mod version for project")
+  CmdGqlgen.Flags().StringVar(&flagGoModVersion, "go-version", "", "go version for project")
+  CmdGqlgen.Flags().StringVar(&flagGoModName, "go-module", "", "go module name for project")
 }
 
 func execMakeGqlgenBinDeps() error {
