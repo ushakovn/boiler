@@ -60,11 +60,6 @@
             "name": {
               "value": "app"
             }
-          },
-          {
-            "name": {
-              "value": "pkg"
-            }
           }
         ]
       },

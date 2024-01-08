@@ -30,15 +30,25 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.ID
       - github.com/99designs/gqlgen/graphql.Int
-      - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+      - github.com/99designs/gqlgen/graphql.Int64
 
   # Int graphql type resolver
   Int:
     model:
       - github.com/99designs/gqlgen/graphql.Int
-      - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+      - github.com/99designs/gqlgen/graphql.Int64
+
+  # Int32 graphql type resolver
+  Int32:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int32
+
+  # Int64 graphql type resolver
+  Int64:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int64
 
   # UUID graphql type resolver
   UUID:
