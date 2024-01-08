@@ -670,6 +670,8 @@ var importPackagesByFiles = map[string][]string{
   },
   optionsFileName: {
     fmtPackageName,
+    contextPackageName,
+    pgPgxPackageName,
     pgClientPackageName,
   },
   modelOptionsFileName: {
@@ -697,6 +699,7 @@ const (
   databaseSqlPackageName = "sql"
   squirrelPackageName    = "squirrel"
 
+  pgPgxPackageName     = "pg-pgx"
   pgClientPackageName  = "pg-client"
   pgBuilderPackageName = "pg-builder"
   pgErrorsPackageName  = "pg-errors"
@@ -761,6 +764,12 @@ var importPackagesByNames = map[string]*goPackageDesc{
     CustomName:  "boiler/pg-errors",
     ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/errors",
     ImportAlias: "pe",
+    IsInstall:   true,
+  },
+  pgPgxPackageName: {
+    CustomName:  "jackc/pgx",
+    ImportLine:  "github.com/jackc/pgx/v5",
+    ImportAlias: "pgx",
     IsInstall:   true,
   },
 }

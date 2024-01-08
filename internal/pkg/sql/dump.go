@@ -8,6 +8,7 @@ import (
 
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/stack"
+  "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
 
 type DumpSQL struct {
@@ -62,6 +63,8 @@ func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
     Tables: stack.NewStack[*DumpTable](),
   }
   for _, table := range dump.Tables.Elems() {
+    table.Name = stringer.NormalizeName(table.Name)
+
     if _, ok := systemTablesNames[table.Name]; ok {
       continue
     }
@@ -117,5 +120,5 @@ var sqlStickyTokens = map[rune]struct{}{
 var systemTablesNames = map[string]struct{}{
   "goose_db_version": {},
   "db_version":       {},
-  "rocket_locks":     {},
+  "rocket_lock":      {},
 }

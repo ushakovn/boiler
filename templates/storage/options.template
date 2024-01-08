@@ -62,3 +62,11 @@ func NewStorage(client pg.Client) *Storage {
   }
 }
 
+func (s *Storage) WithTransaction(ctx context.Context, txFn func(txCtx context.Context) error) error {
+	return s.client.WithTransaction(ctx, txFn)
+}
+
+func (s *Storage) WithTransactionOpt(ctx context.Context, txOptions pgx.TxOptions, txFn func(txCtx context.Context) error) error {
+	return s.client.WithTransactionOpt(ctx, txOptions, txFn)
+}
+

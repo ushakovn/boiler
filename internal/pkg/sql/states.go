@@ -229,9 +229,6 @@ func (t *key) next(token string) (state, error) {
     ok = false
 
     for tableIdx, table := range t.dump.Tables.Elems() {
-      if ok {
-        break
-      }
       if rawTableName != table.RawName {
         continue
       }
@@ -242,9 +239,14 @@ func (t *key) next(token string) (state, error) {
         t.dump.Tables.ElemWith(tableIdx, func(table *DumpTable) {
           table.Columns.ElemWith(columnIdx, func(column *DumpColumn) {
             column.IsPrimaryKey = true
+            // Primary key column must contain not null constraint
+            column.IsNotNull = true
           })
         })
         ok = true
+        break
+      }
+      if ok {
         break
       }
     }

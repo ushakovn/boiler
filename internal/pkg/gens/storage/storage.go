@@ -27,6 +27,8 @@ type Config struct {
 }
 
 func NewStorage(config Config) (*Storage, error) {
+  ctx := context.Background()
+
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -48,7 +50,7 @@ func NewStorage(config Config) (*Storage, error) {
   }
   if option != nil {
     // If option was set
-    dumpSQL, err = sql.DumpSchemaSQL(context.Background(), option)
+    dumpSQL, err = sql.DumpSchemaSQL(ctx, option)
     if err != nil {
       return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
     }

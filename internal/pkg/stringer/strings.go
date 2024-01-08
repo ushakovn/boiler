@@ -194,3 +194,12 @@ func StringOneOfEqual(src string, dst ...string) bool {
   }
   return false
 }
+
+func NormalizeName(s string) string {
+  s = TrimPluralForm(s)
+  return s
+}
+
+func TrimPluralForm(src string) string {
+  return strings.TrimSuffix(src, "s")
+}
