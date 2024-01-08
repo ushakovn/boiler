@@ -52,3 +52,13 @@ func (p *Pagination) toOffsetLimit() (offset uint64, limit uint64) {
   return
 }
 
+type Storage struct {
+  client pg.Client
+}
+
+func NewStorage(client pg.Client) *Storage {
+  return &Storage{
+    client: client,
+  }
+}
+

@@ -3,7 +3,7 @@
 package storage
 
 import (
-  {{- range .InterfacePackages}}
+  {{- range .ModelOptionsPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
@@ -12,12 +12,6 @@ var (
   ErrRocketLockConflict = errors.New("rocket lock conflict")
   ErrRocketLockNotFound = errors.New("rocked lock not found")
 )
-
-type RocketLocksStorage interface {
-  CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error)
-  DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error)
-  WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error
-}
 
 type CreateRocketLockInput struct {
   LockID  string

@@ -3,22 +3,12 @@
 package storage
 
 import (
-  {{- range .ImplementationPackages}}
+  {{- range .ModelMethodsPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
 
-type {{toLowerCamelCase $modelName}}Storage struct {
-  client pg.Client
-}
-
-func New{{$modelName}}Storage(client pg.Client) {{$modelName}}Storage {
-  return &{{toLowerCamelCase $modelName}}Storage{
-    client: client,
-  }
-}
-
-func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName}}Input) ([]*models.{{$modelName}}, error) {
+func (s *Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName}}Input) ([]*models.{{$modelName}}, error) {
   builder := br.NewSelectBuilder().
     Columns(
       {{- range .ModelFields}}
@@ -51,7 +41,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) List{{$modelName}}(ctx context.
   return pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
 }
 
-func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input) (*models.{{$modelName}}, error) {
+func (s *Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input) (*models.{{$modelName}}, error) {
   builder := br.NewSelectBuilder().
     Columns(
       {{- range .ModelFields}}
@@ -78,7 +68,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) {{$modelName}}(ctx context.Cont
   return model[0], nil
 }
 
-func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.Context, input Put{{$modelName}}Input) (*models.{{$modelName}}, error) {
+func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$modelName}}Input) (*models.{{$modelName}}, error) {
   builder := br.NewInsertBuilder().
     Into(string({{$modelName}}_TableName))
 
@@ -113,7 +103,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Put{{$modelName}}(ctx context.C
   return model, nil
 }
 
-func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {
+func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {
   builder := br.NewUpdateBuilder().
     Table(string({{$modelName}}_TableName))
 
@@ -153,7 +143,7 @@ func (s *{{toLowerCamelCase $modelName}}Storage) Update{{$modelName}}(ctx contex
   return model[0], nil
 }
 
-func (s *{{toLowerCamelCase $modelName}}Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
+func (s *Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
   builder := br.NewDeleteBuilder().
     From(string({{$modelName}}_TableName)).
     {{- range .ModelFields}}

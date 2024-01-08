@@ -3,18 +3,10 @@
 package storage
 
 import (
-  {{- range .InterfacePackages}}
+  {{- range .ModelOptionsPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
-
-type {{.ModelName}}Storage interface {
-  List{{.ModelName}}(ctx context.Context, input List{{.ModelName}}Input) ([]*models.{{.ModelName}}, error)
-  {{.ModelName}}(ctx context.Context, input {{.ModelName}}Input) (*models.{{.ModelName}}, error)
-  Put{{.ModelName}}(ctx context.Context, input Put{{.ModelName}}Input) (*models.{{.ModelName}}, error)
-  Update{{.ModelName}}(ctx context.Context, input Update{{.ModelName}}Input) (*models.{{.ModelName}}, error)
-  Delete{{.ModelName}}(ctx context.Context, input Delete{{.ModelName}}Input) (*models.{{.ModelName}}, error)
-}
 
 type {{.ModelName}}Input struct {
   Filters *{{.ModelName}}Filter
@@ -28,7 +20,7 @@ type {{.ModelName}}Filter struct {
   {{- end}}
 }
 
-type Put{{.ModelName}}Input struct {
+type Create{{.ModelName}}Input struct {
   {{- range .ModelFields}}
   {{.FieldName}} {{.FieldType}} {{- if eq .FieldBadge "pk"}} // PRIMARY KEY{{- end}}
   {{- end}}

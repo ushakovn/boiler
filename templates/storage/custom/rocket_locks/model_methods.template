@@ -3,22 +3,12 @@
 package storage
 
 import (
-  {{- range .ImplementationPackages}}
+  {{- range .ModelMethodsPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
 
-type rocketLocksStorage struct {
-  client pg.Client
-}
-
-func NewRocketLocksStorage(client pg.Client) RocketLocksStorage {
-  return &rocketLocksStorage{
-    client: client,
-  }
-}
-
-func (s *rocketLocksStorage) CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
+func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
   query := `INSERT INTO rocket_locks(lock_id, locked_until)
             VALUES ($1, NOW() + INTERVAL $2)
             ON CONFLICT DO UPDATE SET locked_until = NOW() + INTERVAL $2
@@ -38,7 +28,7 @@ func (s *rocketLocksStorage) CreateRocketLock(ctx context.Context, input CreateR
   return model[0], nil
 }
 
-func (s *rocketLocksStorage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
+func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
   query := `DELETE FROM rocket_locks
             WHERE lock_id = $1
             RETURNING lock_id, locked_until`
@@ -56,7 +46,7 @@ func (s *rocketLocksStorage) DeleteRocketLock(ctx context.Context, input DeleteR
   return model[0], nil
 }
 
-func (s *rocketLocksStorage) WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error {
+func (s *Storage) WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error {
   if _, err := s.CreateRocketLock(ctx, CreateRocketLockInput{
     LockID:  input.LockID,
     LockTTL: input.LockTTL,

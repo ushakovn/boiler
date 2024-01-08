@@ -174,34 +174,34 @@ type storageTemplate struct {
 
 var storageModelTemplates = []*storageTemplate{
   {
-    templateName:     "Interface",
-    compiledTemplate: templates.StorageInterface,
-    fileNameBuild:    buildInterfaceFileName,
+    templateName:     "model_options",
+    compiledTemplate: templates.StorageModelOptions,
+    fileNameBuild:    buildModelOptionsFileName,
   },
   {
-    templateName:     "Implementation",
-    compiledTemplate: templates.StorageImplementation,
-    fileNameBuild:    buildImplementationFileName,
+    templateName:     "model_methods",
+    compiledTemplate: templates.StorageModelMethods,
+    fileNameBuild:    buildModelMethodsFileName,
   },
 }
 
 var storageCommonTemplates = []*storageTemplate{
   {
-    templateName:     "Options",
+    templateName:     "options",
     compiledTemplate: templates.StorageOptions,
     fileNameBuild: func(modelName string) string {
       return "options.go"
     },
   },
   {
-    templateName:     "Consts",
+    templateName:     "consts",
     compiledTemplate: templates.StorageConsts,
     fileNameBuild: func(modelName string) string {
       return "consts.go"
     },
   },
   {
-    templateName:     "Models",
+    templateName:     "models",
     compiledTemplate: templates.StorageModels,
     filePathParts:    []string{"models"},
     fileNameBuild: func(modelName string) string {
@@ -210,12 +210,12 @@ var storageCommonTemplates = []*storageTemplate{
   },
 }
 
-func buildInterfaceFileName(modelName string) string {
+func buildModelOptionsFileName(modelName string) string {
   modelName = stringer.StringToSnakeCase(modelName)
-  return fmt.Sprint(modelName, ".interface.go")
+  return fmt.Sprint(modelName, ".options.go")
 }
 
-func buildImplementationFileName(modelName string) string {
+func buildModelMethodsFileName(modelName string) string {
   modelName = stringer.StringToSnakeCase(modelName)
-  return fmt.Sprint(modelName, ".implementation.go")
+  return fmt.Sprint(modelName, ".methods.go")
 }

@@ -19,11 +19,11 @@ type schemaDesc struct {
 }
 
 type modelDesc struct {
-  ModelName              string
-  SqlTableName           string
-  ModelFields            []*fieldDesc
-  InterfacePackages      []*goPackageDesc
-  ImplementationPackages []*goPackageDesc
+  ModelName            string
+  SqlTableName         string
+  ModelFields          []*fieldDesc
+  ModelOptionsPackages []*goPackageDesc
+  ModelMethodsPackages []*goPackageDesc
 }
 
 type fieldDesc struct {
@@ -76,19 +76,19 @@ func (g *Storage) loadSchemaDesc() error {
   optionsPackages := buildFilePackages(optionsFileName)
   modelsPackages := buildFilePackages(modelsFileName)
 
-  implementationPackages := mergeGoPackages(
-    buildFilePackages(implementationFileName),
-    buildCrossFilePackages(g.goModuleName, implementationFileName),
+  modelMethodsPackages := mergeGoPackages(
+    buildFilePackages(modelMethodsFileName),
+    buildCrossFilePackages(g.goModuleName, modelMethodsFileName),
   )
 
   modelUniquePackages := map[string]struct{}{}
 
   for _, model := range models {
-    interfacePackages := mergeGoPackages(
-      buildFilePackages(interfaceFileName),
-      buildCrossFilePackages(g.goModuleName, interfaceFileName),
+    modelOptionsPackages := mergeGoPackages(
+      buildFilePackages(modelOptionsFileName),
+      buildCrossFilePackages(g.goModuleName, modelOptionsFileName),
     )
-    interfaceUniquePackages := map[string]struct{}{}
+    modelOptionsUnique := map[string]struct{}{}
 
     for _, field := range model.ModelFields {
       if fieldPackages, ok := buildFieldPackages(field.FieldType); ok {
@@ -103,18 +103,18 @@ func (g *Storage) loadSchemaDesc() error {
       for _, filter := range field.ModelsFieldFilters {
         if fieldPackages, ok := buildFilterFieldPackages(filter.FilterType); ok {
           for _, fieldPackage := range fieldPackages {
-            if _, ok = interfaceUniquePackages[fieldPackage.CustomName]; ok {
+            if _, ok = modelOptionsUnique[fieldPackage.CustomName]; ok {
               continue
             }
-            interfacePackages = append(interfacePackages, fieldPackage)
-            interfaceUniquePackages[fieldPackage.CustomName] = struct{}{}
+            modelOptionsPackages = append(modelOptionsPackages, fieldPackage)
+            modelOptionsUnique[fieldPackage.CustomName] = struct{}{}
           }
         }
       }
     }
 
-    model.InterfacePackages = interfacePackages
-    model.ImplementationPackages = implementationPackages
+    model.ModelOptionsPackages = modelOptionsPackages
+    model.ModelMethodsPackages = modelMethodsPackages
   }
 
   g.schemaDesc = &schemaDesc{
@@ -567,8 +567,8 @@ func buildFilePackages(fileName string) []*goPackageDesc {
   packagesDesc := make([]*goPackageDesc, 0, len(packagesNames))
 
   for _, packageName := range packagesNames {
-    interfacePackage := importPackagesByNames[packageName]
-    packagesDesc = append(packagesDesc, interfacePackage)
+    desc := importPackagesByNames[packageName]
+    packagesDesc = append(packagesDesc, desc)
   }
   return packagesDesc
 }
@@ -577,8 +577,8 @@ func buildPackagesForNames(packagesNames []string) []*goPackageDesc {
   packagesDesc := make([]*goPackageDesc, 0, len(packagesNames))
 
   for _, packageName := range packagesNames {
-    interfacePackage := importPackagesByNames[packageName]
-    packagesDesc = append(packagesDesc, interfacePackage)
+    desc := importPackagesByNames[packageName]
+    packagesDesc = append(packagesDesc, desc)
   }
   return packagesDesc
 }
@@ -611,8 +611,7 @@ func buildFilterFieldPackages(filterTyp string) ([]*goPackageDesc, bool) {
 
 func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
   crossFileNames := map[string][]string{
-    interfaceFileName:      {modelsFileName},
-    implementationFileName: {modelsFileName},
+    modelMethodsFileName: {modelsFileName},
   }[fileName]
 
   var (
@@ -657,12 +656,12 @@ func mergeGoPackages(goPackages ...[]*goPackageDesc) []*goPackageDesc {
 }
 
 const (
-  constsFileName         = "consts"
-  buildersFileName       = "builders"
-  optionsFileName        = "options"
-  modelsFileName         = "models"
-  interfaceFileName      = "interface"
-  implementationFileName = "implementation"
+  constsFileName       = "consts"
+  buildersFileName     = "builders"
+  optionsFileName      = "options"
+  modelsFileName       = "models"
+  modelOptionsFileName = "model_options"
+  modelMethodsFileName = "model_methods"
 )
 
 var importPackagesByFiles = map[string][]string{
@@ -671,12 +670,12 @@ var importPackagesByFiles = map[string][]string{
   },
   optionsFileName: {
     fmtPackageName,
+    pgClientPackageName,
   },
-  interfaceFileName: {
-    contextPackageName,
+  modelOptionsFileName: {
     fmtPackageName,
   },
-  implementationFileName: {
+  modelMethodsFileName: {
     contextPackageName,
     fmtPackageName,
     squirrelPackageName,

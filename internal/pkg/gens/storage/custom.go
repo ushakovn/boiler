@@ -17,11 +17,11 @@ type customSchemaDesc struct {
 }
 
 type customModelDesc struct {
-  ModelName              string
-  StructDescription      string
-  ModelPackages          []*goPackageDesc
-  InterfacePackages      []*goPackageDesc
-  ImplementationPackages []*goPackageDesc
+  ModelName            string
+  StructDescription    string
+  ModelPackages        []*goPackageDesc
+  ModelOptionsPackages []*goPackageDesc
+  ModelMethodsPackages []*goPackageDesc
 }
 
 func (g *Storage) generateCustomStorages() error {
@@ -100,29 +100,29 @@ func (g *Storage) buildCustomModelDesc(modelName string) (*customModelDesc, erro
     return nil, fmt.Errorf("struct description not found for custom model: %s", modelName)
   }
 
-  interfacePackages := mergeGoPackages(
-    buildPackagesForNames(packagesNames.Interface),
-    buildCrossFilePackages(g.goModuleName, interfaceFileName),
+  modelOptionsPackages := mergeGoPackages(
+    buildPackagesForNames(packagesNames.ModelOptions),
+    buildCrossFilePackages(g.goModuleName, modelOptionsFileName),
   )
-  implementationPackages := mergeGoPackages(
-    buildPackagesForNames(packagesNames.Implementation),
-    buildCrossFilePackages(g.goModuleName, implementationFileName),
+  modelMethodsPackages := mergeGoPackages(
+    buildPackagesForNames(packagesNames.ModelMethods),
+    buildCrossFilePackages(g.goModuleName, modelMethodsFileName),
   )
   modelPackages := buildPackagesForNames(packagesNames.Model)
 
   return &customModelDesc{
-    ModelName:              modelName,
-    StructDescription:      structDesc,
-    ModelPackages:          modelPackages,
-    InterfacePackages:      interfacePackages,
-    ImplementationPackages: implementationPackages,
+    ModelName:            modelName,
+    StructDescription:    structDesc,
+    ModelPackages:        modelPackages,
+    ModelOptionsPackages: modelOptionsPackages,
+    ModelMethodsPackages: modelMethodsPackages,
   }, nil
 }
 
 type customModelPackagesNames struct {
-  Model          []string
-  Interface      []string
-  Implementation []string
+  Model        []string
+  ModelOptions []string
+  ModelMethods []string
 }
 
 var customModelsNames = []string{
@@ -137,18 +137,18 @@ var rocketLockPackagesNames = &customModelPackagesNames{
   Model: []string{
     timePackageName,
   },
-  Interface: []string{
+  ModelOptions: []string{
     errorsPackageName,
     timePackageName,
-    contextPackageName,
   },
-  Implementation: []string{
+  ModelMethods: []string{
     contextPackageName,
     errorsPackageName,
     logrusPackageName,
     fmtPackageName,
     pgClientPackageName,
     pgErrorsPackageName,
+    pgBuilderPackageName,
   },
 }
 
@@ -166,17 +166,17 @@ var storageTemplatesByCustomModelNames = map[string][]*storageTemplate{
 
 var rocketLockStorageTemplates = []*storageTemplate{
   {
-    templateName:     "Interface",
-    compiledTemplate: templates.StorageRocketLockInterface,
-    fileNameBuild:    buildInterfaceFileName,
+    templateName:     "model_options",
+    compiledTemplate: templates.StorageRocketLockModelOptions,
+    fileNameBuild:    buildModelOptionsFileName,
   },
   {
-    templateName:     "Implementation",
-    compiledTemplate: templates.StorageRocketLockImplementation,
-    fileNameBuild:    buildImplementationFileName,
+    templateName:     "model_methods",
+    compiledTemplate: templates.StorageRocketLockModelMethods,
+    fileNameBuild:    buildModelMethodsFileName,
   },
   {
-    templateName:     "Migration",
+    templateName:     "migration",
     compiledTemplate: templates.StorageRocketLockMigration,
 
     filePathParts: []string{"../../../migrations"},
