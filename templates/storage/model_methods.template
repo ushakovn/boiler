@@ -107,23 +107,13 @@ func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$model
   builder := br.NewUpdateBuilder().
     Table(string({{$modelName}}_TableName))
 
-  fields := map[string]any{
-    {{- range .ModelFields}}
-    {{- if eq .NotNullField true}}
-    {{- if ne .FieldBadge "pk"}}
-    string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}},
-    {{- end}}
-    {{- end}}
-    {{- end}}
-  }
+  fields := map[string]any{}
 
   {{- range .ModelFields}}
-  {{- if eq .NotNullField false}}
   {{- if ne .FieldBadge "pk"}}
-  if {{.FieldIfStmt}} {
-    fields[string({{.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldTypeSuffix}}
+  if {{.FieldZeroTypeIfStmt}} {
+    fields[string({{.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldZeroTypeSuffix}}
   }
-  {{- end}}
   {{- end}}
   {{- end}}
 

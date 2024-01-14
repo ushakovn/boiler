@@ -36,7 +36,11 @@ type Delete{{.ModelName}}Input struct {
 
 type Update{{.ModelName}}Input struct {
   {{- range .ModelFields}}
-  {{.FieldName}} {{.FieldType}} {{- if eq .FieldBadge "pk"}} // PRIMARY KEY{{- end}}
+  {{- if eq .FieldBadge "pk"}}
+  {{.FieldName}} {{.FieldType}} // PRIMARY KEY
+  {{- else}}
+  {{.FieldName}} {{.FieldZeroType}}
+  {{- end}}
   {{- end}}
 }
 

@@ -27,15 +27,26 @@ type modelDesc struct {
 }
 
 type fieldDesc struct {
-  SqlTableFieldName  string
-  FieldName          string
-  FieldType          string
-  FieldZeroType      string
-  FieldBuiltinType   string
-  FieldTypeSuffix    string
-  FieldIfStmt        string
-  NotNullField       bool
-  FieldBadge         string
+  // Sql column field attributes
+  SqlTableFieldName string
+  NotNullField      bool
+  FieldBadge        string
+
+  // Core field attributes
+  FieldName       string
+  FieldType       string
+  FieldTypeSuffix string
+  FieldIfStmt     string
+
+  // Builtin field attributes
+  FieldBuiltinType string
+
+  // Zero package field attributes
+  FieldZeroType       string
+  FieldZeroTypeSuffix string
+  FieldZeroTypeIfStmt string
+
+  // Filter field attributes
   ModelFieldFilters  []*fieldFilterDesc
   ModelsFieldFilters []*fieldFilterDesc
 }
@@ -161,18 +172,28 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
 
   fieldIfStmt := buildFieldIfStmt(fieldName, fieldTyp)
   fieldTypSuffix := buildFieldTypeSuffix(fieldTyp)
+
+  fieldZeroTypIfStmt := buildFieldIfStmt(fieldName, fieldZeroTyp)
+  fieldZeroTypSuffix := buildFieldTypeSuffix(fieldZeroTyp)
+
   modelFilters, modelsFilters := buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp)
 
   return &fieldDesc{
-    SqlTableFieldName:  sqlTableFieldName,
-    FieldName:          fieldName,
-    FieldType:          fieldTyp,
-    FieldIfStmt:        fieldIfStmt,
-    FieldZeroType:      fieldZeroTyp,
-    FieldBuiltinType:   fieldBuiltinTyp,
-    FieldTypeSuffix:    fieldTypSuffix,
-    NotNullField:       notNullField,
-    FieldBadge:         fieldBadge,
+    SqlTableFieldName: sqlTableFieldName,
+    NotNullField:      notNullField,
+    FieldBadge:        fieldBadge,
+
+    FieldName:       fieldName,
+    FieldType:       fieldTyp,
+    FieldIfStmt:     fieldIfStmt,
+    FieldTypeSuffix: fieldTypSuffix,
+
+    FieldBuiltinType: fieldBuiltinTyp,
+
+    FieldZeroType:       fieldZeroTyp,
+    FieldZeroTypeIfStmt: fieldZeroTypIfStmt,
+    FieldZeroTypeSuffix: fieldZeroTypSuffix,
+
     ModelFieldFilters:  modelFilters,
     ModelsFieldFilters: modelsFilters,
   }, nil
