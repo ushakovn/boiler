@@ -85,6 +85,9 @@ func NewApp(calls ...Option) *App {
     syscall.SIGINT,
   )
 
+  // Registering pre run components
+  registerPreRunComponents()
+
   // Return app
   return &App{
     grpcPort:   options.grpcServePort,
@@ -104,6 +107,16 @@ func NewApp(calls ...Option) *App {
     appCtx:    appCtx,
     appCloser: appCloser,
   }
+}
+
+func registerPreRunComponents() {
+  // Config components
+  registerConfigClient()
+}
+
+func registerConfigClient() {
+  config.InitClientConfig()
+  log.Infof("boiler: config client registered")
 }
 
 func (a *App) Run(services ...Service) {
@@ -178,9 +191,6 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
   }
-
-  // Config components
-  a.registerConfigClient()
 
   // Observability components
   a.registerObservability()
@@ -309,11 +319,6 @@ func (a *App) GqlgenRouter() chi.Router {
   defer a.mu.Unlock()
 
   return a.gqlgenRouter
-}
-
-func (a *App) registerConfigClient() {
-  config.InitClientConfig()
-  log.Infof("boiler: config client registered")
 }
 
 func (a *App) registerTracer() {
