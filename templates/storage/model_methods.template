@@ -88,19 +88,14 @@ func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$model
   {{- end}}
   {{- end}}
 
-  builder = builder.SetMap(fields)
+  builder = builder.SetMap(fields).
+    Suffix(suffixReturning)
 
-  if err := pg.DoExecContext(ctx, s.client.Executor(ctx), builder); err != nil {
+  model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  if err != nil {
     return nil, err
   }
-
-  model := &models.{{$modelName}}{
-    {{- range .ModelFields}}
-    {{.FieldName}}: input.{{.FieldName}},
-    {{- end}}
-  }
-
-  return model, nil
+  return model[0], nil
 }
 
 func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {

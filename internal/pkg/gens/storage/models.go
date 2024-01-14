@@ -74,7 +74,7 @@ func (g *Storage) loadSchemaDesc() error {
       }
       fields = append(fields, field)
     }
-    modelName := stringer.StringToUpperCamelCase(table.Name)
+    modelName := buildModelName(table.Name)
 
     models = append(models, &modelDesc{
       ModelName:    modelName,
@@ -197,6 +197,12 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
     ModelFieldFilters:  modelFilters,
     ModelsFieldFilters: modelsFilters,
   }, nil
+}
+
+func buildModelName(tableName string) string {
+  tableName = stringer.StringToUpperCamelCase(tableName)
+  modelName := stringer.NormalizeName(tableName)
+  return modelName
 }
 
 func buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp string) (modelFilters []*fieldFilterDesc, modelsFilters []*fieldFilterDesc) {
