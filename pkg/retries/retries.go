@@ -14,7 +14,7 @@ type Options struct {
   Wait  time.Duration
 }
 
-func (o *Options) Validate() error {
+func (o Options) Validate() error {
   if o.Count <= 0 {
     return fmt.Errorf("count must be positive")
   }
@@ -24,7 +24,7 @@ func (o *Options) Validate() error {
   return nil
 }
 
-func (o *Options) WithDefault() *Options {
+func (o Options) WithDefault() Options {
   const (
     count = 5
     wait  = 100 * time.Millisecond
@@ -39,8 +39,10 @@ func (o *Options) WithDefault() *Options {
 }
 
 func DoWithRetries(ctx context.Context, opt Options, f func(ctx context.Context) error) error {
-  t := timer.NewTimer(opt.Wait)
-  defer t.Stop()
+  opt = opt.WithDefault()
+
+  tm := timer.NewTimer(opt.Wait)
+  defer tm.Stop()
 
   var (
     index int
@@ -52,7 +54,7 @@ func DoWithRetries(ctx context.Context, opt Options, f func(ctx context.Context)
     case <-ctx.Done():
       return fmt.Errorf("context cancelled")
 
-    case <-t.Start():
+    case <-tm.Start():
       if err = f(ctx); err != nil {
         log.Errorf("DoWithRetries: %v", err)
         index++
