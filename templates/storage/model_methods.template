@@ -75,16 +75,20 @@ func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$model
   fields := map[string]any{
     {{- range .ModelFields}}
     {{- if eq .NotNullField true}}
+    {{- if eq .WithDefaultField false}}
     string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}},
+    {{- end}}
     {{- end}}
     {{- end}}
   }
 
   {{- range $modelField := .ModelFields}}
   {{- if eq .NotNullField false}}
+  {{- if eq .WithDefaultField false}}
   if {{.FieldIfStmt}} {
     fields[string({{$modelField.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldTypeSuffix}}
   }
+  {{- end}}
   {{- end}}
   {{- end}}
 
@@ -117,9 +121,9 @@ func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$model
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
     Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    {{- end}}
+    {{- end}}
     Suffix(suffixReturning)
-    {{- end}}
-    {{- end}}
 
   model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
   if err != nil {
@@ -134,9 +138,9 @@ func (s *Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$model
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
     Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    {{- end}}
+    {{- end}}
     Suffix(suffixReturning)
-    {{- end}}
-    {{- end}}
 
   model, err := pg.DoQueryContext[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
   if err != nil {

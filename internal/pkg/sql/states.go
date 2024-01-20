@@ -566,11 +566,20 @@ type defaultColumnTypOption struct {
 }
 
 func (t *defaultColumnTypOption) next(token string) (state, error) {
+  fn := func() {
+    t.dump.Tables.PeekWith(func(table *DumpTable) {
+      table.Columns.PeekWith(func(column *DumpColumn) {
+        column.WithDefault = true
+      })
+    })
+  }
   switch token {
   case ",":
+    fn()
     return &openBracket{dump: t.dump}, nil
 
   case ")":
+    fn()
     return &closeBracket{dump: t.dump}, nil
 
   default:

@@ -28,6 +28,7 @@ type DumpColumn struct {
   TypOptions   string
   IsNotNull    bool
   IsPrimaryKey bool
+  WithDefault  bool
 }
 
 // DumpSchemaSQL returns SQL dump including table definitions from CREATE TABLE statements
@@ -54,6 +55,10 @@ func DumpSchemaSQL(ctx context.Context, option PgDumpOption) (*DumpSQL, error) {
   }
   dump = sanitizeDumpSQL(dump)
 
+  if err = strictCheckDumpSQL(dump); err != nil {
+    return nil, fmt.Errorf("sql dump: strict check failed: %w", err)
+  }
+
   return dump, nil
 }
 
@@ -68,6 +73,22 @@ func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
     sanitized.Tables.Push(table)
   }
   return sanitized
+}
+
+func strictCheckDumpSQL(dump *DumpSQL) error {
+  for _, table := range dump.Tables.Elems() {
+    var ok bool
+
+    for _, column := range table.Columns.Elems() {
+      if ok = column.IsPrimaryKey; ok {
+        break
+      }
+    }
+    if !ok {
+      return fmt.Errorf("table '%s' does not contain a primary key: create migration and add it", table.Name)
+    }
+  }
+  return nil
 }
 
 func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {

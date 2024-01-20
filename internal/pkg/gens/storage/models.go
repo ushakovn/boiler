@@ -6,6 +6,7 @@ import (
   "regexp"
   "strings"
 
+  "github.com/samber/lo"
   "github.com/ushakovn/boiler/internal/pkg/sql"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/templates"
@@ -30,6 +31,7 @@ type fieldDesc struct {
   // Sql column field attributes
   SqlTableFieldName string
   NotNullField      bool
+  WithDefaultField  bool
   FieldBadge        string
 
   // Core field attributes
@@ -152,23 +154,8 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
     return nil, fmt.Errorf("field builtin type not found for column: %s type: %s", column.Name, column.Typ)
   }
 
-  var (
-    fieldTyp     string
-    notNullField bool
-  )
-  if column.IsNotNull {
-    fieldTyp = fieldBuiltinTyp
-    notNullField = true
-  } else {
-    fieldTyp = fieldZeroTyp
-    notNullField = false
-  }
-
-  var fieldBadge string
-
-  if column.IsPrimaryKey {
-    fieldBadge = fieldBadgePk
-  }
+  fieldTyp := lo.Ternary(column.IsNotNull, fieldBuiltinTyp, fieldZeroTyp)
+  fieldBadge := lo.Ternary(column.IsPrimaryKey, fieldBadgePk, "")
 
   fieldIfStmt := buildFieldIfStmt(fieldName, fieldTyp)
   fieldTypSuffix := buildFieldTypeSuffix(fieldTyp)
@@ -180,7 +167,8 @@ func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
 
   return &fieldDesc{
     SqlTableFieldName: sqlTableFieldName,
-    NotNullField:      notNullField,
+    NotNullField:      column.IsNotNull,
+    WithDefaultField:  column.WithDefault,
     FieldBadge:        fieldBadge,
 
     FieldName:       fieldName,

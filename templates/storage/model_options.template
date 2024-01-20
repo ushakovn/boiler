@@ -22,7 +22,9 @@ type {{.ModelName}}Filter struct {
 
 type Create{{.ModelName}}Input struct {
   {{- range .ModelFields}}
+  {{- if eq .WithDefaultField false}}
   {{.FieldName}} {{.FieldType}} {{- if eq .FieldBadge "pk"}} // PRIMARY KEY{{- end}}
+  {{- end}}
   {{- end}}
 }
 
