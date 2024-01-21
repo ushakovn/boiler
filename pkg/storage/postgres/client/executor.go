@@ -35,23 +35,31 @@ type Builder interface {
   ToSql() (statement string, args []any, err error)
 }
 
-func DoQueryContext[Model any](ctx context.Context, querier Querier, builder Builder) ([]Model, error) {
+func SelectCtx[T any](ctx context.Context, querier Querier, builder Builder) ([]T, error) {
   statement, args, err := builder.ToSql()
   if err != nil {
     return nil, fmt.Errorf("builder.ToSql: %w", err)
   }
-  var models []Model
+  var models []T
 
   if err = pgxscan.Select(ctx, querier, &models, statement, args...); err != nil {
     return nil, fmt.Errorf("sqlscan.Select: %w", err)
   }
-  if len(models) == 0 {
-    return nil, errors.ErrModelNotFound
-  }
   return models, nil
 }
 
-func DoExecContext(ctx context.Context, execer Execer, builder Builder) error {
+func GetCtx[T any](ctx context.Context, querier Querier, builder Builder) (T, error) {
+  models, err := SelectCtx[T](ctx, querier, builder)
+  if err != nil {
+    return nil, err
+  }
+  if len(models) == 0 {
+    return nil, errors.ErrModelNotFound
+  }
+  return models[0], nil
+}
+
+func ExecCtx(ctx context.Context, execer Execer, builder Builder) error {
   statement, args, err := builder.ToSql()
   if err != nil {
     return fmt.Errorf("builder.ToSql: %w", err)
