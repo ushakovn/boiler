@@ -110,7 +110,7 @@ func (g *Grpc) generateServiceWithCallStubs(grpcFilePath string) error {
 
   if filer.IsExistedFile(serviceFilePath) {
     // If service file exist - analyze it with ast
-    if err = regenerateGrpcService(serviceFilePath); err != nil {
+    if err = regenerateGrpcService(serviceFilePath, serviceDesc, templateFuncMap); err != nil {
       return fmt.Errorf("regenerateGrpcService: %w", err)
     }
   } else {

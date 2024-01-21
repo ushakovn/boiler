@@ -20,11 +20,7 @@ func New{{.ServiceName}}Service() *Implementation {
 func (s *Implementation) RegisterService(params *app.RegisterParams) error {
   params.SetServiceType(app.GrpcServiceTyp)
   grpcParams := params.Grpc()
-
-  desc.Register{{.ServiceName}}Server(
-    grpcParams.GrpcServiceRegistrar(),
-    &Implementation{},
-  )
+  desc.Register{{.ServiceName}}Server(grpcParams.GrpcServiceRegistrar(), s)
 
   return desc.Register{{.ServiceName}}HandlerFromEndpoint(
     params.Context(),

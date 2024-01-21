@@ -8,9 +8,11 @@ import (
   "go/token"
   "os"
   "strings"
+  "text/template"
 
   astFunc "github.com/ushakovn/boiler/internal/pkg/ast"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
 
@@ -223,7 +225,7 @@ func scanGrpcServerInterface(filePath string) (*grpcServerInterface, error) {
   return grpcServer, nil
 }
 
-func regenerateGrpcService(filePath string) error {
+func regenerateGrpcService(filePath string, serviceDesc *grpcServiceDesc, funcMap template.FuncMap) error {
   const methodName = "RegisterService"
 
   if err := validateGrpcFileName(filePath); err != nil {
@@ -236,7 +238,11 @@ func regenerateGrpcService(filePath string) error {
   if ok {
     return nil
   }
-  if err = filer.AppendStringToFile(filePath, templates.GrpcRegisterService); err != nil {
+  buf, err := templater.ExecTemplate(templates.GrpcRegisterService, serviceDesc, funcMap)
+  if err != nil {
+    return fmt.Errorf("execTemplate: %w", err)
+  }
+  if err = filer.AppendStringToFile(filePath, string(buf)); err != nil {
     return fmt.Errorf("filer.AppendStringToFile: %w", err)
   }
   return nil
