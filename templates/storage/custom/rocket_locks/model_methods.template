@@ -10,9 +10,10 @@ import (
 
 func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
   query := `INSERT INTO rocket_locks(lock_id, locked_until)
-            VALUES ($1, NOW() + INTERVAL $2)
-            ON CONFLICT DO UPDATE SET locked_until = NOW() + INTERVAL $2
-            WHERE locked_until < NOW()
+            VALUES (%s, NOW() + INTERVAL %s)
+            ON CONFLICT (lock_id)
+            DO UPDATE SET locked_until = NOW() + INTERVAL %[2]s
+            WHERE rocket_locks.locked_until < NOW()
             RETURNING lock_id, locked_until`
 
   builder := br.NewBuildedExpr(query, input.LockID, input.LockTTL)
@@ -30,7 +31,7 @@ func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockIn
 
 func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
   query := `DELETE FROM rocket_locks
-            WHERE lock_id = $1
+            WHERE lock_id = %s
             RETURNING lock_id, locked_until`
 
   builder := br.NewBuildedExpr(query, input.LockID)

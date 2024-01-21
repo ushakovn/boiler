@@ -1,7 +1,10 @@
 package builder
 
 import (
+  "fmt"
+
   sq "github.com/Masterminds/squirrel"
+  "github.com/ushakovn/boiler/pkg/storage/postgres/quote"
 )
 
 func NewSelectBuilder() sq.SelectBuilder {
@@ -21,5 +24,12 @@ func NewDeleteBuilder() sq.DeleteBuilder {
 }
 
 func NewBuildedExpr(sql string, args ...any) sq.Sqlizer {
-  return sq.Expr(sql, args...)
+  quoted := make([]any, 0, len(args))
+
+  for _, arg := range args {
+    quoted = append(quoted, quote.String(arg))
+  }
+  sql = fmt.Sprintf(sql, quoted...)
+
+  return sq.Expr(sql)
 }
