@@ -582,6 +582,10 @@ func (t *defaultColumnTypOption) next(token string) (state, error) {
     fn()
     return &closeBracket{dump: t.dump}, nil
 
+  case "not":
+    fn()
+    return &notColumnTypOption{dump: t.dump}, nil
+
   default:
     return t, nil
   }
