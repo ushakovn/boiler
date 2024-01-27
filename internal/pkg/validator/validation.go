@@ -66,3 +66,22 @@ func validateStructPtr(structPtr any) error {
   }
   return fmt.Errorf("function argument not a pointer")
 }
+
+func OneOfNotZero(values ...any) bool {
+  var ok bool
+
+  for _, value := range values {
+    if !IsZeroValue(value) {
+      if ok {
+        return false
+      }
+      ok = true
+    }
+  }
+  return ok
+}
+
+func IsZeroValue(value any) bool {
+  v := reflect.ValueOf(value)
+  return !v.IsValid() || reflect.DeepEqual(v.Interface(), reflect.Zero(v.Type()).Interface())
+}

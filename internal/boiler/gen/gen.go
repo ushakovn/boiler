@@ -24,7 +24,7 @@ func NewGenerator(cfg any) (Generator, error) {
   switch c := cfg.(type) {
   case rpc.Config:
     g, err = rpc.NewRpc(c)
-  case storage.Config:
+  case storage.ConfigPath:
     g, err = storage.NewStorage(c)
   case grpc.Config:
     g, err = grpc.NewGrpc(c)

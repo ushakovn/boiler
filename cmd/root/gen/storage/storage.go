@@ -11,8 +11,7 @@ import (
 )
 
 var (
-  flagPgConfigPath string
-  flagPgDumpPath   string
+  flagConfigPath string
 )
 
 var CmdStorage = &cobra.Command{
@@ -24,10 +23,7 @@ var CmdStorage = &cobra.Command{
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    generator, err := gen.NewGenerator(storage.Config{
-      PgConfigPath: flagPgConfigPath,
-      PgDumpPath:   flagPgDumpPath,
-    })
+    generator, err := gen.NewGenerator(storage.ConfigPath(flagConfigPath))
     if err != nil {
       return fmt.Errorf("boiler: failed to create generator: %w", err)
     }
@@ -41,8 +37,5 @@ var CmdStorage = &cobra.Command{
 }
 
 func init() {
-  CmdStorage.Flags().StringVar(&flagPgConfigPath, "pg-config-path", "", "path to postgres connection config in json/yaml")
-  CmdStorage.Flags().StringVar(&flagPgDumpPath, "pg-dump-path", "", "path to postgres dump in sql")
-
-  CmdStorage.MarkFlagsOneRequired("pg-config-path", "pg-dump-path")
+  CmdStorage.Flags().StringVar(&flagConfigPath, "config-path", "", "path to storage generator config")
 }

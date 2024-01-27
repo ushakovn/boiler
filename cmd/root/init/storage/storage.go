@@ -19,7 +19,7 @@ var CmdStorage = &cobra.Command{
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    generator, err := gen.NewInitor(storage.Config{})
+    generator, err := gen.NewInitor(storage.ConfigPath(""))
     if err != nil {
       return fmt.Errorf("boiler: failed to create initor: %w", err)
     }

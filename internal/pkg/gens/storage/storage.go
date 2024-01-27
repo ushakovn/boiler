@@ -7,26 +7,24 @@ import (
   "path/filepath"
   "text/template"
 
+  log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/filer"
-  "github.com/ushakovn/boiler/internal/pkg/sql"
+  "github.com/ushakovn/boiler/internal/pkg/pgdump"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/internal/pkg/templater"
   "github.com/ushakovn/boiler/templates"
 )
 
 type Storage struct {
-  dumpSQL      *sql.DumpSQL
+  config  *Config
+  dumpSQL *pgdump.DumpSQL
+
   schemaDesc   *schemaDesc
   workDirPath  string
   goModuleName string
 }
 
-type Config struct {
-  PgConfigPath string
-  PgDumpPath   string
-}
-
-func NewStorage(config Config) (*Storage, error) {
+func NewStorage(configPath ConfigPath) (*Storage, error) {
   ctx := context.Background()
 
   workDirPath, err := filer.WorkDirPath()
@@ -39,28 +37,58 @@ func NewStorage(config Config) (*Storage, error) {
   }
 
   var (
-    dumpSQL *sql.DumpSQL
-    option  sql.PgDumpOption
+    config  *Config
+    dumpSQL *pgdump.DumpSQL
   )
-  if filePath := config.PgConfigPath; filePath != "" {
-    option = sql.NewPgDumpOption(sql.WithPgConfigFile, filePath)
-  }
-  if filePath := config.PgDumpPath; filePath != "" {
-    option = sql.NewPgDumpOption(sql.WithPgDumpFile, filePath)
-  }
-  if option != nil {
-    // If option was set
-    dumpSQL, err = sql.DumpSchemaSQL(ctx, option)
+
+  if configPath.String() != "" {
+    // If config path specified
+
+    config, err = configPath.Parse()
     if err != nil {
-      return nil, fmt.Errorf("sql.DumpSchemaSQL: %w", err)
+      log.Fatalf("storage config parsing failed: %v", err)
+    }
+    if err = config.Validate(); err != nil {
+      log.Fatalf("storage config validation failed: %v", err)
+    }
+    dumpOption := buildDumpOption(ctx, config)
+
+    // Dump schema SQL
+    dumpSQL, err = dumpOption.Do()
+    if err != nil {
+      return nil, err
     }
   }
 
   return &Storage{
-    dumpSQL:      dumpSQL,
+    config:  config,
+    dumpSQL: dumpSQL,
+
     workDirPath:  workDirPath,
     goModuleName: goModuleName,
   }, nil
+}
+
+func buildDumpOption(ctx context.Context, config *Config) pgdump.DumpOption {
+  option := pgdump.NewDumpOption()
+
+  if config.PgConfig != nil {
+    option = option.WithPgConfig(ctx, pgdump.PgConfig(*config.PgConfig))
+  }
+  if config.PgDumpPath != "" {
+    option = option.WithPgDumpPath(config.PgDumpPath)
+  }
+
+  if len(config.PgTypeConfig) > 0 {
+    pgTypes := make([]string, 0, len(config.PgTypeConfig))
+
+    for pgType := range config.PgTypeConfig {
+      pgTypes = append(pgTypes, pgType)
+    }
+    option = option.WithCustomTypes(pgTypes)
+  }
+
+  return option
 }
 
 func (g *Storage) Init(_ context.Context) error {
@@ -130,7 +158,7 @@ func (g *Storage) createPgConfig() error {
   if err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
-  filePath := filepath.Join(folderPath, "pg_config.yaml")
+  filePath := filepath.Join(folderPath, "storage_config.yaml")
 
   if err = templater.ExecTemplateCopy(templates.StorageConfig, filePath, nil, nil); err != nil {
     return fmt.Errorf("execTemplateCopy: %w", err)

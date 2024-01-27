@@ -7,7 +7,7 @@ import (
   "strings"
 
   "github.com/samber/lo"
-  "github.com/ushakovn/boiler/internal/pkg/sql"
+  "github.com/ushakovn/boiler/internal/pkg/pgdump"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/templates"
 )
@@ -70,7 +70,7 @@ func (g *Storage) loadSchemaDesc() error {
     fields := make([]*fieldDesc, 0, len(columns))
 
     for _, column := range columns {
-      field, err := tableColumnToFieldDesc(column)
+      field, err := g.tableColumnToFieldDesc(column)
       if err != nil {
         return fmt.Errorf("tableColumnToFieldDesc: err: %w", err)
       }
@@ -140,16 +140,16 @@ func (g *Storage) loadSchemaDesc() error {
   return nil
 }
 
-func tableColumnToFieldDesc(column *sql.DumpColumn) (*fieldDesc, error) {
+func (g *Storage) tableColumnToFieldDesc(column *pgdump.DumpColumn) (*fieldDesc, error) {
   sqlTableFieldName := column.Name
   fieldName := stringer.StringToUpperCamelCase(column.Name)
 
-  fieldZeroTyp, ok := columnNullableTypToFieldTyp(column.Typ)
+  fieldZeroTyp, ok := g.columnNullableTypToFieldTyp(column.Typ)
   if !ok {
     return nil, fmt.Errorf("field zero type not found for column: %s type: %s", column.Name, column.Typ)
   }
 
-  fieldBuiltinTyp, ok := columnNotNullToFieldTypMapping(column.Typ)
+  fieldBuiltinTyp, ok := g.columnNotNullToFieldTypMapping(column.Typ)
   if !ok {
     return nil, fmt.Errorf("field builtin type not found for column: %s type: %s", column.Name, column.Typ)
   }
@@ -272,7 +272,7 @@ func buildNumericFilters(numericFilterOperators []string, fieldName, fieldZeroTy
   return numericFilters
 }
 
-func columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
+func (g *Storage) columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
   fieldTyp, ok := map[string]string{
     "integer": "int",
 
@@ -311,10 +311,18 @@ func columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
     "timestamp": "time.Time",
   }[columnTyp]
 
-  return fieldTyp, ok
+  if ok {
+    return fieldTyp, true
+  }
+
+  if customTyp, ok := g.config.PgTypeConfig[columnTyp]; ok {
+    return customTyp.GoType, true
+  }
+
+  return "", false
 }
 
-func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
+func (g *Storage) columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
   var fieldTyp string
   ok := true
 
@@ -366,7 +374,16 @@ func columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
   default:
     ok = false
   }
-  return fieldTyp, ok
+
+  if ok {
+    return fieldTyp, true
+  }
+
+  if customTyp, ok := g.config.PgTypeConfig[columnTyp]; ok {
+    return customTyp.GoZeroType, true
+  }
+
+  return "", false
 }
 
 func buildFieldTypeSuffix(fieldTyp string) string {

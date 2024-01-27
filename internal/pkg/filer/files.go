@@ -51,7 +51,9 @@ func WorkDirPath() (string, error) {
 
 func ExtractFileExtension(fullName string) string {
   parts := strings.Split(fullName, ".")
-  return parts[len(parts)-1]
+  ext := strings.TrimSpace(parts[len(parts)-1])
+  ext = strings.ToLower(ext)
+  return ext
 }
 
 func ExtractGoModuleName(workDirPath string) (string, error) {

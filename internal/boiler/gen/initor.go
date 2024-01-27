@@ -30,7 +30,7 @@ func NewInitor(cfg any) (Initor, error) {
     g, err = gqlgen.NewGqlgen(c)
   case protodeps.Config:
     g, err = protodeps.NewProtoDeps(c)
-  case storage.Config:
+  case storage.ConfigPath:
     g, err = storage.NewStorage(c)
   case config.Config:
     g, err = config.NewGenConfig(c)

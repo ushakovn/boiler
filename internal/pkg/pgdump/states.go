@@ -1,4 +1,4 @@
-package sql
+package pgdump
 
 import (
   "errors"
@@ -14,16 +14,17 @@ type state interface {
   next(token string) (state, error)
 }
 
-func newTerminateState() state {
+func newTerminateState(option DumpOption) state {
   return &terminate{dump: &DumpSQL{
     Tables:    stack.NewStack[*DumpTable](),
     tempStack: stack.NewStack[string](),
+    option:    option,
   }}
 }
 
-func doTransitions(tokens []string) (state, error) {
+func doTransitions(tokens []string, option DumpOption) (state, error) {
   var (
-    state = newTerminateState()
+    state = newTerminateState(option)
     err   error
   )
   for _, token := range tokens {
@@ -300,6 +301,9 @@ type columnName struct {
 }
 
 func (t *columnName) next(token string) (state, error) {
+  // Trim schema part for column type token
+  token = trimSchemaPart(token)
+
   var err error
 
   defer func() {
@@ -345,7 +349,10 @@ func (t *columnName) next(token string) (state, error) {
     "date",
   ) ||
     matchNVarcharColumnTyp(token) ||
-    matchCharacterBracketsColumnTyp(token):
+    matchCharacterBracketsColumnTyp(token) ||
+
+    // Match custom types from dump option
+    matchCustomType(token, t.dump.option):
 
     return &scalarColumnTyp{dump: t.dump}, nil
 
@@ -626,6 +633,19 @@ func (t *closeBracket) next(token string) (state, error) {
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
   }
+}
+
+func trimSchemaPart(field string) string {
+  field = strings.TrimPrefix(field, "public.")
+  parts := strings.Split(field, ".")
+  field = parts[len(parts)-1]
+  return field
+}
+
+func matchCustomType(customType string, options DumpOption) bool {
+  customType = trimSchemaPart(customType)
+  _, ok := options.customTypes[customType]
+  return ok
 }
 
 var (

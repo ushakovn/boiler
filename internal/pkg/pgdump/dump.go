@@ -1,11 +1,13 @@
-package sql
+package pgdump
 
 import (
   "bytes"
-  "context"
   "fmt"
+  "regexp"
+  "strings"
   "unicode"
 
+  log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/stack"
 )
@@ -13,6 +15,7 @@ import (
 type DumpSQL struct {
   Tables    *stack.Stack[*DumpTable]
   tempStack *stack.Stack[string]
+  option    DumpOption
 }
 
 type DumpTable struct {
@@ -31,33 +34,33 @@ type DumpColumn struct {
   WithDefault  bool
 }
 
-// DumpSchemaSQL returns SQL dump including table definitions from CREATE TABLE statements
-func DumpSchemaSQL(ctx context.Context, option PgDumpOption) (*DumpSQL, error) {
-  pgDumpBuf, err := option.Call(ctx)
-  if err != nil {
-    return nil, fmt.Errorf("option.Call: %w", err)
+// Do return SQL dump including table definitions from CREATE TABLE statements
+func (o DumpOption) Do() (*DumpSQL, error) {
+  if err := o.Validate(); err != nil {
+    return nil, fmt.Errorf("pg dump option invalid: %w", err)
   }
-  tokens, err := scanSchemaSQLTokens(pgDumpBuf)
+  // Sanitize pg dump before scanning tokens
+  o.pgDump = sanitizePgDump(o.pgDump)
+
+  tokens, err := scanSchemaSQLTokens(o.pgDump)
   if err != nil {
     return nil, fmt.Errorf("scanSchemaSQLTokens: %w", err)
   }
-  state, err := doTransitions(tokens)
+  state, err := doTransitions(tokens, o)
   if err != nil {
     return nil, fmt.Errorf("doTransitions: %w", err)
   }
   var dump *DumpSQL
 
+  // Confirm a terminate state
   if state, ok := state.(*terminate); ok {
     dump = state.dump
   }
   if dump == nil {
     return nil, fmt.Errorf("sql dump: not a terminate state: %T", state)
   }
+  // Sanitize dumped sql table definitions
   dump = sanitizeDumpSQL(dump)
-
-  if err = strictCheckDumpSQL(dump); err != nil {
-    return nil, fmt.Errorf("sql dump: strict check failed: %w", err)
-  }
 
   return dump, nil
 }
@@ -67,28 +70,24 @@ func sanitizeDumpSQL(dump *DumpSQL) *DumpSQL {
     Tables: stack.NewStack[*DumpTable](),
   }
   for _, table := range dump.Tables.Elems() {
-    if _, ok := systemTablesNames[table.Name]; ok {
-      continue
-    }
-    sanitized.Tables.Push(table)
-  }
-  return sanitized
-}
-
-func strictCheckDumpSQL(dump *DumpSQL) error {
-  for _, table := range dump.Tables.Elems() {
     var ok bool
 
+    if _, ok = systemTablesNames[table.Name]; ok {
+      continue
+    }
     for _, column := range table.Columns.Elems() {
       if ok = column.IsPrimaryKey; ok {
         break
       }
     }
     if !ok {
-      return fmt.Errorf("table '%s' does not contain a primary key: create migration and add it", table.Name)
+      log.Warnf("pg_dump: table '%s' skipped: does not contain a primary key", table.Name)
+      // Skip tables without primary key
+      continue
     }
+    sanitized.Tables.Push(table)
   }
-  return nil
+  return sanitized
 }
 
 func scanSchemaSQLTokens(pgDump []byte) ([]string, error) {
@@ -140,3 +139,26 @@ var systemTablesNames = map[string]struct{}{
   "db_version":       {},
   "rocket_locks":     {},
 }
+
+func sanitizePgDump(pgDump []byte) []byte {
+  pgDumpStr := strings.ToLower(string(pgDump))
+
+  pgDumpStr = regexSqlTimestamp.ReplaceAllLiteralString(pgDumpStr, "")
+
+  matchCns := regexSqlConstraint.FindAllString(pgDumpStr, -1)
+
+  for _, matchCn := range matchCns {
+    if regexSqlPkConstraint.MatchString(matchCn) {
+      continue
+    }
+    pgDumpStr = strings.Replace(pgDumpStr, matchCn, "", 1)
+  }
+
+  return []byte(pgDumpStr)
+}
+
+var (
+  regexSqlTimestamp    = regexp.MustCompile(`timezone\(.+\)|now\(.*\)`)
+  regexSqlConstraint   = regexp.MustCompile(`constraint\s.*`)
+  regexSqlPkConstraint = regexp.MustCompile(`constraint\s.*_pkey\s.*`)
+)
