@@ -144,7 +144,6 @@ func sanitizePgDump(pgDump []byte) []byte {
   s := normalizePgDump(pgDump)
 
   s = sanitizeTimestamps(s)
-  s = sanitizeTsvectors(s)
   s = sanitizeNumerics(s)
   s = sanitizeConstraints(s)
 
@@ -172,10 +171,6 @@ func sanitizeConstraints(pgDump string) string {
   return pgDump
 }
 
-func sanitizeTsvectors(pgDump string) string {
-  return regexSqlTsvector.ReplaceAllLiteralString(pgDump, "")
-}
-
 func sanitizeNumerics(pgDump string) string {
   return regexSqlNumeric.ReplaceAllLiteralString(pgDump, "double")
 }
@@ -185,6 +180,5 @@ var (
   regexSqlConstraint   = regexp.MustCompile(`constraint\s.*`)
   regexSqlPkConstraint = regexp.MustCompile(`constraint\s.*_pkey\s.*`)
   regexSqlCompositePk  = regexp.MustCompile(`\(\w+,.*\w+\)`)
-  regexSqlTsvector     = regexp.MustCompile(`.*\stsvector\s*.*`)
   regexSqlNumeric      = regexp.MustCompile(`(decimal|numeric)\s*\(.*\)`)
 )
