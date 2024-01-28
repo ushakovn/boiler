@@ -6,6 +6,7 @@ import (
   "regexp"
   "strings"
 
+  log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/stack"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
 )
@@ -27,13 +28,22 @@ func doTransitions(tokens []string, option DumpOption) (state, error) {
     state = newTerminateState(option)
     err   error
   )
+  // Prepare processed tokens slice for debug info
+  processed := make([]string, 0, len(tokens))
+
   for _, token := range tokens {
     token = stringer.NormalizeToken(token)
 
     if state, err = state.next(token); err != nil {
+      // Log processed tokens for debug
+      log.Debugf("processed tokens:\n%s", strings.Join(processed, "\n"))
+
       return nil, fmt.Errorf("state.next: %w", err)
     }
+    // Collect processed token for debug info
+    processed = append(processed, token)
   }
+
   return state, nil
 }
 

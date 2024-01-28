@@ -26,6 +26,10 @@ var CmdRoot = &cobra.Command{
 |_.__/ \___/|_|_|\___|_|
 `,
 
+  PersistentPreRun: func(cmd *cobra.Command, args []string) {
+    setLogFormatter()
+  },
+
   PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
     return execGoModTidy()
   },
@@ -33,7 +37,6 @@ var CmdRoot = &cobra.Command{
 
 func Execute() {
   const errExitCode = 1
-  setLogFormatter()
 
   if err := CmdRoot.Execute(); err != nil {
     os.Exit(errExitCode)
