@@ -273,7 +273,9 @@ func buildNumericFilters(numericFilterOperators []string, fieldName, fieldZeroTy
 }
 
 func (g *Storage) columnNotNullToFieldTypMapping(columnTyp string) (string, bool) {
-  fieldTyp, ok := map[string]string{
+  fieldTyp, ok1 := map[string]string{
+    // Scalar column types
+
     "integer": "int",
 
     "smallint": "int16",
@@ -295,10 +297,6 @@ func (g *Storage) columnNotNullToFieldTypMapping(columnTyp string) (string, bool
     "decimal": "float64",
     "numeric": "float64",
 
-    "bytea": "[]byte",
-    "json":  "[]byte",
-    "jsonb": "[]byte",
-
     "varchar":   "string",
     "varying":   "string",
     "character": "string",
@@ -309,24 +307,48 @@ func (g *Storage) columnNotNullToFieldTypMapping(columnTyp string) (string, bool
     "date":      "time.Time",
     "time":      "time.Time",
     "timestamp": "time.Time",
+
+    // Slice of bytes column types
+
+    "bytea": "[]byte",
+    "json":  "[]byte",
+    "jsonb": "[]byte",
+
+    // Slice of integers column types
+
+    "integer[]":  "[]int",
+    "smallint[]": "[]int",
+    "bigint[]":   "[]int",
+    "int[]":      "[]int",
+
+    // Slice of floats column types
+
+    "real[]":    "[]float64",
+    "float[]":   "[]float64",
+    "double[]":  "[]float64",
+    "decimal[]": "[]float64",
+    "numeric[]": "[]float64",
+
+    // Slice of strings column types
+
+    "text[]": "[]string",
   }[columnTyp]
 
-  if ok {
-    return fieldTyp, true
-  }
-
-  if customTyp, ok := g.config.PgTypeConfig[columnTyp]; ok {
+  // Try override type from pg type config
+  if customTyp, ok2 := g.config.PgTypeConfig[columnTyp]; ok2 {
     return customTyp.GoType, true
   }
 
-  return "", false
+  return fieldTyp, ok1
 }
 
 func (g *Storage) columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
   var fieldTyp string
-  ok := true
+  ok1 := true
 
   switch columnTyp {
+  // Scalar column types
+
   case
     "integer",
     "smallint",
@@ -347,12 +369,6 @@ func (g *Storage) columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     fieldTyp = "zero.Float"
 
   case
-    "bytea",
-    "json",
-    "jsonb":
-    fieldTyp = "[]byte"
-
-  case
     "varchar",
     "varying",
     "character",
@@ -371,19 +387,48 @@ func (g *Storage) columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
     "boolean":
     fieldTyp = "zero.Bool"
 
+  // Slice of bytes column types
+
+  case
+    "bytea",
+    "json",
+    "jsonb":
+    fieldTyp = "[]byte"
+
+  // Slice of integers column types
+
+  case
+    "integer[]",
+    "smallint[]",
+    "bigint[]",
+    "int[]":
+    fieldTyp = "[]int"
+
+  // Slice of floats column types
+
+  case
+    "real[]",
+    "float[]",
+    "double[]",
+    "decimal[]",
+    "numeric[]":
+    fieldTyp = "[]float64"
+
+  // Slice of strings column types
+
+  case "text[]":
+    fieldTyp = "[]string"
+
   default:
-    ok = false
+    ok1 = false
   }
 
-  if ok {
-    return fieldTyp, true
+  // Try override type from pg type config
+  if customTyp, ok2 := g.config.PgTypeConfig[columnTyp]; ok2 {
+    return customTyp.GoZeroType, ok2
   }
 
-  if customTyp, ok := g.config.PgTypeConfig[columnTyp]; ok {
-    return customTyp.GoZeroType, true
-  }
-
-  return "", false
+  return fieldTyp, ok1
 }
 
 func buildFieldTypeSuffix(fieldTyp string) string {

@@ -83,6 +83,8 @@ type table struct {
 }
 
 func (t *table) next(token string) (state, error) {
+  token = trimEscapeQuotes(token)
+
   switch {
   case token == "only":
     return &only{dump: t.dump}, nil
@@ -122,6 +124,8 @@ type only struct {
 }
 
 func (t *only) next(token string) (state, error) {
+  token = trimEscapeQuotes(token)
+
   switch {
   case matchTableName(token):
 
@@ -279,6 +283,8 @@ type openBracket struct {
 }
 
 func (t *openBracket) next(token string) (state, error) {
+  token = trimEscapeQuotes(token)
+
   switch {
   case matchColumnName(token):
     t.dump.Tables.PeekWith(func(table *DumpTable) {
@@ -318,6 +324,8 @@ func (t *columnName) next(token string) (state, error) {
 
   switch {
   case stringer.StringOneOfEqual(token,
+    // Scalar column types
+
     "integer",
 
     "smallint",
@@ -347,17 +355,41 @@ func (t *columnName) next(token string) (state, error) {
     "uuid",
 
     "date",
+
+    // Slice of scalars column types
+
+    "integer[]",
+
+    "smallint[]",
+    "bigint[]",
+    "int[]",
+
+    "bit[]",
+
+    "real[]",
+    "float[]",
+    "double[]",
+    "decimal[]",
+    "numeric[]",
+
+    "text[]",
   ) ||
+
+    // Character varying column types
+
     matchNVarcharColumnTyp(token) ||
     matchCharacterBracketsColumnTyp(token) ||
 
-    // Match custom types from dump option
+    // Custom types from dump option
+
     matchCustomType(token, t.dump.option):
 
     return &scalarColumnTyp{dump: t.dump}, nil
 
   case token == "character":
     return &characterColumnTyp{dump: t.dump}, nil
+
+    // Timestamp column types
 
   case stringer.StringOneOfEqual(token,
     "timestamp",
@@ -633,6 +665,10 @@ func (t *closeBracket) next(token string) (state, error) {
   default:
     return nil, fmt.Errorf("%w: %s", errUnexpectedToken, token)
   }
+}
+
+func trimEscapeQuotes(field string) string {
+  return strings.Trim(field, `"`)
 }
 
 func trimSchemaPart(field string) string {

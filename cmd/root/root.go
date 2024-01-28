@@ -1,12 +1,15 @@
 package root
 
 import (
+  "context"
+  "fmt"
   "os"
 
   log "github.com/sirupsen/logrus"
   "github.com/spf13/cobra"
   cmdGen "github.com/ushakovn/boiler/cmd/root/gen"
   cmdInit "github.com/ushakovn/boiler/cmd/root/init"
+  "github.com/ushakovn/boiler/internal/pkg/executor"
 )
 
 var flagDebug bool
@@ -56,8 +59,8 @@ func setLogFormatter() {
 }
 
 func execGoModTidy() error {
-  //if err := executor.ExecCmdCtx(context.Background(), "go", "mod", "tidy"); err != nil {
-  //  return fmt.Errorf("boiler: failed to exec go mod tidy: %w", err)
-  //}
+  if err := executor.ExecCmdCtx(context.Background(), "go", "mod", "tidy"); err != nil {
+    return fmt.Errorf("boiler: failed to exec go mod tidy: %w", err)
+  }
   return nil
 }

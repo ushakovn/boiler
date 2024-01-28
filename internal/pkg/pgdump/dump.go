@@ -141,24 +141,50 @@ var systemTablesNames = map[string]struct{}{
 }
 
 func sanitizePgDump(pgDump []byte) []byte {
-  pgDumpStr := strings.ToLower(string(pgDump))
+  s := normalizePgDump(pgDump)
 
-  pgDumpStr = regexSqlTimestamp.ReplaceAllLiteralString(pgDumpStr, "")
+  s = sanitizeTimestamps(s)
+  s = sanitizeTsvectors(s)
+  s = sanitizeNumerics(s)
+  s = sanitizeConstraints(s)
 
-  matchCns := regexSqlConstraint.FindAllString(pgDumpStr, -1)
+  return []byte(s)
+}
+
+func normalizePgDump(pgDump []byte) string {
+  return strings.ToLower(string(pgDump))
+}
+
+func sanitizeTimestamps(pgDump string) string {
+  return regexSqlTimestamp.ReplaceAllLiteralString(pgDump, "")
+}
+
+func sanitizeConstraints(pgDump string) string {
+  matchCns := regexSqlConstraint.FindAllString(pgDump, -1)
 
   for _, matchCn := range matchCns {
-    if regexSqlPkConstraint.MatchString(matchCn) {
+    // NOT SANITIZE pk constraint where pk NOT a composite
+    if regexSqlPkConstraint.MatchString(matchCn) && !regexSqlCompositePk.MatchString(matchCn) {
       continue
     }
-    pgDumpStr = strings.Replace(pgDumpStr, matchCn, "", 1)
+    pgDump = strings.Replace(pgDump, matchCn, "", 1)
   }
+  return pgDump
+}
 
-  return []byte(pgDumpStr)
+func sanitizeTsvectors(pgDump string) string {
+  return regexSqlTsvector.ReplaceAllLiteralString(pgDump, "")
+}
+
+func sanitizeNumerics(pgDump string) string {
+  return regexSqlNumeric.ReplaceAllLiteralString(pgDump, "double")
 }
 
 var (
   regexSqlTimestamp    = regexp.MustCompile(`timezone\(.+\)|now\(.*\)`)
   regexSqlConstraint   = regexp.MustCompile(`constraint\s.*`)
   regexSqlPkConstraint = regexp.MustCompile(`constraint\s.*_pkey\s.*`)
+  regexSqlCompositePk  = regexp.MustCompile(`\(\w+,.*\w+\)`)
+  regexSqlTsvector     = regexp.MustCompile(`.*\stsvector\s*.*`)
+  regexSqlNumeric      = regexp.MustCompile(`(decimal|numeric)\s*\(.*\)`)
 )
