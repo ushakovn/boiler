@@ -7,8 +7,9 @@ import (
 )
 
 var (
-  regexCamelCase = regexp.MustCompile(`^[a-zA-Z]+[A-Z0-9]*([a-z]+[A-Z0-9]*)*$`)
-  regexSnakeCase = regexp.MustCompile(`^[a-z]+([a-z_0-9]+)*[a-z0-9]?$`)
+  regexCamelCase      = regexp.MustCompile(`^[a-zA-Z]+[A-Z0-9]*([a-z]+[A-Z0-9]*)*$`)
+  regexSnakeCase      = regexp.MustCompile(`^[a-z]+([a-z_0-9]+)*[a-z0-9]?$`)
+  regexCapitalizeCase = regexp.MustCompile(`^[A-Z]+(_?[A-Z]+)*$`)
 )
 
 func IsCamelCase(s string) bool {
@@ -17,6 +18,10 @@ func IsCamelCase(s string) bool {
 
 func IsSnakeCase(s string) bool {
   return regexSnakeCase.MatchString(s)
+}
+
+func IsCapitalizeCase(s string) bool {
+  return regexCapitalizeCase.MatchString(s)
 }
 
 func SnakeCaseToUpperCamelCase(s string) string {
@@ -143,6 +148,9 @@ func StringToLowerCase(s string) string {
 }
 
 func StringToCapitalizeCase(s string) string {
+  if IsCapitalizeCase(s) {
+    return s
+  }
   if IsCamelCase(s) {
     return CamelCaseToCapitalizeCase(s)
   }

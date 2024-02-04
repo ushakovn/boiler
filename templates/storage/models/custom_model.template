@@ -3,11 +3,9 @@
 package models
 
 import (
-  {{- range .CustomModelsPackages}}
+  {{- range .ModelPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
 
-{{range .CustomModels}}
 {{.StructDescription}}
-{{end}}

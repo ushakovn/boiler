@@ -3,15 +3,19 @@
 package models
 
 import (
-  {{- range .ModelsPackages}}
+  {{- range .ModelPackages}}
   {{.ImportAlias}} "{{.ImportLine}}"
   {{- end}}
 )
 
-{{range .Models}}
+// Suppress unused imports
+var (
+    _ = zero.Time{}
+    _ = time.Time{}
+)
+
 type {{.ModelName}} struct {
   {{- range .ModelFields}}
   {{.FieldName}} {{.FieldType}} `db:"{{.SqlTableFieldName}}"` {{- if eq .FieldBadge "pk"}} // PRIMARY KEY{{- end}}
   {{- end}}
 }
-{{end}}

@@ -7,6 +7,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/georgysavva/scany/v2 v2.0.0
 	github.com/go-chi/chi/v5 v5.0.10
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-resty/resty/v2 v2.10.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -28,12 +29,12 @@ require (
 
 require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

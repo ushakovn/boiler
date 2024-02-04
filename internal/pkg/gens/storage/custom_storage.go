@@ -12,8 +12,7 @@ import (
 )
 
 type customSchemaDesc struct {
-  CustomModels         []*customModelDesc
-  CustomModelsPackages []*goPackageDesc
+  CustomModels []*customModelDesc
 }
 
 type customModelDesc struct {
@@ -31,19 +30,13 @@ func (g *Storage) generateCustomStorages() error {
   }
   storagePath := filepath.Join(g.workDirPath, "internal", "pkg", "storage")
 
-  filePath := filepath.Join(storagePath, "models", "custom_models.go")
-
-  if err = templater.ExecTemplateCopyWithGoFmt(templates.StorageCustomModels, filePath, customSchema, nil); err != nil {
-    return fmt.Errorf("executeTemplateCopy templates.StorageCustomModels: %w", err)
-  }
-
   for _, model := range customSchema.CustomModels {
     modelTemplates, ok := storageTemplatesByCustomModelNames[model.ModelName]
     if !ok {
       return fmt.Errorf("storage templates not found for custom model: %s", model.ModelName)
     }
     for _, modelTemplate := range modelTemplates {
-      filePath, err = createStorageFolders(storagePath, modelTemplate.filePathParts...)
+      filePath, err := createStorageFolders(storagePath, modelTemplate.filePathParts...)
       if err != nil {
         return fmt.Errorf("createStorageFolders: %w", err)
       }
@@ -85,8 +78,7 @@ func (g *Storage) buildCustomSchemaDesc() (*customSchemaDesc, error) {
   }
 
   return &customSchemaDesc{
-    CustomModels:         models,
-    CustomModelsPackages: modelsPackages,
+    CustomModels: models,
   }, nil
 }
 
@@ -174,6 +166,12 @@ var rocketLockStorageTemplates = []*storageTemplate{
     templateName:     "model_methods",
     compiledTemplate: templates.StorageRocketLockModelMethods,
     fileNameBuild:    buildModelMethodsFileName,
+  },
+  {
+    templateName:     "model",
+    compiledTemplate: templates.StorageCustomModel,
+    filePathParts:    []string{"models"},
+    fileNameBuild:    buildModelFileName,
   },
   {
     templateName:     "migration",

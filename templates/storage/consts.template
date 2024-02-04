@@ -2,6 +2,8 @@
 
 package storage
 
+{{- $count := len .Models}}
+{{- if ne $count 0 }}
 type tableName string
 
 const (
@@ -23,3 +25,4 @@ const (
   {{- end}}
 )
 {{end}}
+{{- end}}

@@ -13,16 +13,15 @@ import (
 )
 
 type schemaDesc struct {
-  Models           []*modelDesc
-  ModelsPackages   []*goPackageDesc
-  BuildersPackages []*goPackageDesc
-  OptionsPackages  []*goPackageDesc
+  Models          []*modelDesc
+  OptionsPackages []*goPackageDesc
 }
 
 type modelDesc struct {
   ModelName            string
   SqlTableName         string
   ModelFields          []*fieldDesc
+  ModelPackages        []*goPackageDesc
   ModelOptionsPackages []*goPackageDesc
   ModelMethodsPackages []*goPackageDesc
 }
@@ -61,6 +60,18 @@ type fieldFilterDesc struct {
   FilterTypeSuffix string
 }
 
+// enumDesc UNUSED
+type enumDesc struct {
+  ModelEnumType   string
+  ModelEnumValues []*enumValueDesc
+}
+
+// enumValueDesc UNUSED
+type enumValueDesc struct {
+  ModelEnumString string
+  ModelEnumInt    int
+}
+
 func (g *Storage) loadSchemaDesc() error {
   tables := g.dumpSQL.Tables.Elems()
   models := make([]*modelDesc, 0, len(tables))
@@ -70,78 +81,45 @@ func (g *Storage) loadSchemaDesc() error {
     fields := make([]*fieldDesc, 0, len(columns))
 
     for _, column := range columns {
-      field, err := g.tableColumnToFieldDesc(column)
+      field, err := g.tableColumnToFieldDesc(table.Name, column)
       if err != nil {
-        return fmt.Errorf("tableColumnToFieldDesc: err: %w", err)
+        return fmt.Errorf("tableColumnToFieldDesc: %w", err)
       }
       fields = append(fields, field)
     }
     modelName := buildModelName(table.Name)
+    modelPackages := buildFilePackages(modelsFileName)
 
-    models = append(models, &modelDesc{
-      ModelName:    modelName,
-      SqlTableName: table.Name,
-      ModelFields:  fields,
-    })
-  }
-
-  buildersPackages := buildFilePackages(buildersFileName)
-  optionsPackages := buildFilePackages(optionsFileName)
-  modelsPackages := buildFilePackages(modelsFileName)
-
-  modelMethodsPackages := mergeGoPackages(
-    buildFilePackages(modelMethodsFileName),
-    buildCrossFilePackages(g.goModuleName, modelMethodsFileName),
-  )
-
-  modelUniquePackages := map[string]struct{}{}
-
-  for _, model := range models {
     modelOptionsPackages := mergeGoPackages(
       buildFilePackages(modelOptionsFileName),
       buildCrossFilePackages(g.goModuleName, modelOptionsFileName),
     )
-    modelOptionsUnique := map[string]struct{}{}
+    modelMethodsPackages := mergeGoPackages(
+      buildFilePackages(modelMethodsFileName),
+      buildCrossFilePackages(g.goModuleName, modelMethodsFileName),
+    )
+    models = append(models, &modelDesc{
+      SqlTableName: table.Name,
 
-    for _, field := range model.ModelFields {
-      if fieldPackages, ok := buildFieldPackages(field.FieldType); ok {
-        for _, fieldPackage := range fieldPackages {
-          if _, ok = modelUniquePackages[fieldPackage.CustomName]; ok {
-            continue
-          }
-          modelsPackages = append(modelsPackages, fieldPackage)
-          modelUniquePackages[fieldPackage.CustomName] = struct{}{}
-        }
-      }
-      for _, filter := range field.ModelsFieldFilters {
-        if fieldPackages, ok := buildFilterFieldPackages(filter.FilterType); ok {
-          for _, fieldPackage := range fieldPackages {
-            if _, ok = modelOptionsUnique[fieldPackage.CustomName]; ok {
-              continue
-            }
-            modelOptionsPackages = append(modelOptionsPackages, fieldPackage)
-            modelOptionsUnique[fieldPackage.CustomName] = struct{}{}
-          }
-        }
-      }
-    }
+      ModelName:   modelName,
+      ModelFields: fields,
 
-    model.ModelOptionsPackages = modelOptionsPackages
-    model.ModelMethodsPackages = modelMethodsPackages
+      ModelPackages:        modelPackages,
+      ModelOptionsPackages: modelOptionsPackages,
+      ModelMethodsPackages: modelMethodsPackages,
+    })
   }
+  optionsPackages := buildFilePackages(optionsFileName)
 
   g.schemaDesc = &schemaDesc{
-    Models:           models,
-    ModelsPackages:   modelsPackages,
-    BuildersPackages: buildersPackages,
-    OptionsPackages:  optionsPackages,
+    Models:          models,
+    OptionsPackages: optionsPackages,
   }
 
   return nil
 }
 
-func (g *Storage) tableColumnToFieldDesc(column *pgdump.DumpColumn) (*fieldDesc, error) {
-  sqlTableFieldName := column.Name
+func (g *Storage) tableColumnToFieldDesc(tableName string, column *pgdump.DumpColumn) (*fieldDesc, error) {
   fieldName := stringer.StringToUpperCamelCase(column.Name)
 
   fieldZeroTyp, ok := g.columnNullableTypToFieldTyp(column.Typ)
@@ -163,10 +141,17 @@ func (g *Storage) tableColumnToFieldDesc(column *pgdump.DumpColumn) (*fieldDesc,
   fieldZeroTypIfStmt := buildFieldIfStmt(fieldName, fieldZeroTyp)
   fieldZeroTypSuffix := buildFieldTypeSuffix(fieldZeroTyp)
 
-  modelFilters, modelsFilters := buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp)
+  output := g.buildFieldFilters(buildFieldFiltersInput{
+    tableName:       tableName,
+    columnName:      column.Name,
+    fieldName:       fieldName,
+    fieldTyp:        fieldTyp,
+    fieldZeroTyp:    fieldZeroTyp,
+    fieldBuiltinTyp: fieldBuiltinTyp,
+  })
 
   return &fieldDesc{
-    SqlTableFieldName: sqlTableFieldName,
+    SqlTableFieldName: column.Name,
     NotNullField:      column.IsNotNull,
     WithDefaultField:  column.WithDefault,
     FieldBadge:        fieldBadge,
@@ -182,8 +167,8 @@ func (g *Storage) tableColumnToFieldDesc(column *pgdump.DumpColumn) (*fieldDesc,
     FieldZeroTypeIfStmt: fieldZeroTypIfStmt,
     FieldZeroTypeSuffix: fieldZeroTypSuffix,
 
-    ModelFieldFilters:  modelFilters,
-    ModelsFieldFilters: modelsFilters,
+    ModelFieldFilters:  output.model,
+    ModelsFieldFilters: output.models,
   }, nil
 }
 
@@ -193,23 +178,55 @@ func buildModelName(tableName string) string {
   return modelName
 }
 
-func buildFieldFilters(fieldName, fieldTyp, fieldZeroTyp, fieldBuiltinTyp string) (modelFilters []*fieldFilterDesc, modelsFilters []*fieldFilterDesc) {
-  if matchNumericTyp(fieldTyp) || matchZeroNumericTyp(fieldTyp) || matchTimeTyp(fieldTyp) {
-    modelFilters = buildNumericFilters(modelNumericFilterOperators, fieldName, fieldZeroTyp, fieldBuiltinTyp)
-    modelsFilters = buildNumericFilters(modelsNumericFilterOperators, fieldName, fieldZeroTyp, fieldBuiltinTyp)
-  }
-  if matchStringTyp(fieldTyp) {
-    modelFilters = buildStringFilters(modelStringFilterOperators, fieldName, fieldZeroTyp, fieldBuiltinTyp)
-    modelsFilters = buildStringFilters(modelsStringFilterOperators, fieldName, fieldZeroTyp, fieldBuiltinTyp)
-  }
-  if matchBoolTyp(fieldTyp) {
-    modelFilters = buildBoolFilters(fieldName, fieldZeroTyp)
-    modelsFilters = buildBoolFilters(fieldName, fieldZeroTyp)
-  }
-  return
+type buildFieldFiltersInput struct {
+  tableName       string
+  columnName      string
+  fieldName       string
+  fieldTyp        string
+  fieldZeroTyp    string
+  fieldBuiltinTyp string
 }
 
-func buildStringFilters(stringFilterOperators []string, fieldName, fieldZeroTyp, fieldBuiltinTyp string) []*fieldFilterDesc {
+type buildFieldFiltersOutput struct {
+  model  []*fieldFilterDesc
+  models []*fieldFilterDesc
+}
+
+func (g *Storage) buildFieldFilters(input buildFieldFiltersInput) (output buildFieldFiltersOutput) {
+  var (
+    model  []*fieldFilterDesc
+    models []*fieldFilterDesc
+  )
+  switch {
+  case matchNumericTyp(input.fieldTyp), matchZeroNumericTyp(input.fieldTyp), matchTimeTyp(input.fieldTyp):
+    // Filters for model method
+    model = g.buildNumericFilters(modelNumericFilterOperators, input.fieldName, input.fieldZeroTyp, input.fieldBuiltinTyp)
+
+    operators := g.buildFilterOperators(input.tableName, input.columnName, filterFieldTypNumeric)
+    // Filters for list method
+    models = g.buildNumericFilters(operators, input.fieldName, input.fieldZeroTyp, input.fieldBuiltinTyp)
+
+  case matchStringTyp(input.fieldTyp):
+    // Filters for model method
+    model = g.buildStringFilters(modelStringFilterOperators, input.fieldName, input.fieldZeroTyp, input.fieldBuiltinTyp)
+
+    operators := g.buildFilterOperators(input.tableName, input.columnName, filterFieldTypString)
+    // Filters for list method
+    models = g.buildStringFilters(operators, input.fieldName, input.fieldZeroTyp, input.fieldBuiltinTyp)
+
+  case matchBoolTyp(input.fieldTyp):
+    // Filters for model method
+    model = g.buildBoolFilters(input.fieldName, input.fieldZeroTyp)
+    // Filters for list method
+    models = g.buildBoolFilters(input.fieldName, input.fieldZeroTyp)
+  }
+  return buildFieldFiltersOutput{
+    model:  model,
+    models: models,
+  }
+}
+
+func (g *Storage) buildStringFilters(stringFilterOperators []string, fieldName, fieldZeroTyp, fieldBuiltinTyp string) []*fieldFilterDesc {
   stringFilters := make([]*fieldFilterDesc, 0, len(stringFilterOperators))
 
   for _, filterOperator := range stringFilterOperators {
@@ -231,7 +248,7 @@ func buildStringFilters(stringFilterOperators []string, fieldName, fieldZeroTyp,
   return stringFilters
 }
 
-func buildBoolFilters(fieldName, fieldZeroTyp string) []*fieldFilterDesc {
+func (g *Storage) buildBoolFilters(fieldName, fieldZeroTyp string) []*fieldFilterDesc {
   filterName := buildBoolFilterName(fieldName)
   filterTyp := buildBoolFilterType(fieldZeroTyp)
   // Filter type suffix at the same that field type suffix
@@ -250,7 +267,7 @@ func buildBoolFilters(fieldName, fieldZeroTyp string) []*fieldFilterDesc {
   }
 }
 
-func buildNumericFilters(numericFilterOperators []string, fieldName, fieldZeroTyp, fieldBuiltinTyp string) []*fieldFilterDesc {
+func (g *Storage) buildNumericFilters(numericFilterOperators []string, fieldName, fieldZeroTyp, fieldBuiltinTyp string) []*fieldFilterDesc {
   numericFilters := make([]*fieldFilterDesc, 0, len(numericFilterOperators))
 
   for _, filterOperator := range numericFilterOperators {
@@ -425,7 +442,7 @@ func (g *Storage) columnNullableTypToFieldTyp(columnTyp string) (string, bool) {
 
   // Try override type from pg type config
   if customTyp, ok2 := g.config.PgTypeConfig[columnTyp]; ok2 {
-    return customTyp.GoZeroType, ok2
+    return customTyp.GoZeroType, true
   }
 
   return fieldTyp, ok1
@@ -508,9 +525,9 @@ func buildNumericFilterIfStmt(filterName, filterOperator string) string {
   switch filterOperator {
   case
     numericFilterOperatorGt,
-    numericFilterOperatorGte,
+    numericFilterOperatorGtOrEq,
     numericFilterOperatorLt,
-    numericFilterOperatorLte,
+    numericFilterOperatorLtOrEq,
     numericFilterOperatorEq:
     filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithPtr, filterName)
   case
@@ -523,13 +540,13 @@ func buildNumericFilterIfStmt(filterName, filterOperator string) string {
 
 func buildNumericFilterSqOperator(filterOperator string) string {
   return map[string]string{
-    numericFilterOperatorGt:    "Gt",
-    numericFilterOperatorGte:   "GtOrEq",
-    numericFilterOperatorLt:    "Lt",
-    numericFilterOperatorLte:   "LtOrEq",
-    numericFilterOperatorEq:    "Eq",
-    numericFilterOperatorIn:    "Eq",
-    numericFilterOperatorNotIn: "NotEq",
+    numericFilterOperatorGt:     "Gt",
+    numericFilterOperatorGtOrEq: "GtOrEq",
+    numericFilterOperatorLt:     "Lt",
+    numericFilterOperatorLtOrEq: "LtOrEq",
+    numericFilterOperatorEq:     "Eq",
+    numericFilterOperatorIn:     "Eq",
+    numericFilterOperatorNotIn:  "NotEq",
   }[filterOperator]
 }
 
@@ -554,10 +571,15 @@ func buildStringFilterName(fieldName, filterOperator string) string {
 }
 
 func buildStringFilterType(fieldZeroTyp, fieldBuiltinTyp, filterOperator string) string {
-  if filterOperator == stringFilterOperatorIn || filterOperator == stringFilterOperatorNotIn {
+  switch filterOperator {
+  case
+    stringFilterOperatorIn,
+    stringFilterOperatorNotIn:
     return fmt.Sprint(sliceTypPrefix, fieldBuiltinTyp)
+
+  default:
+    return fieldZeroTyp
   }
-  return fieldZeroTyp
 }
 
 func buildStringFilterIfStmt(filterName, filterOperator string) string {
@@ -565,7 +587,10 @@ func buildStringFilterIfStmt(filterName, filterOperator string) string {
 
   switch filterOperator {
   case
-    stringFilterOperatorEq:
+    stringFilterOperatorEq,
+
+    stringFilterOperatorLike,
+    stringFilterOperatorNotLike:
     filterIfStmt = fmt.Sprintf(templates.StorageFilterIfStmtWithPtr, filterName)
   case
     stringFilterOperatorIn,
@@ -577,9 +602,11 @@ func buildStringFilterIfStmt(filterName, filterOperator string) string {
 
 func buildStringFilterSqOperator(filterOperator string) string {
   return map[string]string{
-    stringFilterOperatorEq:    "Eq",
-    stringFilterOperatorIn:    "Eq",
-    stringFilterOperatorNotIn: "NotEq",
+    stringFilterOperatorEq:      "Eq",
+    stringFilterOperatorIn:      "Eq",
+    stringFilterOperatorNotIn:   "NotEq",
+    stringFilterOperatorLike:    "Like",
+    stringFilterOperatorNotLike: "NotLike",
   }[filterOperator]
 }
 
@@ -594,9 +621,11 @@ const (
 )
 
 const (
-  stringFilterOperatorIn    = "In"
-  stringFilterOperatorNotIn = "NotIn"
-  stringFilterOperatorEq    = "Eq"
+  stringFilterOperatorIn      = "In"
+  stringFilterOperatorNotIn   = "NotIn"
+  stringFilterOperatorEq      = "Eq"
+  stringFilterOperatorLike    = "Like"
+  stringFilterOperatorNotLike = "NotLike"
 )
 
 var modelStringFilterOperators = []string{
@@ -606,16 +635,18 @@ var modelStringFilterOperators = []string{
 var modelsStringFilterOperators = []string{
   stringFilterOperatorIn,
   stringFilterOperatorNotIn,
+  stringFilterOperatorLike,
+  stringFilterOperatorNotLike,
 }
 
 const (
-  numericFilterOperatorGt    = "Gt"
-  numericFilterOperatorGte   = "Gte"
-  numericFilterOperatorLt    = "Lt"
-  numericFilterOperatorLte   = "Lte"
-  numericFilterOperatorIn    = "In"
-  numericFilterOperatorNotIn = "NotIn"
-  numericFilterOperatorEq    = "Eq"
+  numericFilterOperatorGt     = "Gt"
+  numericFilterOperatorGtOrEq = "GtOrEq"
+  numericFilterOperatorLt     = "Lt"
+  numericFilterOperatorLtOrEq = "LtOrEq"
+  numericFilterOperatorIn     = "In"
+  numericFilterOperatorNotIn  = "NotIn"
+  numericFilterOperatorEq     = "Eq"
 )
 
 var modelNumericFilterOperators = []string{
@@ -624,11 +655,53 @@ var modelNumericFilterOperators = []string{
 
 var modelsNumericFilterOperators = []string{
   numericFilterOperatorGt,
-  numericFilterOperatorGte,
+  numericFilterOperatorGtOrEq,
   numericFilterOperatorLt,
-  numericFilterOperatorLte,
+  numericFilterOperatorLtOrEq,
   numericFilterOperatorIn,
   numericFilterOperatorNotIn,
+}
+
+type filterFieldTyp int
+
+const (
+  filterFieldTypString  filterFieldTyp = 0
+  filterFieldTypNumeric filterFieldTyp = 1
+)
+
+func (g *Storage) buildFilterOperators(tableName, columnName string, filterField filterFieldTyp) []string {
+  filtersConfig := g.config.PgTableConfig.PgColumnFilter
+
+  // Try to find filter operators in table config overrides
+  if columnOverrides, ok := filtersConfig.Overrides[tableName]; ok {
+    if filterOps, ok := columnOverrides[columnName]; ok {
+      return filterOps
+    }
+  }
+  var filterOps []string
+
+  // Try to find filter operators in filters config
+  switch filterField {
+  case filterFieldTypString:
+    filterOps = filtersConfig.String
+  case filterFieldTypNumeric:
+    filterOps = filtersConfig.Numeric
+  }
+  if len(filterOps) != 0 {
+    return filterOps
+  }
+  if !filtersConfig.AllByDefault {
+    return nil
+  }
+
+  // Return default filter operators for models
+  switch filterField {
+  case filterFieldTypString:
+    filterOps = modelsStringFilterOperators
+  case filterFieldTypNumeric:
+    filterOps = modelsNumericFilterOperators
+  }
+  return filterOps
 }
 
 type goPackageDesc struct {
@@ -660,6 +733,7 @@ func buildPackagesForNames(packagesNames []string) []*goPackageDesc {
   return packagesDesc
 }
 
+// buildFieldPackages UNUSED
 func buildFieldPackages(fieldTyp string) ([]*goPackageDesc, bool) {
   var (
     fieldPackages []*goPackageDesc
@@ -673,6 +747,7 @@ func buildFieldPackages(fieldTyp string) ([]*goPackageDesc, bool) {
   return fieldPackages, len(fieldPackages) != 0
 }
 
+// buildFilterFieldPackages UNUSED
 func buildFilterFieldPackages(filterTyp string) ([]*goPackageDesc, bool) {
   var (
     fieldPackages []*goPackageDesc
@@ -753,6 +828,8 @@ var importPackagesByFiles = map[string][]string{
   },
   modelOptionsFileName: {
     fmtPackageName,
+    timePackageName,
+    zeroPackageName,
   },
   modelMethodsFileName: {
     contextPackageName,
@@ -761,7 +838,10 @@ var importPackagesByFiles = map[string][]string{
     pgClientPackageName,
     pgBuilderPackageName,
   },
-  modelsFileName: {},
+  modelsFileName: {
+    timePackageName,
+    zeroPackageName,
+  },
   constsFileName: {},
 }
 

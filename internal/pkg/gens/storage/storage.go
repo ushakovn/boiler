@@ -43,7 +43,6 @@ func NewStorage(configPath ConfigPath) (*Storage, error) {
 
   if configPath.String() != "" {
     // If config path specified
-
     config, err = configPath.Parse()
     if err != nil {
       log.Fatalf("storage config parsing failed: %v", err)
@@ -58,6 +57,8 @@ func NewStorage(configPath ConfigPath) (*Storage, error) {
     if err != nil {
       return nil, err
     }
+    // Init config fields
+    config = config.WithInitial()
   }
 
   return &Storage{
@@ -213,6 +214,12 @@ var storageModelTemplates = []*storageTemplate{
     compiledTemplate: templates.StorageModelMethods,
     fileNameBuild:    buildModelMethodsFileName,
   },
+  {
+    templateName:     "models",
+    compiledTemplate: templates.StorageModel,
+    filePathParts:    []string{"models"},
+    fileNameBuild:    buildModelFileName,
+  },
 }
 
 var storageCommonTemplates = []*storageTemplate{
@@ -220,22 +227,14 @@ var storageCommonTemplates = []*storageTemplate{
     templateName:     "options",
     compiledTemplate: templates.StorageOptions,
     fileNameBuild: func(modelName string) string {
-      return "options.go"
+      return "storage.options.go"
     },
   },
   {
     templateName:     "consts",
     compiledTemplate: templates.StorageConsts,
     fileNameBuild: func(modelName string) string {
-      return "consts.go"
-    },
-  },
-  {
-    templateName:     "models",
-    compiledTemplate: templates.StorageModels,
-    filePathParts:    []string{"models"},
-    fileNameBuild: func(modelName string) string {
-      return "models.go"
+      return "storage.consts.go"
     },
   },
 }
@@ -248,4 +247,9 @@ func buildModelOptionsFileName(modelName string) string {
 func buildModelMethodsFileName(modelName string) string {
   modelName = stringer.StringToSnakeCase(modelName)
   return fmt.Sprint(modelName, ".methods.go")
+}
+
+func buildModelFileName(modelName string) string {
+  modelName = stringer.StringToSnakeCase(modelName)
+  return fmt.Sprint(modelName, ".go")
 }

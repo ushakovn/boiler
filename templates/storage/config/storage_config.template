@@ -2,9 +2,9 @@
 
 # Boiler storage generator config
 storage_config:
-  # Fill one of config sections
+  # 1. Fill one of config sections
 
-  # 1. Connection config
+  # 1.1. Connection config
   pg_config:
     host: ""
     port: ""
@@ -12,15 +12,42 @@ storage_config:
     db_name: ""
     password: ""
 
-  # 2. Path to pg dump file
-  pg_dump_path: ""
+  # 1.2. Path to pg dump file
+  #  pg_dump_path: ""
 
-  # Fill pg column types section optionally
+  # 2. Fill pg table section optionally
 
-  # Config for sql column types
+  # 2.1. Config for pg tables
+  pg_table_config:
+
+    # Filters for each table by default
+    pg_column_filter:
+      # Generate all filters / Skip all filters
+      all_by_default: true # false
+
+      string: [ "In", "NotIn", "Like", "NotLike" ]
+      numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "Eq", "NotEq", "In", "NotIn" ]
+      # Bool always has one filter "Where"
+      # Time is the same as numeric
+
+      # Fill overrides for specific tables
+      overrides:
+
+        # Example for "dummy" table
+        dummy:
+          id: [ "In", "NotIn" ]
+          string: [ "In", "Like" ]
+          enum: [ "In", "NotIn" ] # Enum must be numeric column
+          # Bool always has one filter "Where"
+          numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "Eq", "NotEq", "In", "NotIn" ]
+          time: [ "GtOrEq", "LtOrEq" ] # Time is the same as numeric
+
+  # 3. Fill pg column types section optionally
+
+  # 3.1. Config for pg column types
   pg_type_config:
 
-    # 1. Example for citext column type
+    # Example for "citext" column type
     citext:
       go_type: "string"
       go_zero_type: "zero.String"

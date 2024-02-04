@@ -8,6 +8,12 @@ import (
   {{- end}}
 )
 
+// Suppress unused imports
+var (
+    _ = zero.Time{}
+    _ = time.Time{}
+)
+
 type {{.ModelName}}Input struct {
   Filters *{{.ModelName}}Filter
 }
@@ -57,14 +63,14 @@ type List{{.ModelName}}Sort struct {
   Order sortOrder
 }
 
-func (p *List{{.ModelName}}Sort) {{toLowerCamelCase .ModelName}}Sort() string {
-  return fmt.Sprintf("%s %s", p.Field, p.Order)
-}
-
 type List{{.ModelName}}Filters struct {
   {{- range .ModelFields}}
   {{- range .ModelsFieldFilters}}
   {{.FilterName}} {{.FilterType}}
   {{- end}}
   {{- end}}
+}
+
+func (p *List{{.ModelName}}Sort) {{toLowerCamelCase .ModelName}}Sort() string {
+  return fmt.Sprintf("%s %s", p.Field, p.Order)
 }

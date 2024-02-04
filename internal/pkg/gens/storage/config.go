@@ -4,9 +4,7 @@ import (
   "fmt"
   "os"
 
-  validation "github.com/go-ozzo/ozzo-validation"
   "github.com/ushakovn/boiler/internal/pkg/filer"
-  "github.com/ushakovn/boiler/internal/pkg/validator"
   "gopkg.in/yaml.v3"
 )
 
@@ -15,9 +13,10 @@ type ConfigPath string
 
 // Config USE ConfigPath FOR GENERATORS FACTORY INSTEAD OF IT
 type Config struct {
-  PgConfig     *PgConfig                `yaml:"pg_config"`
-  PgDumpPath   string                   `yaml:"pg_dump_path"`
-  PgTypeConfig map[string]*PgTypeConfig `yaml:"pg_type_config"`
+  PgConfig      *PgConfig                `yaml:"pg_config"`
+  PgDumpPath    string                   `yaml:"pg_dump_path"`
+  PgTableConfig *PgTableConfig           `yaml:"pg_table_config"`
+  PgTypeConfig  map[string]*PgTypeConfig `yaml:"pg_type_config"`
 }
 
 type PgConfig struct {
@@ -28,13 +27,20 @@ type PgConfig struct {
   Password string `yaml:"password"`
 }
 
+type PgTableConfig struct {
+  PgColumnFilter *PgColFilter `yaml:"pg_column_filter"`
+}
+
+type PgColFilter struct {
+  AllByDefault bool                           `yaml:"all_by_default"`
+  String       []string                       `yaml:"string"`
+  Numeric      []string                       `yaml:"numeric"`
+  Overrides    map[string]map[string][]string `yaml:"overrides"`
+}
+
 type PgTypeConfig struct {
   GoType     string `yaml:"go_type"`
   GoZeroType string `yaml:"go_zero_type"`
-}
-
-func (c ConfigPath) String() string {
-  return string(c)
 }
 
 func (c ConfigPath) Parse() (*Config, error) {
@@ -58,45 +64,47 @@ func (c ConfigPath) Parse() (*Config, error) {
   return wrap.Config, nil
 }
 
-func (c *Config) Validate() error {
-  if !validator.OneOfNotZero(c.PgConfig, c.PgDumpPath) {
-    return fmt.Errorf("only one of fields must be specified: pg_config, pg_dump_path")
-  }
+func (c *Config) WithInitial() *Config {
+  pg := c.PgConfig
 
-  if c.PgConfig != nil {
-    if err := c.PgConfig.Validate(); err != nil {
-      return fmt.Errorf("pg_config invalid: %w", err)
+  if pg == nil {
+    c.PgConfig = &PgConfig{}
+  }
+  table := c.PgTableConfig
+
+  if table == nil {
+    filters := &PgColFilter{
+      String:    make([]string, 0),
+      Numeric:   make([]string, 0),
+      Overrides: make(map[string]map[string][]string),
+    }
+    table = &PgTableConfig{
+      PgColumnFilter: filters,
     }
   }
-  if c.PgDumpPath != "" {
-    if !filer.IsExistedFile(c.PgDumpPath) {
-      return fmt.Errorf("pg_dump_path: file not found")
+  filters := table.PgColumnFilter
+
+  if filters == nil {
+    filters = &PgColFilter{
+      String:    make([]string, 0),
+      Numeric:   make([]string, 0),
+      Overrides: make(map[string]map[string][]string),
     }
   }
+  overrides := filters.Overrides
 
-  if err := validation.ValidateStruct(c,
-    validation.Field(&c.PgTypeConfig, validation.Each(validation.Required)),
-  ); err != nil {
-    return fmt.Errorf("pg_type_config invalid: %w", err)
+  if overrides == nil {
+    overrides = make(map[string]map[string][]string)
+  }
+  types := c.PgTypeConfig
+
+  if types == nil {
+    types = make(map[string]*PgTypeConfig)
   }
 
-  return nil
+  return c
 }
 
-func (c *PgConfig) Validate() error {
-  return validation.ValidateStruct(c,
-    validation.Field(&c.Host, validation.Required),
-    validation.Field(&c.Port, validation.Required),
-    validation.Field(&c.User, validation.Required),
-    validation.Field(&c.DBName, validation.Required),
-    // Password is optionally field
-  )
-}
-
-func (c *PgTypeConfig) Validate() error {
-  return validation.ValidateStruct(c,
-    // Prefix is optionally field
-    validation.Field(&c.GoType, validation.Required),
-    validation.Field(&c.GoZeroType, validation.Required),
-  )
+func (c ConfigPath) String() string {
+  return string(c)
 }
