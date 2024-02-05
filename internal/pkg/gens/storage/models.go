@@ -823,8 +823,8 @@ var importPackagesByFiles = map[string][]string{
   optionsFileName: {
     fmtPackageName,
     contextPackageName,
-    pgPgxPackageName,
-    pgClientPackageName,
+    logrusPackageName,
+    pgExecutorPackageName,
   },
   modelOptionsFileName: {
     fmtPackageName,
@@ -835,7 +835,7 @@ var importPackagesByFiles = map[string][]string{
     contextPackageName,
     fmtPackageName,
     squirrelPackageName,
-    pgClientPackageName,
+    pgExecutorPackageName,
     pgBuilderPackageName,
   },
   modelsFileName: {
@@ -856,10 +856,10 @@ const (
   databaseSqlPackageName = "sql"
   squirrelPackageName    = "squirrel"
 
-  pgPgxPackageName     = "pg-pgx"
-  pgClientPackageName  = "pg-client"
-  pgBuilderPackageName = "pg-builder"
-  pgErrorsPackageName  = "pg-errors"
+  pgPgxPackageName      = "pg-pgx"
+  pgExecutorPackageName = "pg-executor"
+  pgBuilderPackageName  = "pg-builder"
+  pgErrorsPackageName   = "pg-errors"
 )
 
 var importPackagesByNames = map[string]*goPackageDesc{
@@ -905,9 +905,9 @@ var importPackagesByNames = map[string]*goPackageDesc{
     ImportAlias: "log",
     IsInstall:   true,
   },
-  pgClientPackageName: {
-    CustomName:  "boiler/pg-client",
-    ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/client",
+  pgExecutorPackageName: {
+    CustomName:  "boiler/pg-executor",
+    ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/executor",
     ImportAlias: "pg",
     IsInstall:   true,
   },

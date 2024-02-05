@@ -53,20 +53,38 @@ func (p *Pagination) toOffsetLimit() (offset uint64, limit uint64) {
 }
 
 type Storage struct {
-  client pg.Client
+  executor pg.Executor
 }
 
-func NewStorage(client pg.Client) *Storage {
+func NewStorage(executor pg.Executor) *Storage {
   return &Storage{
-    client: client,
+    executor: executor,
   }
 }
 
-func (s *Storage) WithTransaction(ctx context.Context, txFn func(txCtx context.Context) error) error {
-	return s.client.WithTransaction(ctx, txFn)
-}
+func (s *Storage) WithTransaction(ctx context.Context, fTx func(*Storage) error) error {
+  defer func() {
+    if rec := recover(); rec != nil {
+      log.Errorf("client.WithTransaction: panic recovered: %v", rec)
+    }
+  }()
 
-func (s *Storage) WithTransactionOpt(ctx context.Context, txOptions pgx.TxOptions, txFn func(txCtx context.Context) error) error {
-	return s.client.WithTransactionOpt(ctx, txOptions, txFn)
+  tx, err := s.executor.Begin(ctx)
+  if err != nil {
+    return fmt.Errorf("s.executor.BeginTx: %w", err)
+  }
+  txStorage := NewStorage(tx)
+
+  if err = fTx(txStorage); err != nil {
+    if errTx := tx.Rollback(ctx); errTx != nil {
+      log.Errorf("Storage.WithTransaction: tx.Rollback: %v", errTx)
+    }
+    return err
+  }
+
+  if txErr := tx.Commit(ctx); txErr != nil {
+    return fmt.Errorf("tx.Commit: %w", err)
+  }
+  return nil
 }
 

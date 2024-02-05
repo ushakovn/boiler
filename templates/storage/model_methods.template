@@ -38,7 +38,7 @@ func (s *Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName
     {{- end}}
   }
 
-  return pg.SelectCtx[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  return pg.SelectCtx[*models.{{$modelName}}](ctx, s.executor, builder)
 }
 
 func (s *Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input) (*models.{{$modelName}}, error) {
@@ -60,7 +60,7 @@ func (s *Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input)
     {{- end}}
   }
 
-  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.executor, builder)
   if err != nil {
     return nil, err
   }
@@ -94,7 +94,7 @@ func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$model
   builder = builder.SetMap(fields).
     Suffix(suffixReturning)
 
-  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.executor, builder)
   if err != nil {
     return nil, err
   }
@@ -124,7 +124,7 @@ func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$model
     {{- end}}
     Suffix(suffixReturning)
 
-  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.executor, builder)
   if err != nil {
     return nil, err
   }
@@ -141,7 +141,7 @@ func (s *Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$model
     {{- end}}
     Suffix(suffixReturning)
 
-  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.{{$modelName}}](ctx, s.executor, builder)
   if err != nil {
     return nil, err
   }
