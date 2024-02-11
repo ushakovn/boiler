@@ -49,42 +49,6 @@ func (p *Pagination) validate() error {
 func (p *Pagination) toOffsetLimit() (offset uint64, limit uint64) {
   offset = p.Page * p.PerPage
   limit = p.PerPage
-  return
-}
-
-type Storage struct {
-  executor pg.Executor
-}
-
-func NewStorage(executor pg.Executor) *Storage {
-  return &Storage{
-    executor: executor,
-  }
-}
-
-func (s *Storage) WithTransaction(ctx context.Context, fTx func(*Storage) error) error {
-  defer func() {
-    if rec := recover(); rec != nil {
-      log.Errorf("client.WithTransaction: panic recovered: %v", rec)
-    }
-  }()
-
-  tx, err := s.executor.Begin(ctx)
-  if err != nil {
-    return fmt.Errorf("s.executor.BeginTx: %w", err)
-  }
-  txStorage := NewStorage(tx)
-
-  if err = fTx(txStorage); err != nil {
-    if errTx := tx.Rollback(ctx); errTx != nil {
-      log.Errorf("Storage.WithTransaction: tx.Rollback: %v", errTx)
-    }
-    return err
-  }
-
-  if txErr := tx.Commit(ctx); txErr != nil {
-    return fmt.Errorf("tx.Commit: %w", err)
-  }
-  return nil
+  return offset, limit
 }
 

@@ -14,6 +14,7 @@ import (
 
 type schemaDesc struct {
   Models          []*modelDesc
+  StoragePackages []*goPackageDesc
   OptionsPackages []*goPackageDesc
 }
 
@@ -109,13 +110,12 @@ func (g *Storage) loadSchemaDesc() error {
       ModelMethodsPackages: modelMethodsPackages,
     })
   }
-  optionsPackages := buildFilePackages(optionsFileName)
 
   g.schemaDesc = &schemaDesc{
     Models:          models,
-    OptionsPackages: optionsPackages,
+    StoragePackages: buildFilePackages(storageFileName),
+    OptionsPackages: buildFilePackages(optionsFileName),
   }
-
   return nil
 }
 
@@ -810,6 +810,7 @@ func mergeGoPackages(goPackages ...[]*goPackageDesc) []*goPackageDesc {
 const (
   constsFileName       = "consts"
   buildersFileName     = "builders"
+  storageFileName      = "storage"
   optionsFileName      = "options"
   modelsFileName       = "models"
   modelOptionsFileName = "model_options"
@@ -820,11 +821,14 @@ var importPackagesByFiles = map[string][]string{
   buildersFileName: {
     squirrelPackageName,
   },
-  optionsFileName: {
+  storageFileName: {
     fmtPackageName,
     contextPackageName,
     logrusPackageName,
     pgExecutorPackageName,
+  },
+  optionsFileName: {
+    fmtPackageName,
   },
   modelOptionsFileName: {
     fmtPackageName,

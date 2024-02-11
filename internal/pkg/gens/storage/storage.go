@@ -224,6 +224,13 @@ var storageModelTemplates = []*storageTemplate{
 
 var storageCommonTemplates = []*storageTemplate{
   {
+    templateName:     "storage",
+    compiledTemplate: templates.StorageStorage,
+    fileNameBuild: func(modelName string) string {
+      return "storage.go"
+    },
+  },
+  {
     templateName:     "options",
     compiledTemplate: templates.StorageOptions,
     fileNameBuild: func(modelName string) string {
