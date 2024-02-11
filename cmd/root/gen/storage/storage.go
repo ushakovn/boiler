@@ -38,4 +38,5 @@ var CmdStorage = &cobra.Command{
 
 func init() {
   CmdStorage.Flags().StringVar(&flagConfigPath, "config-path", "", "path to storage generator config")
+  _ = CmdStorage.MarkFlagRequired("config-path")
 }

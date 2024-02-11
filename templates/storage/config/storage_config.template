@@ -26,7 +26,7 @@ storage_config:
       all_by_default: true # false
 
       string: [ "In", "NotIn", "Like", "NotLike" ]
-      numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "Eq", "NotEq", "In", "NotIn" ]
+      numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "In", "NotIn" ]
       # Bool always has one filter "Where"
       # Time is the same as numeric
 
@@ -39,7 +39,7 @@ storage_config:
           string: [ "In", "Like" ]
           enum: [ "In", "NotIn" ] # Enum must be numeric column
           # Bool always has one filter "Where"
-          numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "Eq", "NotEq", "In", "NotIn" ]
+          numeric: [ "Lt", "LtOrEq", "Gt", "GtOrEq", "In", "NotIn" ]
           time: [ "GtOrEq", "LtOrEq" ] # Time is the same as numeric
 
   # 3. Fill pg column types section optionally
