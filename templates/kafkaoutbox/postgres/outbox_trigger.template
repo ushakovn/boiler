@@ -1,0 +1,34 @@
+-- +goose Up
+-- +goose StatementBegin
+
+-- migration created by Boiler; DO NOT EDIT.
+create or replace function {{.OutboxFuncName}}() returns trigger as ${{.OutboxFuncName}}$
+begin
+    if (lower(tg_op::text) = 'delete') then
+        insert into {{.SourceTableName}}(action_typ, json_out) values ('delete'::action_type, row_to_json(old));
+
+    elseif (lower(tg_op::text) = 'update') then
+        insert into {{.SourceTableName}}(action_typ, json_out) values ('update'::action_type, row_to_json(new));
+
+    elseif (lower(tg_op::text) = 'insert') then
+        insert into {{.SourceTableName}}(action_typ, json_out) values ('create'::action_type, row_to_json(new));
+    end if;
+
+    return null;
+end;
+${{.OutboxFuncName}}$ language plpgsql;
+
+create or replace trigger {{.OutboxTriggerName}}
+    after insert or update or delete on {{.SourceTableName}}
+    for each row execute procedure {{.OutboxFuncName}}();
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+-- migration created by Boiler; DO NOT EDIT.
+drop trigger {{.OutboxTriggerName}} on table_name;
+
+drop function {{.OutboxFuncName}};
+-- +goose StatementEnd

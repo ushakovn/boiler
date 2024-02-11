@@ -2,10 +2,7 @@
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-create table rocket_locks(
-    lock_id      text not null primary key,
-    locked_until timestamp without time zone
-);
+create extension if not exists "uuid-ossp";
 
 -- +goose StatementEnd
 
@@ -13,6 +10,6 @@ create table rocket_locks(
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-drop table rocket_locks;
+drop extension "uuid-ossp";
 
 -- +goose StatementEnd

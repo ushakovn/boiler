@@ -1,0 +1,8 @@
+# Config generate by Boiler; DO NOT EDIT.
+
+# Kafka outbox config
+kafka_outbox:
+  lock_time: "15s"
+  expire_time: "1m"
+  worker_idle: "100ms"
+  worker_retry: "3"

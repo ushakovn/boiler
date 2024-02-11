@@ -2,17 +2,17 @@
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-create table rocket_locks(
-    lock_id      text not null primary key,
-    locked_until timestamp without time zone
+create type action_type as enum (
+    'create',
+    'update',
+    'delete'
 );
-
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
 -- migration created by Boiler; DO NOT EDIT.
-drop table rocket_locks;
+drop type action_type;
 
 -- +goose StatementEnd

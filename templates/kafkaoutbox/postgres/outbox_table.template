@@ -1,0 +1,20 @@
+-- +goose Up
+-- +goose StatementBegin
+
+-- migration created by Boiler; DO NOT EDIT.
+create table if not exists {{.OutboxTableName}} (
+    id uuid not null primary key default uuid_generate_v4(),
+    action_typ action_type not null,
+    json_out json not null,
+    locked_until timestamp without time,
+    created_at timestamp without time zone not null default now()
+);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+-- migration created by Boiler; DO NOT EDIT.
+drop table {{.OutboxTableName}};
+
+-- +goose StatementEnd
