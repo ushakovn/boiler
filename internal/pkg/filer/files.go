@@ -2,6 +2,7 @@ package filer
 
 import (
   "bufio"
+  "bytes"
   "fmt"
   "io"
   "os"
@@ -178,6 +179,14 @@ func AppendStringToFile(filePath, rawString string) error {
     }
   }
   return nil
+}
+
+func ScanFileWithBreak(filePath string, f func(line string) bool) error {
+  buf, err := os.ReadFile(filePath)
+  if err != nil {
+    return fmt.Errorf("os.ReadFile: %w", err)
+  }
+  return ScanLinesWithBreak(bytes.NewReader(buf), f)
 }
 
 func ScanLinesWithBreak(r io.Reader, f func(line string) bool) error {

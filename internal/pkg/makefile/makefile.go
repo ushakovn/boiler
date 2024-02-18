@@ -1,7 +1,6 @@
 package makefile
 
 import (
-  "bytes"
   "fmt"
   "os"
   "strings"
@@ -10,26 +9,22 @@ import (
 )
 
 func ContainsTarget(filePath, targetName string) (bool, error) {
-  buf, err := os.ReadFile(filePath)
+  targetName = fmt.Sprint(targetName, ":")
+  var ok bool
+
+  err := filer.ScanFileWithBreak(filePath, func(line string) bool {
+    line = strings.TrimSpace(line)
+
+    if ok = strings.HasPrefix(line, targetName); ok {
+      return false
+    }
+    return true
+  })
   if err != nil {
     if os.IsNotExist(err) {
       return false, nil
     }
-    return false, fmt.Errorf("os.ReadFile: %w", err)
+    return false, fmt.Errorf("filer.ScanFileWithBreak: %w", err)
   }
-  targetName = fmt.Sprint(targetName, ":")
-  var foundTarget bool
-
-  if err = filer.ScanLinesWithBreak(bytes.NewReader(buf), func(line string) bool {
-    line = strings.TrimSpace(line)
-
-    if foundTarget = strings.HasPrefix(line, targetName); foundTarget {
-      return false
-    }
-    return true
-
-  }); err != nil {
-    return false, fmt.Errorf("filer.ScanLinesWithBreak: %w", err)
-  }
-  return foundTarget, nil
+  return ok, nil
 }

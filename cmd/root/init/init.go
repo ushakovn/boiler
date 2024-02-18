@@ -5,6 +5,7 @@ import (
   cmdConfig "github.com/ushakovn/boiler/cmd/root/init/config"
   cmdGqlgen "github.com/ushakovn/boiler/cmd/root/init/gqlgen"
   cmdGrpc "github.com/ushakovn/boiler/cmd/root/init/grpc"
+  cmdKafkaoutbox "github.com/ushakovn/boiler/cmd/root/init/kafkaoutbox"
   cmdProtoDeps "github.com/ushakovn/boiler/cmd/root/init/protodeps"
   cmdStorage "github.com/ushakovn/boiler/cmd/root/init/storage"
 )
@@ -23,5 +24,6 @@ func init() {
     cmdProtoDeps.CmdProtoDeps,
     cmdStorage.CmdStorage,
     cmdConfig.CmdConfig,
+    cmdKafkaoutbox.CmdKafkaoutbox,
   )
 }

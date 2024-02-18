@@ -211,3 +211,7 @@ func NormalizeName(s string) string {
 func TrimPluralForm(src string) string {
   return strings.TrimSuffix(src, "s")
 }
+
+func UnquoteString(s string) string {
+  return strings.Trim(s, `"`)
+}

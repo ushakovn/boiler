@@ -7,6 +7,7 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/gens/config"
   "github.com/ushakovn/boiler/internal/pkg/gens/gqlgen"
   "github.com/ushakovn/boiler/internal/pkg/gens/grpc"
+  "github.com/ushakovn/boiler/internal/pkg/gens/kafkaoutbox"
   "github.com/ushakovn/boiler/internal/pkg/gens/protodeps"
   "github.com/ushakovn/boiler/internal/pkg/gens/rpc"
   "github.com/ushakovn/boiler/internal/pkg/gens/storage"
@@ -34,6 +35,8 @@ func NewGenerator(cfg any) (Generator, error) {
     g, err = protodeps.NewProtoDeps(c)
   case config.Config:
     g, err = config.NewGenConfig(c)
+  case kafkaoutbox.Config:
+    g, err = kafkaoutbox.NewKafkaoutbox(c)
   default:
     err = fmt.Errorf("unsupported generator type")
   }
