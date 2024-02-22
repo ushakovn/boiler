@@ -18,7 +18,7 @@ func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockIn
 
   builder := br.NewBuildedExpr(query, input.LockID, input.LockTTL)
 
-  model, err := pg.GetCtx[*models.RocketLock](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.RocketLock](ctx, s.executor, builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
       return nil, ErrRocketLockConflict
@@ -36,7 +36,7 @@ func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockIn
 
   builder := br.NewBuildedExpr(query, input.LockID)
 
-  model, err := pg.GetCtx[*models.RocketLock](ctx, s.client.Executor(ctx), builder)
+  model, err := pg.GetCtx[*models.RocketLock](ctx, s.executor, builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
       return nil, ErrRocketLockNotFound

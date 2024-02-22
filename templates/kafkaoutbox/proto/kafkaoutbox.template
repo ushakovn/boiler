@@ -11,7 +11,7 @@ import "google/protobuf/timestamp.proto";
 import "api/{{.ServiceName}}/option.proto";
 
 message Kitty {
-  option ({{.ServiceName}}.table_name) = "kitty";
+  option ({{.ServiceName}}.table_name) = "kitties";
 
   enum Type {
     TYPE_UNKNOWN = 0;

@@ -7,22 +7,32 @@ import (
   {{- end}}
 )
 
-type ActionType string
-
-const (
-  CreateActionType ActionType = "create"
-  UpdateActionType ActionType = "update"
-  DeleteActionType ActionType = "delete"
-)
+type ActionType int32
 
 type Record struct {
   ID         string        `db:"id"`
   ActionType ActionType    `db:"action_type"`
-  JSONOut    []byte        `db:"db_out"`
+  JSONOut    []byte        `db:"json_out"`
   CreatedAt  time.Duration `db:"created_at"`
 }
 
+const (
+  CreateActionType ActionType = 1
+  UpdateActionType ActionType = 2
+  DeleteActionType ActionType = 3
+)
+
+var actionTypeString = map[ActionType]string{
+  CreateActionType: "create",
+  UpdateActionType: "update",
+  DeleteActionType: "delete",
+}
+
 func (t ActionType) String() string {
-  return string(t)
+  actionTyp, ok := actionTypeString[t]
+  if !ok {
+    return "unknown"
+  }
+  return actionTyp
 }
 

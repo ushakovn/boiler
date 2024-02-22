@@ -5,13 +5,13 @@
 create or replace function {{.OutboxFuncName}}() returns trigger as ${{.OutboxFuncName}}$
 begin
     if (lower(tg_op::text) = 'delete') then
-        insert into {{.OutboxTableName}}(action_typ, json_out) values ('delete'::action_type, row_to_json(old));
+        insert into {{.OutboxTableName}}(action_typ, json_out) values (3, row_to_json(old));
 
     elseif (lower(tg_op::text) = 'update') then
-        insert into {{.OutboxTableName}}(action_typ, json_out) values ('update'::action_type, row_to_json(new));
+        insert into {{.OutboxTableName}}(action_typ, json_out) values (2, row_to_json(new));
 
     elseif (lower(tg_op::text) = 'insert') then
-        insert into {{.OutboxTableName}}(action_typ, json_out) values ('create'::action_type, row_to_json(new));
+        insert into {{.OutboxTableName}}(action_typ, json_out) values (1, row_to_json(new));
     end if;
 
     return null;

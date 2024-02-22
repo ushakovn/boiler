@@ -121,7 +121,7 @@ func (g *Kafkaoutbox) generateGoTemplates() error {
   if g.outboxDesc == nil {
     return fmt.Errorf("outbox description is a nil")
   }
-  fileDir, err := filer.CreateNestedFolders(g.workDirPath, "internal", "kafkaoutbox")
+  fileDir, err := filer.CreateNestedFolders(g.workDirPath, "internal", "pkg", "kafkaoutbox")
   if err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
@@ -211,7 +211,7 @@ func (g *Kafkaoutbox) generateOutboxPbGo(ctx context.Context) error {
       log.Errorf(`boiler: try add "include make.mk" to your Makefile if "make rule not found"`)
       return fmt.Errorf("executor.ExecCmdCtx: target: %s: %w", target.targetName, err)
     }
-    log.Infof("boiler: executed make target: %s\n%s\n", target.targetName, string(out))
+    log.Debugf("boiler: executed make target: %s\n%s\n", target.targetName, string(out))
   }
   return nil
 }
@@ -253,7 +253,7 @@ func (g *Kafkaoutbox) createMakeMkTarget(makeMkTemplate string) error {
   templateData := map[string]any{
     "goPackageTrim": goPackageTrim,
   }
-  executedBuf, err := templater.ExecTemplate(makeMkTemplate, templateData, nil)
+  executedBuf, err := templater.ExecTemplate(makeMkTemplate, templateData, funcMapStub)
   if err != nil {
     return fmt.Errorf("executeTemplate")
   }
@@ -271,7 +271,7 @@ func (g *Kafkaoutbox) createMakefileIfNotExist() error {
   filePath := filepath.Join(g.workDirPath, fileName)
 
   if !filer.IsExistedFile(filePath) {
-    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, nil, nil); err != nil {
+    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, dataPtrStub, funcMapStub); err != nil {
       return fmt.Errorf("execTemplateCopy: %w", err)
     }
   }

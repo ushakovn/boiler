@@ -31,6 +31,9 @@ func (g *Storage) generateCustomStorages() error {
   storagePath := filepath.Join(g.workDirPath, "internal", "pkg", "storage")
 
   for _, model := range customSchema.CustomModels {
+    if g.config.skipStorage(model.ModelName) {
+      continue
+    }
     modelTemplates, ok := storageTemplatesByCustomModelNames[model.ModelName]
     if !ok {
       return fmt.Errorf("storage templates not found for custom model: %s", model.ModelName)

@@ -16,7 +16,6 @@ const (
   storageFileName = "storage"
 
   extensionUUIDOsspFileName = "extension_uuid_ossp"
-  outboxActionTypeFileName  = "kafka_outbox_action_type"
   outboxTableFileName       = "kafka_outbox_table"
   outboxFuncFileName        = "kafka_outbox_func"
   outboxTriggerFileName     = "kafka_outbox_trigger"
@@ -157,12 +156,6 @@ var migrationCommonTemplates = []*templateDesc{
   {
     name:          extensionUUIDOsspFileName,
     compiled:      templates.KafkaOutboxMigrationUUIDOssp,
-    buildCheck:    buildCheckMigration,
-    buildFileName: goose.BuildFileName,
-  },
-  {
-    name:          outboxActionTypeFileName,
-    compiled:      templates.KafkaOutboxMigrationActionType,
     buildCheck:    buildCheckMigration,
     buildFileName: goose.BuildFileName,
   },

@@ -4,6 +4,7 @@ import (
   "fmt"
   "os"
 
+  "github.com/samber/lo"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "gopkg.in/yaml.v3"
 )
@@ -28,7 +29,9 @@ type PgConfig struct {
 }
 
 type PgTableConfig struct {
-  PgColumnFilter *PgColFilter `yaml:"pg_column_filter"`
+  PgColumnFilter       *PgColFilter `yaml:"pg_column_filter"`
+  PgSkipTables         []string     `yaml:"pg_skip_tables"`
+  PgSkipCustomStorages []string     `yaml:"pg_skip_custom_storages"`
 }
 
 type PgColFilter struct {
@@ -103,6 +106,16 @@ func (c *Config) WithInitial() *Config {
   }
 
   return c
+}
+
+func (c *Config) skipStorage(modelName string) bool {
+  config := c.PgTableConfig.PgSkipCustomStorages
+  return lo.Contains(config, modelName)
+}
+
+func (c *Config) skipTable(tableName string) bool {
+  config := c.PgTableConfig.PgSkipTables
+  return lo.Contains(config, tableName)
 }
 
 func (c ConfigPath) String() string {

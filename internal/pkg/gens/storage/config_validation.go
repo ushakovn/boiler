@@ -63,7 +63,10 @@ func (c *PgTypeConfig) Validate() error {
 }
 
 func (c *PgTableConfig) Validate() error {
-  return validation.ValidateStruct(c, validation.Field(&c.PgColumnFilter))
+  return validation.ValidateStruct(c,
+    validation.Field(&c.PgColumnFilter),
+    validation.Field(&c.PgSkipTables, validation.Each(validation.Required)),
+  )
 }
 
 func (c *PgColFilter) Validate() error {

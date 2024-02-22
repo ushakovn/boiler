@@ -61,23 +61,14 @@ type fieldFilterDesc struct {
   FilterTypeSuffix string
 }
 
-// enumDesc UNUSED
-type enumDesc struct {
-  ModelEnumType   string
-  ModelEnumValues []*enumValueDesc
-}
-
-// enumValueDesc UNUSED
-type enumValueDesc struct {
-  ModelEnumString string
-  ModelEnumInt    int
-}
-
 func (g *Storage) loadSchemaDesc() error {
   tables := g.dumpSQL.Tables.Elems()
   models := make([]*modelDesc, 0, len(tables))
 
   for _, table := range tables {
+    if g.config.skipTable(table.Name) {
+      continue
+    }
     columns := table.Columns.Elems()
     fields := make([]*fieldDesc, 0, len(columns))
 
