@@ -2,6 +2,15 @@
 
 # Kafka outbox config
 kafka_outbox:
-  lock_time: "15s"
+  # Kafka brokers
+  kafka_brokers_addr:
+    - "localhost:9092"
+
+  # Outbox records
+  record_lock_time: "1s"
+  records_batch_size: 100
+
+  # Outbox workers
   worker_idle: "100ms"
-  worker_retry: "3"
+  workers_count: 5
+

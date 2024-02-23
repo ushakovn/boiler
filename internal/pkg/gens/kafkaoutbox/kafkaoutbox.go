@@ -10,6 +10,7 @@ import (
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/internal/pkg/gens/storage"
   "github.com/ushakovn/boiler/internal/pkg/goose"
   "github.com/ushakovn/boiler/internal/pkg/makefile"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
@@ -20,17 +21,24 @@ import (
 type Kafkaoutbox struct {
   workDirPath  string
   goModuleName string
-  outboxDesc   *outboxDesc
+
+  validateProto bool
+  storageGen    *storage.Storage
+
+  outboxDesc *outboxDesc
 }
 
-type Config struct{}
+type Config struct {
+  ValidateProto     bool
+  StorageConfigPath string
+}
 
 var (
   dataPtrStub = any(nil)
   funcMapStub = template.FuncMap(nil)
 )
 
-func NewKafkaoutbox(_ Config) (*Kafkaoutbox, error) {
+func NewKafkaoutbox(config Config) (*Kafkaoutbox, error) {
   workDirPath, err := filer.WorkDirPath()
   if err != nil {
     return nil, err
@@ -39,16 +47,25 @@ func NewKafkaoutbox(_ Config) (*Kafkaoutbox, error) {
   if err != nil {
     return nil, err
   }
+  var storageGen *storage.Storage
+
+  if config.ValidateProto {
+    configPath := storage.ConfigPath(config.StorageConfigPath)
+
+    if storageGen, err = storage.NewStorage(configPath); err != nil {
+      return nil, fmt.Errorf("storage.NewStorage: %w", err)
+    }
+  }
   return &Kafkaoutbox{
     workDirPath:  workDirPath,
     goModuleName: goModuleName,
+
+    validateProto: config.ValidateProto,
+    storageGen:    storageGen,
   }, nil
 }
 
 func (g *Kafkaoutbox) Init(_ context.Context) error {
-  if err := g.generateConfigTemplate(); err != nil {
-    return fmt.Errorf("generateConfigTemplate: %w", err)
-  }
   if err := g.generateProtoTemplates(); err != nil {
     return fmt.Errorf("generateProtoTemplates: %w", err)
   }
@@ -59,8 +76,11 @@ func (g *Kafkaoutbox) Generate(ctx context.Context) error {
   if err := g.loadOutboxDesc(); err != nil {
     return fmt.Errorf("loadOutboxDesc: %w", err)
   }
-  if err := g.generateMakeTargets(); err != nil {
-    return fmt.Errorf("generateMakeTargets: %w", err)
+  if err := g.generateConfigTemplateIfNotExist(); err != nil {
+    return fmt.Errorf("generateConfigTemplateIfNotExist: %w", err)
+  }
+  if err := g.generateMakeTargetsIfNotExist(); err != nil {
+    return fmt.Errorf("generateMakeTargetsIfNotExist: %w", err)
   }
   if err := g.generateOutboxPbGo(ctx); err != nil {
     return fmt.Errorf("generateOutboxPbGo: %w", err)
@@ -83,16 +103,17 @@ func (g *Kafkaoutbox) loadOutboxDesc() error {
   return nil
 }
 
-func (g *Kafkaoutbox) generateConfigTemplate() error {
+func (g *Kafkaoutbox) generateConfigTemplateIfNotExist() error {
   fileDir, err := filer.CreateNestedFolders(g.workDirPath, ".config")
   if err != nil {
     return fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
-  const fileName = "kafkaoutbox_config.yaml"
+  filePath := filepath.Join(fileDir, "kafkaoutbox_config.yaml")
 
-  filePath := filepath.Join(fileDir, fileName)
-
-  if err = templater.CopyTemplate(templates.KafkaOutboxConfig, filePath); err != nil {
+  if filer.IsExistedFile(filePath) {
+    return nil
+  }
+  if err = templater.CopyTemplate(templates.KafkaOutboxConfigYaml, filePath); err != nil {
     return fmt.Errorf("templater.CopyTemplate: %w", err)
   }
   return nil
@@ -216,7 +237,7 @@ func (g *Kafkaoutbox) generateOutboxPbGo(ctx context.Context) error {
   return nil
 }
 
-func (g *Kafkaoutbox) generateMakeTargets() error {
+func (g *Kafkaoutbox) generateMakeTargetsIfNotExist() error {
   if err := g.createMakeMkTargetsIfNotExist(); err != nil {
     return fmt.Errorf("createMakeMkTargetsIfNotExist: %w", err)
   }
@@ -227,8 +248,7 @@ func (g *Kafkaoutbox) generateMakeTargets() error {
 }
 
 func (g *Kafkaoutbox) createMakeMkTargetsIfNotExist() error {
-  const fileName = "make.mk"
-  filePath := filepath.Join(g.workDirPath, fileName)
+  filePath := filepath.Join(g.workDirPath, "make.mk")
 
   for _, target := range makeMkTargets {
     ok, err := makefile.ContainsTarget(filePath, target.targetName)
@@ -242,12 +262,10 @@ func (g *Kafkaoutbox) createMakeMkTargetsIfNotExist() error {
       return fmt.Errorf("g.createMakeMkTarget: %w", err)
     }
   }
-
   return nil
 }
 
 func (g *Kafkaoutbox) createMakeMkTarget(makeMkTemplate string) error {
-  const fileName = "make.mk"
   goPackageTrim := g.goModuleName
 
   templateData := map[string]any{
@@ -258,7 +276,7 @@ func (g *Kafkaoutbox) createMakeMkTarget(makeMkTemplate string) error {
     return fmt.Errorf("executeTemplate")
   }
   executedTarget := string(executedBuf)
-  makeMkPath := filepath.Join(g.workDirPath, fileName)
+  makeMkPath := filepath.Join(g.workDirPath, "make.mk")
 
   if err = filer.AppendStringToFile(makeMkPath, executedTarget); err != nil {
     return fmt.Errorf("filer.AppendStringToFile: %w", err)
@@ -267,13 +285,16 @@ func (g *Kafkaoutbox) createMakeMkTarget(makeMkTemplate string) error {
 }
 
 func (g *Kafkaoutbox) createMakefileIfNotExist() error {
-  const fileName = "Makefile"
-  filePath := filepath.Join(g.workDirPath, fileName)
+  filePath := filepath.Join(g.workDirPath, "Makefile")
+  return g.createFileIfNotExist(templates.ProjectMakefile, filePath)
+}
 
-  if !filer.IsExistedFile(filePath) {
-    if err := templater.ExecTemplateCopy(templates.ProjectMakefile, filePath, dataPtrStub, funcMapStub); err != nil {
-      return fmt.Errorf("execTemplateCopy: %w", err)
-    }
+func (g *Kafkaoutbox) createFileIfNotExist(compiledTemplate string, filePath string) error {
+  if filer.IsExistedFile(filePath) {
+    return nil
+  }
+  if err := templater.CopyTemplate(compiledTemplate, filePath); err != nil {
+    return fmt.Errorf("templater.CopyTemplate: %w", err)
   }
   return nil
 }

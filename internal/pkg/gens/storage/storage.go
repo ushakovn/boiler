@@ -70,6 +70,10 @@ func NewStorage(configPath ConfigPath) (*Storage, error) {
   }, nil
 }
 
+func (g *Storage) DumpSQL() *pgdump.DumpSQL {
+  return g.dumpSQL
+}
+
 func buildDumpOption(ctx context.Context, config *Config) pgdump.DumpOption {
   option := pgdump.NewDumpOption()
 

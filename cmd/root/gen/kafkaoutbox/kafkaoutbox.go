@@ -10,6 +10,11 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/gens/kafkaoutbox"
 )
 
+var (
+  flagValidateProto     bool
+  flagStorageConfigPath string
+)
+
 var CmdKafkaoutbox = &cobra.Command{
   Use: "kafkaoutbox",
 
@@ -19,7 +24,10 @@ var CmdKafkaoutbox = &cobra.Command{
   RunE: func(cmd *cobra.Command, args []string) error {
     ctx := context.Background()
 
-    generator, err := gen.NewGenerator(kafkaoutbox.Config{})
+    generator, err := gen.NewGenerator(kafkaoutbox.Config{
+      ValidateProto:     flagValidateProto,
+      StorageConfigPath: flagStorageConfigPath,
+    })
     if err != nil {
       return fmt.Errorf("boiler: failed to create generator: %w", err)
     }
@@ -30,4 +38,11 @@ var CmdKafkaoutbox = &cobra.Command{
 
     return nil
   },
+}
+
+func init() {
+  CmdKafkaoutbox.Flags().BoolVar(&flagValidateProto, "validate-proto", false, "validate kafkaoutbox proto with pg schema")
+  CmdKafkaoutbox.Flags().StringVar(&flagStorageConfigPath, "storage-config-path", "", "path to storage generator config")
+
+  CmdKafkaoutbox.MarkFlagsRequiredTogether("validate-proto", "storage-config-path")
 }

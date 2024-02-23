@@ -12,6 +12,7 @@ import (
 
 const (
   outboxFileName  = "outbox"
+  configFileName  = "config"
   modelsFileName  = "models"
   storageFileName = "storage"
 
@@ -48,6 +49,7 @@ const (
 type outboxDesc struct {
   OutboxTables          []*outboxTableDesc
   OutboxPackages        []*goPackageDesc
+  OutboxConfigPackages  []*goPackageDesc
   OutboxModelsPackages  []*goPackageDesc
   OutboxStoragePackages []*goPackageDesc
 }
@@ -105,6 +107,12 @@ var goTemplates = []*templateDesc{
   {
     name:          outboxFileName,
     compiled:      templates.KafkaOutbox,
+    buildCheck:    buildCheckStub,
+    buildFileName: filext.Go,
+  },
+  {
+    name:          configFileName,
+    compiled:      templates.KafkaOutboxConfig,
     buildCheck:    buildCheckStub,
     buildFileName: filext.Go,
   },
@@ -177,14 +185,19 @@ var packagesByFiles = map[string][]string{
     contextPackageName,
     fmtPackageName,
     timePackageName,
-    osPackageName,
-    yamlPackageName,
     logrusPackageName,
     reflectPackageName,
     protoreflectPackageName,
     protojsonPackageName,
     ozzoValidationPackageName,
     saramaIBMPackageName,
+  },
+  configFileName: {
+    fmtPackageName,
+    osPackageName,
+    timePackageName,
+    ozzoValidationPackageName,
+    yamlPackageName,
   },
   modelsFileName: {
     timePackageName,
@@ -286,6 +299,7 @@ func (g *Kafkaoutbox) buildOutbox() (*outboxDesc, error) {
   outbox := &outboxDesc{
     OutboxTables:          outboxTables,
     OutboxPackages:        outboxPackages,
+    OutboxConfigPackages:  buildTemplatePackages(configFileName),
     OutboxModelsPackages:  buildTemplatePackages(modelsFileName),
     OutboxStoragePackages: buildTemplatePackages(storageFileName),
   }
@@ -311,7 +325,13 @@ func (g *Kafkaoutbox) buildOutboxTables() ([]*outboxTableDesc, error) {
 
   parsed, err := parseProto(filePath, optionName)
   if err != nil {
-    return nil, fmt.Errorf("parseProto: %w", err)
+    return nil, fmt.Errorf("proto parsing failed: %w", err)
+  }
+
+  if g.validateProto && g.storageGen != nil {
+    if err = validateProto(parsed, g.storageGen.DumpSQL()); err != nil {
+      return nil, fmt.Errorf("proto validation failed: %w", err)
+    }
   }
   outboxTables := make([]*outboxTableDesc, 0, len(parsed.messages))
 
