@@ -13,6 +13,7 @@ type Config struct {
   RecordsBatchSize uint32        `yaml:"records_batch_size"`
   WorkerIdle       time.Duration `yaml:"worker_idle"`
   WorkersCount     uint32        `yaml:"workers_count"`
+  JitterFactor     time.Duration `yaml:"jitter_factor"`
 }
 
 func NewConfig(path string) (Config, error) {
@@ -56,6 +57,11 @@ func (c *Config) Validate() error {
       validation.Required,
       validation.Min(uint32(1)),
       validation.Max(uint32(5)),
+    ),
+    validation.Field(&c.JitterFactor,
+      validation.Required,
+      validation.Min(100*time.Millisecond),
+      validation.Max(1*time.Second),
     ),
   )
 }

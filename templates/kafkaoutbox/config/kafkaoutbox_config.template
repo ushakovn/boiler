@@ -14,3 +14,5 @@ kafka_outbox:
   worker_idle: "100ms"
   workers_count: 5
 
+  # Jitter factor
+  jitter_factor: "100ms"

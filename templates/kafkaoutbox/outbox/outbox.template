@@ -35,6 +35,7 @@ func (o *Outbox) Run(ctx context.Context) error {
     return fmt.Errorf("outbox validation failed: %w", err)
   }
   for _, tableName := range tableNames {
+    runJitter(o.config.JitterFactor)
     o.sendWithWorkers(ctx, tableName)
 
     log.Infof("kafka-outbox: sending started for: %s table", tableName)
@@ -54,6 +55,7 @@ func (o *Outbox) Validate() error {
 
 func (o *Outbox) sendWithWorkers(ctx context.Context, tableName string) {
   for worker := 0; worker < int(o.config.WorkersCount); worker++ {
+    runJitter(o.config.JitterFactor)
     go func() { o.send(ctx, tableName) }()
   }
 }
@@ -134,6 +136,16 @@ func marshalRecord(tableName string, record *Record) ([]byte, error) {
     return nil, fmt.Errorf("protojson.Marshal: %s table: %w", tableName, err)
   }
   return buf, nil
+}
+
+func runJitter(factor time.Duration) error {
+  randInt, err := rand.Int(rand.Reader, big.NewInt(factor.Milliseconds()))
+  if err != nil {
+    return fmt.Errorf("rand.Int: %w", err)
+  }
+  randJitter := time.Duration(randInt.Int64()) * time.Millisecond
+  time.Sleep(randJitter)
+  return nil
 }
 
 var tableTopics = map[string]string{

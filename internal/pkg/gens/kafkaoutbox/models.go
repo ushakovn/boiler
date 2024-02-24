@@ -30,8 +30,12 @@ const (
   fmtPackageName     = "fmt"
   timePackageName    = "time"
   osPackageName      = "os"
-  yamlPackageName    = "yaml"
-  errorsPackageName  = "errors"
+
+  cryptoRandPackageName = "crypto-rand"
+  mathBigPackageName    = "math-big"
+
+  yamlPackageName   = "yaml"
+  errorsPackageName = "errors"
 
   logrusPackageName   = "logrus"
   squirrelPackageName = "squirrel"
@@ -185,6 +189,8 @@ var packagesByFiles = map[string][]string{
     contextPackageName,
     fmtPackageName,
     timePackageName,
+    cryptoRandPackageName,
+    mathBigPackageName,
     logrusPackageName,
     reflectPackageName,
     protoreflectPackageName,
@@ -255,6 +261,16 @@ var packagesByNames = map[string]*goPackageDesc{
   osPackageName: {
     CustomName: "go/os",
     ImportLine: "os",
+    IsBuiltin:  true,
+  },
+  cryptoRandPackageName: {
+    CustomName: "crypto/rand",
+    ImportLine: "crypto/rand",
+    IsBuiltin:  true,
+  },
+  mathBigPackageName: {
+    CustomName: "math/big",
+    ImportLine: "math/big",
     IsBuiltin:  true,
   },
   yamlPackageName: {
