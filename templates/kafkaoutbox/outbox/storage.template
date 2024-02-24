@@ -21,22 +21,102 @@ func NewStorage(executor pg.Executor, lockTTL time.Duration, batchSize uint32) S
   }
 }
 
-func (s *storage) BatchRecords(ctx context.Context, tableName string) ([]*Record, error) {
-  query := `update %s
-    set locked_until = now() + interval '%d millisecond'
-    where id in (select id
-        from %[1]s
+func (s *storage) LockRecords(ctx context.Context, tableName string) ([]*Record, error) {
+  var locked []*Record
+
+  err := s.withTx(ctx, func(s *storage) error {
+    records, err := s.getRecordsBatch(ctx, tableName)
+    if err != nil {
+      return fmt.Errorf("getRecordsBatch: %w", err)
+    }
+    unlocked := make([]*Record, 0, len(records))
+
+    for _, record := range records {
+      if record.IsLocked() {
+        continue
+      }
+      unlocked = append(unlocked, record)
+    }
+
+    locked, err = s.lockRecordsBatch(ctx, tableName, unlocked)
+    if err != nil {
+      return fmt.Errorf("lockRecordsBatch: %w", err)
+    }
+    return nil
+  })
+
+  if err != nil {
+    return nil, fmt.Errorf("withTx: %w", err)
+  }
+  return locked, nil
+}
+
+func (s *storage) getRecordsBatch(ctx context.Context, tableName string) ([]*Record, error) {
+  query := `select * from %s
         where locked_until is null or locked_until < now()
-        limit %d)
-    returning *`
+        order by created_at desc limit %d
+        for update`
 
-  query = fmt.Sprintf(query, tableName, s.lockTTL.Milliseconds(), s.batchSize)
+  query = fmt.Sprintf(query, tableName, s.batchSize)
 
-  return pg.SelectCtx[*Record](ctx, s.executor, sq.Expr(query))
+  records, err := pg.SelectCtx[*Record](ctx, s.executor, sq.Expr(query))
+  if err != nil {
+    return nil, fmt.Errorf("pg.SelectCtx: %w", err)
+  }
+  return records, nil
+}
+
+func (s *storage) lockRecordsBatch(ctx context.Context, tableName string, records []*Record) ([]*Record, error) {
+  if len(records) == 0 {
+    return nil, nil
+  }
+  recordIDs := make([]string, 0, len(records))
+
+  for _, record := range records {
+    recordIDs = append(recordIDs, quote.String(record.ID))
+  }
+  query := `update %s set locked_until = now() + interval '%d millisecond' where id in (%s) returning *`
+
+  query = fmt.Sprintf(query, tableName, s.lockTTL.Milliseconds(), strings.Join(recordIDs, ","))
+
+  locked, err := pg.SelectCtx[*Record](ctx, s.executor, sq.Expr(query))
+  if err != nil {
+    return nil, fmt.Errorf("pg.SelectCtx: %w", err)
+  }
+  return locked, nil
+}
+
+func (s *storage) withTx(ctx context.Context, fTx func(*storage) error) error {
+  defer func() {
+    if rec := recover(); rec != nil {
+      log.Errorf("storage.WithTransaction: panic recovered: %v", rec)
+    }
+  }()
+
+  tx, err := s.executor.Begin(ctx)
+  if err != nil {
+    return fmt.Errorf("s.executor.BeginTx: %w", err)
+  }
+  txStorage := &storage{
+    executor:  tx,
+    lockTTL:   s.lockTTL,
+    batchSize: s.batchSize,
+  }
+
+  if err = fTx(txStorage); err != nil {
+    if errRollback := tx.Rollback(ctx); errRollback != nil {
+      log.Errorf("storage.WithTransaction: tx.Rollback: %v", errRollback)
+    }
+    return err
+  }
+
+  if err = tx.Commit(ctx); err != nil {
+    return fmt.Errorf("tx.Commit: %w", err)
+  }
+  return nil
 }
 
 func (s *storage) DeleteRecord(ctx context.Context, tableName, recordID string) error {
   query := fmt.Sprintf(`delete from %s where id = '%s'`, tableName, recordID)
-
   return pg.ExecCtx(ctx, s.executor, sq.Expr(query))
 }

@@ -27,6 +27,7 @@ const (
 
 const (
   contextPackageName = "context"
+  stringsPackageName = "strings"
   fmtPackageName     = "fmt"
   timePackageName    = "time"
   osPackageName      = "os"
@@ -48,6 +49,7 @@ const (
   saramaIBMPackageName      = "IBM-samara"
 
   pgExecutorPackageName = "pg-executor"
+  pgQuotePackageName    = "pg-quote"
 )
 
 type outboxDesc struct {
@@ -210,10 +212,13 @@ var packagesByFiles = map[string][]string{
   },
   storageFileName: {
     contextPackageName,
+    stringsPackageName,
     fmtPackageName,
     timePackageName,
+    logrusPackageName,
     squirrelPackageName,
     pgExecutorPackageName,
+    pgQuotePackageName,
   },
 }
 
@@ -246,6 +251,11 @@ var packagesByNames = map[string]*goPackageDesc{
   contextPackageName: {
     CustomName: "go/context",
     ImportLine: "context",
+    IsBuiltin:  true,
+  },
+  stringsPackageName: {
+    CustomName: "go/strings",
+    ImportLine: "strings",
     IsBuiltin:  true,
   },
   fmtPackageName: {
@@ -301,6 +311,11 @@ var packagesByNames = map[string]*goPackageDesc{
     ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/executor",
     ImportAlias: "pg",
     IsInstall:   true,
+  },
+  pgQuotePackageName: {
+    CustomName: "boiler/pg-quote",
+    ImportLine: "github.com/ushakovn/boiler/pkg/storage/postgres/quote",
+    IsInstall:  true,
   },
 }
 

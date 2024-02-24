@@ -7,16 +7,6 @@ import (
   {{- end}}
 )
 
-type ActionTyp int32
-
-type Record struct {
-  ID          string     `db:"id"`
-  ActionTyp   ActionTyp  `db:"action_typ"`
-  JSONOut     []byte     `db:"json_out"`
-  LockedUntil *time.Time `db:"locked_until"`
-  CreatedAt   time.Time  `db:"created_at"`
-}
-
 const (
   CreateActionTyp ActionTyp = 1
   UpdateActionTyp ActionTyp = 2
@@ -27,6 +17,20 @@ var actionTypString = map[ActionTyp]string{
   CreateActionTyp: "create",
   UpdateActionTyp: "update",
   DeleteActionTyp: "delete",
+}
+
+type ActionTyp int32
+
+type Record struct {
+  ID          string     `db:"id"`
+  ActionTyp   ActionTyp  `db:"action_typ"`
+  JSONOut     []byte     `db:"json_out"`
+  LockedUntil *time.Time `db:"locked_until"`
+  CreatedAt   time.Time  `db:"created_at"`
+}
+
+func (r *Record) IsLocked() bool {
+  return r.LockedUntil != nil && time.Now().UTC().Before(*r.LockedUntil)
 }
 
 func (t ActionTyp) String() string {

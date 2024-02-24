@@ -61,7 +61,7 @@ func (c *Config) Validate() error {
     validation.Field(&c.JitterFactor,
       validation.Required,
       validation.Min(100*time.Millisecond),
-      validation.Max(1*time.Second),
+      validation.Max(5*time.Second),
     ),
   )
 }

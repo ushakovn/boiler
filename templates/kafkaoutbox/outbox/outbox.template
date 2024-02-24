@@ -18,7 +18,7 @@ type Producer interface {
 }
 
 type Storage interface {
-  BatchRecords(ctx context.Context, tableName string) ([]*Record, error)
+  LockRecords(ctx context.Context, tableName string) ([]*Record, error)
   DeleteRecord(ctx context.Context, tableName, recordID string) error
 }
 
@@ -36,7 +36,7 @@ func (o *Outbox) Run(ctx context.Context) error {
   }
   for _, tableName := range tableNames {
     runJitter(o.config.JitterFactor)
-    o.sendWithWorkers(ctx, tableName)
+    o.sendRecordsWithWorkers(ctx, tableName)
 
     log.Infof("kafka-outbox: sending started for: %s table", tableName)
   }
@@ -53,19 +53,19 @@ func (o *Outbox) Validate() error {
   )
 }
 
-func (o *Outbox) sendWithWorkers(ctx context.Context, tableName string) {
+func (o *Outbox) sendRecordsWithWorkers(ctx context.Context, tableName string) {
   for worker := 0; worker < int(o.config.WorkersCount); worker++ {
     runJitter(o.config.JitterFactor)
-    go func() { o.send(ctx, tableName) }()
+    go func() { o.sendRecordsWithIdle(ctx, tableName) }()
   }
 }
 
-func (o *Outbox) send(ctx context.Context, tableName string) {
+func (o *Outbox) sendRecordsWithIdle(ctx context.Context, tableName string) {
   ticker := time.NewTicker(o.config.WorkerIdle)
   for {
     select {
     case <-ticker.C:
-      if err := o.sendBatch(ctx, tableName); err != nil {
+      if err := o.sendRecords(ctx, tableName); err != nil {
         log.Errorf("outbox.send: table: %s: error: %v", tableName, err)
       }
     case <-ctx.Done():
@@ -75,8 +75,8 @@ func (o *Outbox) send(ctx context.Context, tableName string) {
   }
 }
 
-func (o *Outbox) sendBatch(ctx context.Context, tableName string) error {
-  records, err := o.storage.BatchRecords(ctx, tableName)
+func (o *Outbox) sendRecords(ctx context.Context, tableName string) error {
+  records, err := o.storage.LockRecords(ctx, tableName)
   if err != nil {
     return fmt.Errorf("storage.BatchRecords: %w", err)
   }
@@ -171,4 +171,3 @@ var tableNames = []string{
   {{toLowerCamelCase .OutboxTableName}}TableName,
   {{- end}}
 }
-
