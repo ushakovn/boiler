@@ -15,9 +15,11 @@ import (
   "github.com/go-chi/chi/v5"
   runtimeGrpc "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
   log "github.com/sirupsen/logrus"
+  httpswagger "github.com/ushakovn/boiler/internal/pkg/thirdparty/swaggo/http-swagger"
   "github.com/ushakovn/boiler/pkg/closer"
   "github.com/ushakovn/boiler/pkg/config"
   "github.com/ushakovn/boiler/pkg/gqlgen"
+  "github.com/ushakovn/boiler/pkg/grpcx/http-gateway"
   "github.com/ushakovn/boiler/pkg/logger"
   mw "github.com/ushakovn/boiler/pkg/metrics/middlewares"
   "github.com/ushakovn/boiler/pkg/tracing/tracer"
@@ -49,6 +51,7 @@ type App struct {
   gqlgenResponseMWs  []graphql.ResponseMiddleware
 
   // Duty HTTP router
+  dutyHttpPort   int
   dutyHttpRouter chi.Router
 
   // Shutdown
@@ -102,6 +105,7 @@ func NewApp(calls ...Option) *App {
     gqlgenOperationMWs: options.gqlgenOperationMWs,
     gqlgenResponseMWs:  options.gqlgenResponseMWs,
 
+    dutyHttpPort:   options.dutyHttpServePort,
     dutyHttpRouter: dutyHttpRouter,
 
     appCtx:    appCtx,
@@ -180,13 +184,16 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
 
   // gRPC components
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
+    p := params.Grpc()
     a.registerGrpcServer()
-    a.registerGrpcHttpProxyServer(params.Grpc())
+    a.registerGrpcHttpProxyServer(p)
+    a.registerGrpcSwagger(p)
   }
 
   // GraphQL components
   if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
-    a.registerGqlgenSchemaServer(params.Gqlgen())
+    p := params.Gqlgen()
+    a.registerGqlgenSchemaServer(p)
     a.registerGqlgenAroundMWs()
     a.registerGqlgenSandbox()
     a.registerGqlgenServer()
@@ -344,10 +351,9 @@ func (a *App) registerObservability() {
 }
 
 func (a *App) runHttpDutyRouter() {
-  const dutyServePort = 8092
-  address := fmt.Sprint("localhost", ":", dutyServePort)
+  address := fmt.Sprint("localhost", ":", a.dutyHttpPort)
 
-  log.Infof("boiler: http duty server running on port: %d", dutyServePort)
+  log.Infof("boiler: http duty server running on port: %d", a.dutyHttpPort)
 
   go func() {
     if err := http.ListenAndServe(address, a.dutyHttpRouter); err != nil {
@@ -355,6 +361,22 @@ func (a *App) runHttpDutyRouter() {
     }
     a.appCloser.CloseAll()
   }()
+}
+
+func (a *App) registerGrpcSwagger(params *GrpcParams) {
+  name := config.ClientConfig(a.appCtx).GetAppInfo().Name
+  url := fmt.Sprintf("http://localhost:%d/swagger/doc.json", a.grpcHttpProxyPort)
+
+  swagger := httpswagger.Handler(
+    httpswagger.InstanceName(name),
+    httpswagger.URL(url),
+    httpswagger.Doc(params.docOpenAPI),
+  )
+  mux := params.GrpcHttpProxyServeMux()
+
+  if err := httpgateway.Handle(mux)(http.MethodGet, "/swagger/*", swagger); err != nil {
+    log.Fatalf("boiler: swagger handler registering failed: %v", err)
+  }
 }
 
 func (a *App) registerHelpHandler() {
@@ -367,7 +389,7 @@ func (a *App) registerHelpHandler() {
       http.Error(w, "", http.StatusInternalServerError)
     }
   }
-  a.dutyHttpRouter.Handle("/help", http.HandlerFunc(handleHelp))
+  a.dutyHttpRouter.Get("/help", handleHelp)
 }
 
 func (a *App) marshalHelpInfo() ([]byte, error) {

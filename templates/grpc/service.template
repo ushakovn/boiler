@@ -20,6 +20,7 @@ func New{{.ServiceName}}() *{{.ServiceName}} {
 func (s *{{.ServiceName}}) RegisterService(params *app.RegisterParams) error {
   params.SetServiceType(app.GrpcServiceTyp)
   grpcParams := params.Grpc()
+  grpcParams.SetOpenAPIDoc(docs.Swagger)
   desc.Register{{.ServiceName}}Server(grpcParams.GrpcServiceRegistrar(), s)
 
   return desc.Register{{.ServiceName}}HandlerFromEndpoint(

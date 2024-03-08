@@ -33,6 +33,9 @@ type calledAppOptions struct {
   gqlgenFieldMWs     []graphql.FieldMiddleware
   gqlgenOperationMWs []graphql.OperationMiddleware
   gqlgenResponseMWs  []graphql.ResponseMiddleware
+
+  // Duty HTTP
+  dutyHttpServePort int
 }
 
 func defaultOptions() []Option {
@@ -40,12 +43,14 @@ func defaultOptions() []Option {
     defaultGrpcPort          = 8082
     defaultGrpcHttpProxyPort = 8084
     defaultGqlgenPort        = 8080
+    defaultDutyHttpPort      = 8092
   )
   options := []Option{
     // Port options
     WithGrpcServePort(defaultGrpcPort),
     WithGrpcHttpProxyPort(defaultGrpcHttpProxyPort),
     WithGqlgenServePort(defaultGqlgenPort),
+    WithDutyHttpServePort(defaultDutyHttpPort),
 
     // Panic recover options
     WithGrpcUnaryServerInterceptors(recover.GrpcServerUnaryInterceptor),
@@ -161,5 +166,11 @@ func WithGqlgenOperationMiddlewares(middlewares ...graphql.OperationMiddleware) 
 func WithGqlgenResponseMiddlewares(middlewares ...graphql.ResponseMiddleware) Option {
   return func(o *calledAppOptions) {
     o.gqlgenResponseMWs = append(o.gqlgenResponseMWs, middlewares...)
+  }
+}
+
+func WithDutyHttpServePort(port int) Option {
+  return func(o *calledAppOptions) {
+    o.dutyHttpServePort = port
   }
 }

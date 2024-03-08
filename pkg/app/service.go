@@ -47,6 +47,8 @@ type GrpcParams struct {
   grpcClientOptions []grpc.DialOption
   // gRPC HTTP proxy serve mux
   grpcHttpProxyServeMux *runtime.ServeMux
+  // Open API specification doc
+  docOpenAPI []byte
 }
 
 func (p *RegisterParams) Context() context.Context {
@@ -72,6 +74,10 @@ func (p *GrpcParams) GrpcServerEndpoint() string {
 
 func (p *GrpcParams) GrpcClientOptions() []grpc.DialOption {
   return p.grpcClientOptions
+}
+
+func (p *GrpcParams) SetOpenAPIDoc(doc []byte) {
+  p.docOpenAPI = doc
 }
 
 type GqlgenParams struct {

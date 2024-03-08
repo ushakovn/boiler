@@ -51,7 +51,7 @@ func (g *Grpc) buildServicePackages(grpcFilePath string) []*goPackageDesc {
   servicePackages := make([]*goPackageDesc, 0, len(grpcStubPackages)+1)
 
   servicePackages = append(servicePackages, grpcServicePackages...)
-  servicePackages = append(servicePackages, g.buildPbPackage(grpcFilePath))
+  servicePackages = append(servicePackages, g.buildPbPackage(grpcFilePath), g.buildDocsPackage())
 
   return servicePackages
 }
@@ -92,6 +92,15 @@ func (g *Grpc) buildPbPackage(grpcFilePath string) *goPackageDesc {
     ImportLine:  stubPackagePath,
     ImportAlias: "desc",
   }
+}
+
+func (g *Grpc) buildDocsPackage() *goPackageDesc {
+  return &goPackageDesc{
+    CustomName:  "boiler/docs",
+    ImportLine:  filepath.Join(g.goModuleName, "docs"),
+    ImportAlias: "docs",
+  }
+
 }
 
 var grpcServicePackages = []*goPackageDesc{

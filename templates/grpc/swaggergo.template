@@ -1,0 +1,7 @@
+package docs
+
+import _ "embed"
+
+//go:embed {{toSnakeCase .serviceName}}.swagger.yaml
+// Swagger OpenAPI Specification document for {{.serviceName}}
+var Swagger []byte

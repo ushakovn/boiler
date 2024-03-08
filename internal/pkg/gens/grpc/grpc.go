@@ -3,6 +3,7 @@ package grpc
 import (
   "context"
   "fmt"
+  "os"
   "path/filepath"
   "strings"
   "text/template"
@@ -45,15 +46,17 @@ func (g *Grpc) Generate(ctx context.Context) error {
   if err := g.createMakefileIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
   }
-  // UNUSED
-  //if err := g.createDocDirectoryIfNotExist(); err != nil {
-  //  return fmt.Errorf("g.createDocDirectoryIfNotExist: %w", err)
-  //}
+  if err := g.createDocsDirectoryIfNotExist(); err != nil {
+    return fmt.Errorf("g.createDocsDirectoryIfNotExist: %w", err)
+  }
   if err := g.generateMakeMkProto(ctx); err != nil {
     return fmt.Errorf("g.generateMakeMkProto: %w", err)
   }
   if err := g.generateGrpcServices(); err != nil {
     return fmt.Errorf("g.generateGrpcServices: %w", err)
+  }
+  if err := g.generateGrpcSwagger(); err != nil {
+    return fmt.Errorf("generateGrpcSwagger: %w", err)
   }
   return nil
 }
@@ -255,8 +258,8 @@ func (g *Grpc) createProtoDirectory() (string, error) {
   return protoDirPath, nil
 }
 
-func (g *Grpc) createDocDirectoryIfNotExist() error {
-  docDirPath := filepath.Join(g.workDirPath, "doc")
+func (g *Grpc) createDocsDirectoryIfNotExist() error {
+  docDirPath := filepath.Join(g.workDirPath, "docs")
 
   if filer.IsExistedDirectory(docDirPath) {
     return nil
@@ -299,4 +302,47 @@ func (g *Grpc) serviceName() string {
   name = filer.ExtractFileName(name)
   name = stringer.StringToSnakeCase(name)
   return name
+}
+
+func (g *Grpc) generateGrpcSwagger() error {
+  if err := g.renameSwaggerYaml(); err != nil {
+    return fmt.Errorf("g.renameSwaggerYaml: %w", err)
+  }
+  if err := g.createSwaggerGo(); err != nil {
+    return fmt.Errorf("g.createSwaggerGo: %w", err)
+  }
+  return nil
+}
+
+func (g *Grpc) createSwaggerGo() error {
+  serviceName := g.serviceName()
+
+  fileName := fmt.Sprintf("%s.swagger.go", serviceName)
+  filePath := filepath.Join(g.workDirPath, "docs", fileName)
+
+  dataPtr := map[string]any{
+    "serviceName": serviceName,
+  }
+  templateFuncMap := template.FuncMap{
+    "toSnakeCase": stringer.StringToSnakeCase,
+  }
+  if err := templater.ExecTemplateCopy(templates.GrpcSwaggerGo, filePath, dataPtr, templateFuncMap); err != nil {
+    return fmt.Errorf("executeTemplateCopy: %w", err)
+  }
+  return nil
+}
+
+func (g *Grpc) renameSwaggerYaml() error {
+  dirPath := filepath.Join(g.workDirPath, "docs")
+
+  const generatedName = "apidocs.swagger.yaml"
+  fixedName := fmt.Sprintf("%s.swagger.yaml", g.serviceName())
+
+  if err := os.Rename(
+    filepath.Join(dirPath, generatedName),
+    filepath.Join(dirPath, fixedName),
+  ); err != nil {
+    return fmt.Errorf("os.Rename: %w", err)
+  }
+  return nil
 }
