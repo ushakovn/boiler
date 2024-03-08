@@ -7,6 +7,7 @@ import (
   "strings"
   "text/template"
 
+  "github.com/samber/lo"
   "github.com/ushakovn/boiler/internal/pkg/executor"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/makefile"
@@ -247,7 +248,7 @@ func (g *Grpc) createMakefileIfNotExist() error {
 }
 
 func (g *Grpc) createProtoDirectory() (string, error) {
-  protoDirPath, err := filer.CreateNestedFolders(g.workDirPath, "api", g.workDirFolder())
+  protoDirPath, err := filer.CreateNestedFolders(g.workDirPath, "api", g.serviceName())
   if err != nil {
     return "", fmt.Errorf("filer.CreateNestedFolders: %w", err)
   }
@@ -274,7 +275,7 @@ func (g *Grpc) createDocDirectory(docDirPath string) error {
 }
 
 func (g *Grpc) createServiceProtoFile(protoDirPath string) error {
-  serviceName := g.workDirFolder()
+  serviceName := g.serviceName()
 
   goPackage := filepath.Join(g.goModuleName, "internal", "pb", serviceName)
   goPackageWithSuffix := fmt.Sprint(goPackage, ";", serviceName)
@@ -293,6 +294,9 @@ func (g *Grpc) createServiceProtoFile(protoDirPath string) error {
   return nil
 }
 
-func (g *Grpc) workDirFolder() string {
-  return filer.ExtractFileName(g.workDirPath)
+func (g *Grpc) serviceName() string {
+  name := lo.Ternary(g.goModuleName != "main", g.goModuleName, g.workDirPath)
+  name = filer.ExtractFileName(name)
+  name = stringer.StringToSnakeCase(name)
+  return name
 }
