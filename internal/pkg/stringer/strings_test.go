@@ -11,7 +11,7 @@ func Test_CamelCaseToSnakeCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "camelCasedString",
       expected: "camel_cased_string",
@@ -23,6 +23,18 @@ func Test_CamelCaseToSnakeCase(t *testing.T) {
     {
       s:        "BatchUploadPhotosV2",
       expected: "batch_upload_photos_v2",
+    },
+    {
+      s:        "BatchUploadPhotosV2TestAPI",
+      expected: "batch_upload_photos_v2_test_api",
+    },
+    {
+      s:        "StringWithCAPITALIZEDWords",
+      expected: "string_with_capitalized_words",
+    },
+    {
+      s:        "StringWithCAPITALIZED",
+      expected: "string_with_capitalized",
     },
   }
   for _, tt := range testCases {
@@ -40,7 +52,7 @@ func Test_SnakeCaseToUpperCamelCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "camel_cased_string",
       expected: "CamelCasedString",
@@ -69,7 +81,7 @@ func Test_CamelCaseToUpperCamelCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "camelcasedString",
       expected: "CamelcasedString",
@@ -98,7 +110,7 @@ func Test_StringToUpperCamelCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "snake_cased_string",
       expected: "SnakeCasedString",
@@ -127,7 +139,7 @@ func Test_StringToLowerCamelCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "snake_cased_string",
       expected: "snakeCasedString",
@@ -160,7 +172,7 @@ func Test_StringToCapitalizeCase(t *testing.T) {
     s        string
     expected string
   }
-  testCases := []*testCase{
+  testCases := []testCase{
     {
       s:        "snake_cased_string",
       expected: "SNAKE_CASED_STRING",
@@ -178,8 +190,12 @@ func Test_StringToCapitalizeCase(t *testing.T) {
       expected: "BATCH_UPLOAD_PHOTOS_V2",
     },
     {
-      s:        "BatchUploadPhotos2",
-      expected: "BATCH_UPLOAD_PHOTOS2",
+      s:        "StringWithCAPITALIZEDWords",
+      expected: "STRING_WITH_CAPITALIZED_WORDS",
+    },
+    {
+      s:        "StringWithCAPITALIZED",
+      expected: "STRING_WITH_CAPITALIZED",
     },
   }
   for _, tt := range testCases {

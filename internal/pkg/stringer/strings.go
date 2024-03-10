@@ -45,19 +45,29 @@ func SnakeCaseToUpperCamelCase(s string) string {
 }
 
 func CamelCaseToSnakeCase(s string) string {
-  out := make([]rune, 0, len([]rune(s)))
+  runes := []rune(s)
+  count := len(runes)
 
-  for index, ch := range s {
+  out := make([]rune, 0, count)
+  var prevUpper bool
+
+  for index := 0; index < count; index++ {
+    ch := runes[index]
+
     if index == 0 || unicode.IsUpper(ch) {
-      if index != 0 {
+      if index != 0 && (!prevUpper || (index+1 < count && unicode.IsLower(runes[index+1]))) {
+        prevUpper = true
+
         out = append(out, '_')
       }
       out = append(out, unicode.ToLower(ch))
+
       continue
     }
+    prevUpper = false
+
     out = append(out, ch)
   }
-
   return string(out)
 }
 
@@ -161,16 +171,9 @@ func StringToCapitalizeCase(s string) string {
 }
 
 func CamelCaseToCapitalizeCase(s string) string {
-  count := len([]rune(s))
-  out := make([]rune, 0, len([]rune(s)))
-
-  for index, ch := range s {
-    if index != 0 && index != count-1 && unicode.IsUpper(ch) {
-      out = append(out, '_')
-    }
-    out = append(out, unicode.ToUpper(ch))
-  }
-  return string(out)
+  s = CamelCaseToSnakeCase(s)
+  s = SnakeCaseToCapitalizeCase(s)
+  return s
 }
 
 func SnakeCaseToCapitalizeCase(s string) string {
