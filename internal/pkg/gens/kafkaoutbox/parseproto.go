@@ -12,6 +12,7 @@ import (
 )
 
 type parsedProtoMessage struct {
+  foundOption   bool
   tableName     string
   messageName   string
   messageFields []*parsedProtoField
@@ -66,6 +67,7 @@ func parseProto(filePath, optionName string) (*parsedProto, error) {
         if t.OptionName != optionName {
           continue
         }
+        m.foundOption = true
         m.tableName = stringer.UnquoteString(t.Constant)
 
       case *parser.Field:
@@ -82,7 +84,9 @@ func parseProto(filePath, optionName string) (*parsedProto, error) {
         continue
       }
     }
-    messages = append(messages, m)
+    if m.foundOption {
+      messages = append(messages, m)
+    }
   }
 
   return &parsedProto{
