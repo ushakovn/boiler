@@ -4,14 +4,18 @@ import (
   "bufio"
   "bytes"
   "fmt"
+  "go/format"
   "io"
   "os"
   "path/filepath"
+  "regexp"
   "strings"
 
   log "github.com/sirupsen/logrus"
   "github.com/ushakovn/boiler/internal/pkg/env"
 )
+
+var regexTab = regexp.MustCompile(`^\t`)
 
 func IsExistedPattern(fileDirPath, fileNamePattern string) bool {
   entries, err := os.ReadDir(fileDirPath)
@@ -220,25 +224,55 @@ func ScanLines(r io.Reader, f func(line string) error) error {
   return nil
 }
 
-func EditFile(filePath string, f func(line string) string) error {
-  file, err := os.Open(filePath)
+func FormatGoFile(filePath string) error {
+  if err := fmtGoFile(filePath); err != nil {
+    return fmt.Errorf("fmtGoFile: %w", err)
+  }
+  if err := trimGoFmtTabs(filePath); err != nil {
+    return fmt.Errorf("trimGoFmtTabs: %w", err)
+  }
+  return nil
+}
+
+func fmtGoFile(filePath string) error {
+  buf, err := os.ReadFile(filePath)
   if err != nil {
-    return err
+    return fmt.Errorf("os.ReadFile: %w", err)
   }
-  s := bufio.NewScanner(file)
-  s.Split(bufio.ScanLines)
-
-  w := bufio.NewWriter(file)
-
-  for s.Scan() {
-    text := f(s.Text())
-
-    if _, err = w.Write([]byte(text)); err != nil {
-      return fmt.Errorf("writer.Write: %w", err)
-    }
+  if buf, err = format.Source(buf); err != nil {
+    return fmt.Errorf("format.Source: %w", err)
   }
-  if err = s.Err(); err != nil {
-    return fmt.Errorf("scanner.Err: %w", err)
+  if err = os.WriteFile(filePath, buf, os.ModePerm); err != nil {
+    return fmt.Errorf("os.WriteFile: %w", err)
+  }
+  return nil
+}
+
+func trimGoFmtTabs(filePath string) error {
+  trim := func(line string) string {
+    return regexTab.ReplaceAllLiteralString(line, "  ")
+  }
+  err := EditFile(filePath, trim)
+  if err != nil {
+    return fmt.Errorf("filer.EditFile: %w", err)
+  }
+  return nil
+}
+
+func EditFile(filePath string, f func(line string) string) error {
+  file, err := os.ReadFile(filePath)
+  if err != nil {
+    return fmt.Errorf("os.ReadFile: %w", err)
+  }
+  lines := strings.Split(string(file), "\n")
+
+  for i, line := range lines {
+    lines[i] = f(line)
+  }
+  out := strings.Join(lines, "\n")
+
+  if err = os.WriteFile(filePath, []byte(out), os.ModePerm); err != nil {
+    return fmt.Errorf("os.WriteFile: %w", err)
   }
   return nil
 }

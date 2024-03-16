@@ -246,6 +246,9 @@ func regenerateGrpcService(filePath string, serviceDesc *grpcServiceDesc, funcMa
   if err = filer.AppendStringToFile(filePath, string(buf)); err != nil {
     return fmt.Errorf("filer.AppendStringToFile: %w", err)
   }
+  if err = filer.FormatGoFile(filePath); err != nil {
+    return fmt.Errorf("filer.FormatGoFile: %w", err)
+  }
   return nil
 }
 
@@ -313,6 +316,9 @@ func regenerateGrpcServiceStub(filePath string, serviceCallDesc *grpcServiceCall
 
   if err = printer.Fprint(file, fileSet, astFile); err != nil {
     return fmt.Errorf("printer.Fprint: %w", err)
+  }
+  if err = filer.FormatGoFile(filePath); err != nil {
+    return fmt.Errorf("filer.FormatGoFile: %w", err)
   }
   return nil
 }
