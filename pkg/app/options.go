@@ -69,8 +69,8 @@ func defaultOptions() []Option {
 }
 
 func callAppOptions(calls ...Option) *calledAppOptions {
-  calls = append(calls, defaultOptions()...)
-  o := &calledAppOptions{}
+  calls = append(defaultOptions(), calls...)
+  o := new(calledAppOptions)
 
   for _, call := range calls {
     call(o)
