@@ -4,6 +4,8 @@ import (
   "regexp"
   "strings"
   "unicode"
+
+  "github.com/iancoleman/strcase"
 )
 
 var (
@@ -91,7 +93,8 @@ func StringToSnakeCase(s string) string {
   if IsSnakeCase(s) {
     return s
   }
-  return ""
+  // Fallback to strcase package
+  return strcase.ToSnake(s)
 }
 
 func StringToUpperCamelCase(s string) string {
@@ -101,7 +104,8 @@ func StringToUpperCamelCase(s string) string {
   if IsCamelCase(s) {
     return CamelCaseToUpperCamelCase(s)
   }
-  return ""
+  // Fallback to strcase package
+  return strcase.ToCamel(s)
 }
 
 func StringToLowerCamelCase(s string) string {
@@ -111,7 +115,8 @@ func StringToLowerCamelCase(s string) string {
   if IsCamelCase(s) {
     return CamelCaseToLowerCamelCase(s)
   }
-  return ""
+  // Fallback to strcase package
+  return strcase.ToLowerCamel(s)
 }
 
 func CamelCaseToLowerCamelCase(s string) string {
@@ -167,7 +172,8 @@ func StringToCapitalizeCase(s string) string {
   if IsSnakeCase(s) {
     return SnakeCaseToCapitalizeCase(s)
   }
-  return ""
+  // Fallback to strcase package
+  return strcase.ToScreamingSnake(s)
 }
 
 func CamelCaseToCapitalizeCase(s string) string {
