@@ -219,3 +219,26 @@ func ScanLines(r io.Reader, f func(line string) error) error {
   }
   return nil
 }
+
+func EditFile(filePath string, f func(line string) string) error {
+  file, err := os.Open(filePath)
+  if err != nil {
+    return err
+  }
+  s := bufio.NewScanner(file)
+  s.Split(bufio.ScanLines)
+
+  w := bufio.NewWriter(file)
+
+  for s.Scan() {
+    text := f(s.Text())
+
+    if _, err = w.Write([]byte(text)); err != nil {
+      return fmt.Errorf("writer.Write: %w", err)
+    }
+  }
+  if err = s.Err(); err != nil {
+    return fmt.Errorf("scanner.Err: %w", err)
+  }
+  return nil
+}

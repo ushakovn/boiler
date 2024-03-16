@@ -10,6 +10,7 @@ import (
   "strings"
   "text/template"
 
+  log "github.com/sirupsen/logrus"
   astFunc "github.com/ushakovn/boiler/internal/pkg/ast"
   "github.com/ushakovn/boiler/internal/pkg/filer"
   "github.com/ushakovn/boiler/internal/pkg/templater"
@@ -300,15 +301,19 @@ func regenerateGrpcServiceStub(filePath string, serviceCallDesc *grpcServiceCall
     return fmt.Errorf("ast.Inspect: %w", err)
   }
 
-  osFile, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+  file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
   if err != nil {
     return fmt.Errorf("os.OpenFile: %w", err)
   }
+  defer func() {
+    if closeErr := file.Close(); closeErr != nil {
+      log.Errorf("file.Close: %v", err)
+    }
+  }()
 
-  if err = printer.Fprint(osFile, fileSet, astFile); err != nil {
+  if err = printer.Fprint(file, fileSet, astFile); err != nil {
     return fmt.Errorf("printer.Fprint: %w", err)
   }
-
   return nil
 }
 
