@@ -74,12 +74,17 @@ type configTemplate struct {
 }
 
 var configTemplates = []*configTemplate{
-  {
-    fileName:         "groups.go",
-    compiledTemplate: templates.GenConfigGroups,
-  },
+  // Deprecated; DO NOT USE
+  //{
+  //  fileName:         "groups.go",
+  //  compiledTemplate: templates.GenConfigGroups,
+  //},
   {
     fileName:         "config.go",
     compiledTemplate: templates.GenConfigConfig,
+  },
+  {
+    fileName:         "provider.go",
+    compiledTemplate: templates.GenConfigProvider,
   },
 }

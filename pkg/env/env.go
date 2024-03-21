@@ -3,25 +3,39 @@ package env
 import "os"
 
 const (
-  ProductionEnv Env = "PRODUCTION"
-  StagingEnv    Env = "STAGING"
-  LocalEnv      Env = "LOCAL"
+  PrometheusEndpointKey     Key = "BOILER_PROMETHEUS_ENDPOINT"
+  PrometheusEndpointDefault Env = "localhost:9090"
+
+  GrafanaEndpointKey     Key = "BOILER_GRAFANA_ENDPOINT"
+  GrafanaEndpointDefault Env = "localhost:3000"
+
+  JaegerEndpointKey     Key = "BOILER_JAEGER_ENDPOINT"
+  JaegerEndpointDefault Env = "localhost:4318"
+
+  EtcdEndpointsKey     Key = "BOILER_ETCD_ENDPOINTS"
+  EtcdEndpointsDefault Env = "localhost:2379"
 )
 
-var knownAppEnvs = map[Env]struct{}{
-  ProductionEnv: {},
-  StagingEnv:    {},
-  LocalEnv:      {},
+type (
+  Key string
+  Env string
+)
+
+func (k Key) String() string {
+  return string(k)
 }
 
-type Env string
+func (e Env) String() string {
+  return string(e)
+}
 
-func AppEnv() Env {
-  const envKey = "BOILER_APP_ENV"
-  appEnv := Env(os.Getenv(envKey))
-
-  if _, ok := knownAppEnvs[appEnv]; ok {
-    return appEnv
+func (e Env) OrDefault(env Env) Env {
+  if e != "" {
+    return e
   }
-  return LocalEnv
+  return env
+}
+
+func Get(key Key) Env {
+  return Env(os.Getenv(key.String()))
 }

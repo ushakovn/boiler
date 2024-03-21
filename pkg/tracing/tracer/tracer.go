@@ -5,6 +5,7 @@ import (
   "sync"
 
   log "github.com/sirupsen/logrus"
+  "github.com/ushakovn/boiler/pkg/env"
   "go.opentelemetry.io/otel"
   "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
   "go.opentelemetry.io/otel/sdk/resource"
@@ -54,8 +55,13 @@ func SpanFromContext(ctx context.Context) trace.Span {
 
 func InitTracer(ctx context.Context, serviceName, serviceVer string) (shutdowns []func(ctx context.Context) error) {
   once.Do(func() {
+    endpoint := env.Get(env.JaegerEndpointKey).
+      OrDefault(env.JaegerEndpointDefault).
+      String()
+
     exporter, err := otlptracehttp.New(ctx,
       otlptracehttp.WithInsecure(),
+      otlptracehttp.WithEndpoint(endpoint),
     )
     if err != nil {
       log.Fatalf("tracer: otlptracehttp.New: %v", err)

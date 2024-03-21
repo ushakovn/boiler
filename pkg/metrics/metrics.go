@@ -18,7 +18,7 @@ var (
 )
 
 func subsystemFromConfig() string {
-  name := config.ClientConfig(defaultCtx).GetAppInfo().Name
+  name := config.ContextClient(defaultCtx).GetAppInfo().Name
   name = strings.ToLower(name)
   return name
 }
@@ -43,7 +43,7 @@ func NewCounterVec(name, help string, labels []string) *prometheus.CounterVec {
   )
 }
 
-func NewGauge(name, help string, labels []string) prometheus.Gauge {
+func NewGauge(name, help string) prometheus.Gauge {
   return promauto.NewGauge(prometheus.GaugeOpts{
     Namespace: defaultNamespace,
     Subsystem: subsystemFromConfig(),

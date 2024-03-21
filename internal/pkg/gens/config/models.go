@@ -11,9 +11,10 @@ import (
 )
 
 type genConfigDesc struct {
-  ConfigGroups   []*groupDesc
-  ConfigPackages []*goPackageDesc
-  GroupsPackages []*goPackageDesc
+  ConfigGroups     []*groupDesc
+  ConfigPackages   []*goPackageDesc
+  GroupsPackages   []*goPackageDesc
+  ProviderPackages []*goPackageDesc
 }
 
 type groupDesc struct {
@@ -56,9 +57,10 @@ func buildGenConfig(customSection config.CustomSection) *genConfigDesc {
   configGroups := buildConfigGroups(customSection)
 
   return &genConfigDesc{
-    ConfigGroups:   configGroups,
-    ConfigPackages: configPackages,
-    GroupsPackages: groupsPackages,
+    ConfigGroups:     configGroups,
+    ConfigPackages:   buildPackagesByNames(configPackages...),
+    GroupsPackages:   buildPackagesByNames(groupsPackages...),
+    ProviderPackages: buildPackagesByNames(providerPackages...),
   }
 }
 
@@ -112,33 +114,74 @@ func buildGroupKeyValueCall(typ string) string {
   return cases.Title(language.Und, cases.NoLower).String(typ)
 }
 
+func buildPackagesByNames(names ...string) []*goPackageDesc {
+  packages := make([]*goPackageDesc, 0, len(names))
+
+  for _, name := range names {
+    pack, ok := packagesByNames[name]
+    if !ok {
+      continue
+    }
+    packages = append(packages, pack)
+  }
+  return packages
+}
+
 var valueTypeToPackageType = map[string]string{
   "time":     "time.Time",
   "duration": "time.Duration",
 }
 
-var configPackages = []*goPackageDesc{
-  {
+var configPackages = []string{
+  contextPackageName,
+  configPackageName,
+  typesPackageName,
+}
+
+var groupsPackages = []string{
+  contextPackageName,
+  configPackageName,
+  typesPackageName,
+}
+
+var providerPackages = []string{
+  contextPackageName,
+  atomicPackageName,
+  typesPackageName,
+}
+
+const (
+  timePackageName    = "time"
+  contextPackageName = "context"
+  atomicPackageName  = "atomic"
+  configPackageName  = "config"
+  typesPackageName   = "types"
+)
+
+var packagesByNames = map[string]*goPackageDesc{
+  timePackageName: {
     CustomName: "go/time",
     ImportLine: "time",
     IsBuiltin:  true,
   },
-  {
+  contextPackageName: {
     CustomName: "go/context",
     ImportLine: "context",
     IsBuiltin:  true,
   },
-}
-
-var groupsPackages = []*goPackageDesc{
-  {
+  atomicPackageName: {
+    CustomName: "go/atomic",
+    ImportLine: "sync/atomic",
+    IsBuiltin:  true,
+  },
+  configPackageName: {
     CustomName: "boiler/config",
     ImportLine: "github.com/ushakovn/boiler/pkg/config",
     IsInstall:  true,
   },
-  {
-    CustomName: "go/context",
-    ImportLine: "context",
-    IsBuiltin:  true,
+  typesPackageName: {
+    CustomName: "boiler/config-types",
+    ImportLine: "github.com/ushakovn/boiler/pkg/config/types",
+    IsInstall:  true,
   },
 }

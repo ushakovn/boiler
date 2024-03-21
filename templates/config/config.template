@@ -12,20 +12,20 @@ import (
 const (
   {{- range .GroupKeys}}
   // {{.KeyComment}}
-  {{toCapitalizeCase .KeyName}} {{toLowerCamelCase $cg.GroupName}}ConfigKey = "{{toSnakeCase .KeyName}}"
+  {{toUpperCamelCase .KeyName}} configKey = "{{toSnakeCase .KeyName}}"
   {{- end}}
 )
 {{end}}
 
-{{- range $cg := .ConfigGroups}}
-{{- range .GroupKeys}}
-func (c {{toLowerCamelCase $cg.GroupName}}ConfigGroup) {{toUpperCamelCase .KeyNameTrim}}(ctx context.Context) {{.ValueType}} {
-  return configValue(ctx, string({{toCapitalizeCase .KeyName}})).{{.ValueCall}}()
-}
-{{end}}
-{{- end}}
+// configKey strict type for config key
+type configKey string
 
-// Suppress unused imports
-var (
-  _ = time.Time{}
-)
+// Get value of the specified key
+func Get(ctx context.Context, key configKey) types.Value {
+  return config.ContextClient(ctx).GetValue(ctx, string(key))
+}
+
+// Watch watches changes to the value of the specified key
+func Watch(ctx context.Context, key configKey, action func(value types.Value)) {
+  config.ContextClient(ctx).WatchValue(ctx, string(key), action)
+}

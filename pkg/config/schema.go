@@ -8,6 +8,7 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/builder"
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/internal/pkg/validator"
+  "github.com/ushakovn/boiler/pkg/config/types"
 )
 
 type AppInfo struct {
@@ -16,7 +17,7 @@ type AppInfo struct {
   Description string
 }
 
-type configValues map[string]*configValue
+type configValues map[string]types.Value
 
 type Parsed struct {
   App    *AppSection   `yaml:"app"`
@@ -109,7 +110,7 @@ func (c *CustomSectionVal) Validate(sectionKey string) func() error {
     if c.Type == "" {
       b.Write("\ttype not specified\n")
     }
-    if _, ok := customKeyValuesTypes[c.Type]; !ok && c.Type != "" {
+    if !types.IsValid(c.Type) && c.Type != "" {
       b.Write("\tinvalid value type: %s\n", c.Type)
     }
     if c.Description == "" {
@@ -127,18 +128,4 @@ func (c *CustomSectionVal) Validate(sectionKey string) func() error {
 
 func (c CustomSectionKey) String() string {
   return string(c)
-}
-
-var customKeyValuesTypes = map[string]struct{}{
-  "int":      {},
-  "int32":    {},
-  "int64":    {},
-  "float32":  {},
-  "float64":  {},
-  "uint32":   {},
-  "uint64":   {},
-  "string":   {},
-  "bool":     {},
-  "time":     {},
-  "duration": {},
 }

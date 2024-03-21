@@ -119,7 +119,7 @@ func registerPreRunComponents() {
 }
 
 func registerConfigClient() {
-  config.InitClientConfig()
+  config.InitClient()
   log.Infof("boiler: config client registered")
 }
 
@@ -329,7 +329,7 @@ func (a *App) GqlgenRouter() chi.Router {
 }
 
 func (a *App) registerTracer() {
-  info := config.ClientConfig(a.appCtx).GetAppInfo()
+  info := config.ContextClient(a.appCtx).GetAppInfo()
   shutdowns := tracer.InitTracer(a.appCtx, info.Name, info.Version)
 
   log.Infof("boiler: tracing registered")
@@ -364,7 +364,7 @@ func (a *App) runHttpDutyRouter() {
 }
 
 func (a *App) registerGrpcSwagger(params *GrpcParams) {
-  name := config.ClientConfig(a.appCtx).GetAppInfo().Name
+  name := config.ContextClient(a.appCtx).GetAppInfo().Name
   url := fmt.Sprintf("http://localhost:%d/swagger/doc.json", a.grpcHttpProxyPort)
 
   swagger := httpswagger.Handler(

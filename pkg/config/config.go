@@ -1,15 +1,12 @@
 package config
 
 import (
-  "context"
   "path/filepath"
   "sync"
 
   log "github.com/sirupsen/logrus"
-)
-
-type (
-  ctxKey struct{}
+  "github.com/ushakovn/boiler/pkg/config/provider/etcd"
+  "github.com/ushakovn/boiler/pkg/config/provider/local"
 )
 
 var (
@@ -17,37 +14,22 @@ var (
   client Client
 )
 
-type Client interface {
-  GetAppInfo() AppInfo
-  GetValue(configKey string) Value
-}
+var (
+  noopClient = newNoopClient()
+)
 
-func ClientConfig(ctx context.Context) Client {
-  if ctxClient, ok := ctx.Value(ctxKey{}).(Client); ok {
-    return ctxClient
-  }
-  if client == nil {
-    return noopClient
-  }
-  return client
-}
-
-func ContextWithClientConfig(parent context.Context, client Client) context.Context {
-  return context.WithValue(parent, ctxKey{}, client)
-}
-
-func InitClientConfig() {
+func InitClient() {
   once.Do(func() {
-    configPath := filepath.Join(".config", "app_config.yaml")
+    // Default config path
+    path := filepath.Join(".config", "app_config.yaml")
 
-    if !findConfig(configPath) {
-      log.Warnf("config: file not found: %s", configPath)
+    if !findConfig(path) {
+      log.Warnf("config: file not found: %s", path)
       // Use noop client if config not found
       client = newNoopClient()
       return
     }
-
-    parsed, err := ParseConfig(configPath)
+    parsed, err := ParseConfig(path)
     if err != nil {
       log.Fatalf("config: parsing failed:\n%v", err)
     }
@@ -60,32 +42,10 @@ func InitClientConfig() {
     if err != nil {
       log.Fatalf("boiler: values collecting failed: %v", err)
     }
-
-    // Use default client
-    client = newClient(app, values)
+    // Use config client
+    client = newClient(app,
+      etcd.New(etcd.WithAppName(app.Name)),
+      local.New(values),
+    )
   })
 }
-
-type configClient struct {
-  app    AppInfo
-  values configValues
-}
-
-func newClient(app AppInfo, values configValues) *configClient {
-  return &configClient{
-    app:    app,
-    values: values,
-  }
-}
-
-func (c *configClient) GetValue(configKey string) Value {
-  if value, ok := c.values[configKey]; ok {
-    return value
-  }
-  return &configValue{}
-}
-
-func (c *configClient) GetAppInfo() AppInfo {
-  return c.app
-}
-

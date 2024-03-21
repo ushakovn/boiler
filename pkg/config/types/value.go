@@ -1,4 +1,4 @@
-package config
+package types
 
 import (
   "time"
@@ -7,6 +7,7 @@ import (
 )
 
 type Value interface {
+  IsNil() bool
   Int() int
   Int64() int64
   Int32() int32
@@ -22,6 +23,18 @@ type Value interface {
 
 type configValue struct {
   value any
+}
+
+func NewValue(value any) Value {
+  return &configValue{value: value}
+}
+
+func NewNilValue() Value {
+  return configValue{}
+}
+
+func (c configValue) IsNil() bool {
+  return c.value == nil
 }
 
 func (c configValue) Int() int {

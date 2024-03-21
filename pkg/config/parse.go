@@ -5,8 +5,8 @@ import (
   "os"
   "path/filepath"
 
-  "github.com/spf13/cast"
   "github.com/ushakovn/boiler/internal/pkg/filer"
+  "github.com/ushakovn/boiler/pkg/config/types"
   "gopkg.in/yaml.v3"
 )
 
@@ -31,61 +31,25 @@ func ParseConfig(configPath string) (*Parsed, error) {
   return parsed, err
 }
 
-func collectAppInfo(appSection *AppSection) AppInfo {
+func collectAppInfo(as *AppSection) AppInfo {
   return AppInfo{
-    Name:        appSection.Name,
-    Version:     appSection.Version,
-    Description: appSection.Description,
+    Name:        as.Name,
+    Version:     as.Version,
+    Description: as.Description,
   }
 }
 
-func collectConfigValues(customSection CustomSection) (configValues, error) {
+func collectConfigValues(cs CustomSection) (configValues, error) {
   values := configValues{}
 
-  for csKey, csVal := range customSection {
-    castedValue, err := castConfigValue(csVal.Type, csVal.Value)
+  for csKey, csVal := range cs {
+    value, err := types.CastValue(csVal.Type, csVal.Value)
     if err != nil {
       return nil, fmt.Errorf("cast config value failed: %w", err)
     }
-    stringKey := csKey.String()
+    strKey := csKey.String()
 
-    values[stringKey] = &configValue{
-      value: castedValue,
-    }
+    values[strKey] = value
   }
   return values, nil
-}
-
-func castConfigValue(typ, rawValue string) (any, error) {
-  var (
-    value any
-    err   error
-  )
-  switch typ {
-  case "int":
-    value, err = cast.ToIntE(rawValue)
-  case "int32":
-    value, err = cast.ToInt32E(rawValue)
-  case "int64":
-    value, err = cast.ToInt64E(rawValue)
-  case "float32":
-    value, err = cast.ToFloat32E(rawValue)
-  case "float64":
-    value, err = cast.ToFloat64E(rawValue)
-  case "uint32":
-    value, err = cast.ToUint32E(rawValue)
-  case "uint64":
-    value, err = cast.ToUint64E(rawValue)
-  case "string":
-    value, err = cast.ToStringE(rawValue)
-  case "bool":
-    value, err = cast.ToBoolE(rawValue)
-  case "time":
-    value, err = cast.ToTimeE(rawValue)
-  case "duration":
-    value, err = cast.ToDurationE(rawValue)
-  default:
-    err = fmt.Errorf("unexpected config value type: %s", typ)
-  }
-  return value, err
 }
