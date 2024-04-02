@@ -13,7 +13,8 @@ import (
   "github.com/99designs/gqlgen/graphql"
   "github.com/99designs/gqlgen/graphql/handler"
   "github.com/go-chi/chi/v5"
-  runtimeGrpc "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+  runtimegrpc "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+  channelz "github.com/rantav/go-grpc-channelz"
   log "github.com/sirupsen/logrus"
   httpswagger "github.com/ushakovn/boiler/internal/pkg/thirdparty/swaggo/http-swagger"
   "github.com/ushakovn/boiler/pkg/closer"
@@ -24,6 +25,7 @@ import (
   mw "github.com/ushakovn/boiler/pkg/metrics/middlewares"
   "github.com/ushakovn/boiler/pkg/tracing/tracer"
   "google.golang.org/grpc"
+  channelzsrv "google.golang.org/grpc/channelz/service"
   "google.golang.org/grpc/reflection"
 
   metrics "github.com/ushakovn/boiler/pkg/metrics/handler"
@@ -153,7 +155,7 @@ func (a *App) registerParams() *RegisterParams {
     grpcServer:            a.grpcServer,
     grpcServerPort:        a.grpcPort,
     grpcClientOptions:     defaultGrpcClientOptions(),
-    grpcHttpProxyServeMux: runtimeGrpc.NewServeMux(),
+    grpcHttpProxyServeMux: runtimegrpc.NewServeMux(),
   }
   gqlgenParams := &GqlgenParams{}
 
@@ -185,6 +187,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // gRPC components
   if _, ok := serviceTypes[GrpcServiceTyp]; ok {
     p := params.Grpc()
+    a.registerGrpcChannelz()
     a.registerGrpcServer()
     a.registerGrpcHttpProxyServer(p)
     a.registerGrpcSwagger(p)
@@ -214,7 +217,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
 func (a *App) registerGrpcServer() {
   address := fmt.Sprint("localhost", ":", a.grpcPort)
 
-  lister, err := net.Listen("tcp", address)
+  listener, err := net.Listen("tcp", address)
   if err != nil {
     log.Fatalf("boiler: register gprc failed: %v", err)
   }
@@ -223,7 +226,7 @@ func (a *App) registerGrpcServer() {
   log.Infof("boiler: grpc server running on port: %d", a.grpcPort)
 
   go func() {
-    if err = a.grpcServer.Serve(lister); err != nil {
+    if err = a.grpcServer.Serve(listener); err != nil {
       log.Errorf("boiler: grpc server run failed: %v", err)
       a.appCloser.CloseAll()
     }
@@ -379,6 +382,17 @@ func (a *App) registerGrpcSwagger(params *GrpcParams) {
   }
 }
 
+func (a *App) registerGrpcChannelz() {
+  address := fmt.Sprint("localhost", ":", a.grpcPort)
+  // Create channelz handler
+  handle := channelz.CreateHandler("/debug", address)
+
+  // Register HTTP handler for gRPC channelz service
+  a.dutyHttpRouter.Mount("/", handle)
+  // Register gRPC channelz service
+  channelzsrv.RegisterChannelzServiceToServer(a.grpcServer)
+}
+
 func (a *App) registerHelpHandler() {
   marshaledHelp, err := a.marshalHelpInfo()
   if err != nil {
@@ -389,7 +403,7 @@ func (a *App) registerHelpHandler() {
       http.Error(w, "", http.StatusInternalServerError)
     }
   }
-  a.dutyHttpRouter.Get("/help", handleHelp)
+  a.dutyHttpRouter.Get("/debug/help", handleHelp)
 }
 
 func (a *App) marshalHelpInfo() ([]byte, error) {
@@ -399,10 +413,8 @@ func (a *App) marshalHelpInfo() ([]byte, error) {
     GrpcPort          int `json:"grpc_port"`
     GrpcHttpProxyPort int `json:"grpc_http_proxy_port"`
   }
-  const dutyServePort = 8092
-
   marshaledHelp, err := json.Marshal(&HelpInfo{
-    DutyHttpPort:      dutyServePort,
+    DutyHttpPort:      a.dutyHttpPort,
     GqlgenPort:        a.gqlgenPort,
     GrpcPort:          a.grpcPort,
     GrpcHttpProxyPort: a.grpcHttpProxyPort,
