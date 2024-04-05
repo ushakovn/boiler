@@ -48,5 +48,4 @@ func InitClient() {
       local.New(values),
     )
   })
-  log.Infof("boiler: config client registered")
 }
