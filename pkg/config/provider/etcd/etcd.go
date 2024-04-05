@@ -10,17 +10,16 @@ import (
   "github.com/ushakovn/boiler/internal/pkg/stringer"
   "github.com/ushakovn/boiler/pkg/config/provider"
   "github.com/ushakovn/boiler/pkg/config/types"
+  "github.com/ushakovn/boiler/pkg/env"
   v3 "go.etcd.io/etcd/client/v3"
 )
 
 type etcd struct {
   appName    string
-  client     *v3.Client
   cachedKeys *ttlcache.Cache[string, types.Value]
 }
 
 type config struct {
-  client   v3.Config
   appName  string
   cacheTTL time.Duration
 }
@@ -28,10 +27,25 @@ type config struct {
 func New(calls ...Option) provider.Values {
   options := callOptions(calls...)
 
-  client, err := v3.New(options.client)
-  if err != nil {
-    log.Fatalf("config: failed to create etcd values provider: %v", err)
-  }
+  once.Do(func() {
+    const username = "boiler"
+
+    endpoints := env.Get(env.EtcdEndpointsKey).
+      OrDefault(env.EtcdEndpointsDefault).
+      String()
+
+    v3c, err := v3.New(v3.Config{
+      Username:  username,
+      Endpoints: []string{endpoints},
+    })
+    if err != nil {
+      log.Fatalf("config: failed to create etcd values provider: %v", err)
+    }
+    client = v3c
+
+    log.Infof("boiler: etcd client registered")
+  })
+
   cache := ttlcache.New[string, types.Value](
     ttlcache.WithTTL[string, types.Value](
       options.cacheTTL,
@@ -39,7 +53,6 @@ func New(calls ...Option) provider.Values {
   )
   return &etcd{
     appName:    options.appName,
-    client:     client,
     cachedKeys: cache,
   }
 }
@@ -56,7 +69,7 @@ func (e *etcd) Get(ctx context.Context, key string) types.Value {
 func (e *etcd) Watch(ctx context.Context, key string, action func(value types.Value)) {
   key = e.buildKey(key)
 
-  ch := e.client.Watch(ctx, key)
+  ch := client.Watch(ctx, key)
   for {
     select {
     case resp := <-ch:
@@ -78,7 +91,7 @@ func (e *etcd) Watch(ctx context.Context, key string, action func(value types.Va
 }
 
 func (e *etcd) get(ctx context.Context, key string) types.Value {
-  resp, err := e.client.Get(ctx, key,
+  resp, err := client.Get(ctx, key,
     v3.WithSort(v3.SortByVersion, v3.SortDescend),
   )
   if err != nil || resp.Count == 0 || len(resp.Kvs) == 0 {

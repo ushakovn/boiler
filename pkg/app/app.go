@@ -90,9 +90,6 @@ func NewApp(calls ...Option) *App {
     syscall.SIGINT,
   )
 
-  // Registering pre run components
-  registerPreRunComponents()
-
   // Return app
   return &App{
     grpcPort:   options.grpcServePort,
@@ -113,6 +110,11 @@ func NewApp(calls ...Option) *App {
     appCtx:    appCtx,
     appCloser: appCloser,
   }
+}
+
+func init() {
+  // Experimental
+  registerPreRunComponents()
 }
 
 func registerPreRunComponents() {
