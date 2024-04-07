@@ -88,6 +88,9 @@ func (g *ProtoDeps) Init(_ context.Context) error {
   if err := g.createMakefileIfNotExist(); err != nil {
     return fmt.Errorf("g.createMakefileIfNotExist: %w", err)
   }
+  if err := g.createGitHubWorkflows(); err != nil {
+    return fmt.Errorf("g.createGitHubWorkflows: %w", err)
+  }
   return nil
 }
 
@@ -423,4 +426,24 @@ func extractProtoFileName(protoImport string) string {
     return fileParts[0]
   }
   return fileName
+}
+
+func (g *ProtoDeps) createGitHubWorkflows() error {
+  filePath, err := filer.CreateNestedFolders(g.workDirPath, ".github", "workflows")
+  if err != nil {
+    return fmt.Errorf("filer.CreateNestedFolders: %w", err)
+  }
+  if err = createServiceRegistryWorkflow(filePath); err != nil {
+    return fmt.Errorf("createServiceRegistryWorkflow: %w", err)
+  }
+  return nil
+}
+
+func createServiceRegistryWorkflow(dirPath string) error {
+  filePath := filepath.Join(dirPath, "service-registry.yaml")
+
+  if err := templater.CopyTemplate(templates.GitHubWorkflowServiceRegistry, filePath); err != nil {
+    return fmt.Errorf("templater.CopyTemplate: %w", err)
+  }
+  return nil
 }
