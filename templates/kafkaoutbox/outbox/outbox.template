@@ -78,7 +78,7 @@ func (o *Outbox) sendRecordsWithIdle(ctx context.Context, tableName string) {
 func (o *Outbox) sendRecords(ctx context.Context, tableName string) error {
   records, err := o.storage.LockRecords(ctx, tableName)
   if err != nil {
-    return fmt.Errorf("storage.BatchRecords: %w", err)
+    return fmt.Errorf("storage.LockRecords: %w", err)
   }
   var msgBuf []byte
 

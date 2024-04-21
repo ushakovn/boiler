@@ -212,13 +212,11 @@ var packagesByFiles = map[string][]string{
   },
   storageFileName: {
     contextPackageName,
-    stringsPackageName,
     fmtPackageName,
     timePackageName,
     logrusPackageName,
     squirrelPackageName,
     pgExecutorPackageName,
-    pgQuotePackageName,
   },
 }
 
