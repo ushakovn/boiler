@@ -9,38 +9,16 @@ import (
 )
 
 type Storage struct {
-  executor pg.Executor
+  executor Executor
 }
 
-func NewStorage(executor pg.Executor) *Storage {
+type Executor interface {
+  Querier(ctx context.Context) pg.Querier
+  Execer(ctx context.Context) pg.Execer
+}
+
+func NewStorage(executor Executor) *Storage {
   return &Storage{
     executor: executor,
   }
 }
-
-func (s *Storage) WithTransaction(ctx context.Context, fTx func(*Storage) error) error {
-  defer func() {
-    if rec := recover(); rec != nil {
-      log.Errorf("client.WithTransaction: panic recovered: %v", rec)
-    }
-  }()
-
-  tx, err := s.executor.Begin(ctx)
-  if err != nil {
-    return fmt.Errorf("s.executor.BeginTx: %w", err)
-  }
-  txStorage := NewStorage(tx)
-
-  if err = fTx(txStorage); err != nil {
-    if errTx := tx.Rollback(ctx); errTx != nil {
-      log.Errorf("Storage.WithTransaction: tx.Rollback: %v", errTx)
-    }
-    return err
-  }
-
-  if txErr := tx.Commit(ctx); txErr != nil {
-    return fmt.Errorf("tx.Commit: %w", err)
-  }
-  return nil
-}
-

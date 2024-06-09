@@ -813,9 +813,7 @@ var importPackagesByFiles = map[string][]string{
     squirrelPackageName,
   },
   storageFileName: {
-    fmtPackageName,
     contextPackageName,
-    logrusPackageName,
     pgExecutorPackageName,
   },
   optionsFileName: {

@@ -7,23 +7,23 @@ import (
   "github.com/ushakovn/boiler/pkg/storage/postgres/quote"
 )
 
-func NewSelectBuilder() sq.SelectBuilder {
+func NewSelect() sq.SelectBuilder {
   return sq.SelectBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func NewInsertBuilder() sq.InsertBuilder {
+func NewInsert() sq.InsertBuilder {
   return sq.InsertBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func NewUpdateBuilder() sq.UpdateBuilder {
+func NewUpdate() sq.UpdateBuilder {
   return sq.UpdateBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func NewDeleteBuilder() sq.DeleteBuilder {
+func NewDelete() sq.DeleteBuilder {
   return sq.DeleteBuilder{}.PlaceholderFormat(sq.Dollar)
 }
 
-func NewBuildedExpr(sql string, args ...any) sq.Sqlizer {
+func NewExpr(sql string, args ...any) sq.Sqlizer {
   quoted := make([]any, 0, len(args))
 
   for _, arg := range args {

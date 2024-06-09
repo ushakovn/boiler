@@ -8,12 +8,17 @@ import (
 )
 
 type storage struct {
-  executor  pg.Executor
+  executor  Executor
   lockTTL   time.Duration
   batchSize uint32
 }
 
-func NewStorage(executor pg.Executor, lockTTL time.Duration, batchSize uint32) Storage {
+type Executor interface {
+	Querier(ctx context.Context) pg.Querier
+	Execer(ctx context.Context) pg.Execer
+}
+
+func NewStorage(executor Executor, lockTTL time.Duration, batchSize uint32) Storage {
   return &storage{
     executor:  executor,
     lockTTL:   lockTTL,
@@ -29,44 +34,14 @@ func (s *storage) LockRecords(ctx context.Context, tableName string) ([]*Record,
 
   query = fmt.Sprintf(query, tableName, s.lockTTL.Milliseconds(), s.batchSize)
 
-  records, err := pg.SelectCtx[*Record](ctx, s.executor, sq.Expr(query))
+  records, err := pg.Select[*Record](ctx, s.executor.Querier(ctx), sq.Expr(query))
   if err != nil {
     return nil, fmt.Errorf("pg.SelectCtx: %w", err)
   }
   return records, nil
 }
 
-func (s *storage) withTx(ctx context.Context, fTx func(*storage) error) error {
-  defer func() {
-    if rec := recover(); rec != nil {
-      log.Errorf("storage.WithTransaction: panic recovered: %v", rec)
-    }
-  }()
-
-  tx, err := s.executor.Begin(ctx)
-  if err != nil {
-    return fmt.Errorf("s.executor.BeginTx: %w", err)
-  }
-  txStorage := &storage{
-    executor:  tx,
-    lockTTL:   s.lockTTL,
-    batchSize: s.batchSize,
-  }
-
-  if err = fTx(txStorage); err != nil {
-    if errRollback := tx.Rollback(ctx); errRollback != nil {
-      log.Errorf("storage.WithTransaction: tx.Rollback: %v", errRollback)
-    }
-    return err
-  }
-
-  if err = tx.Commit(ctx); err != nil {
-    return fmt.Errorf("tx.Commit: %w", err)
-  }
-  return nil
-}
-
 func (s *storage) DeleteRecord(ctx context.Context, tableName, recordID string) error {
   query := fmt.Sprintf(`delete from %s where id = '%s';`, tableName, recordID)
-  return pg.ExecCtx(ctx, s.executor, sq.Expr(query))
+  return pg.Exec(ctx, s.executor.Execer(ctx), sq.Expr(query))
 }

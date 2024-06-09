@@ -16,9 +16,9 @@ func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockIn
             WHERE rocket_locks.locked_until < NOW()
             RETURNING lock_id, locked_until`
 
-  builder := br.NewBuildedExpr(query, input.LockID, input.LockTTL)
+  builder := br.NewExpr(query, input.LockID, input.LockTTL)
 
-  model, err := pg.GetCtx[*models.RocketLock](ctx, s.executor, builder)
+  model, err := pg.Get[*models.RocketLock](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
       return nil, ErrRocketLockConflict
@@ -34,9 +34,9 @@ func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockIn
             WHERE lock_id = %s
             RETURNING lock_id, locked_until`
 
-  builder := br.NewBuildedExpr(query, input.LockID)
+  builder := br.NewExpr(query, input.LockID)
 
-  model, err := pg.GetCtx[*models.RocketLock](ctx, s.executor, builder)
+  model, err := pg.Get[*models.RocketLock](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
       return nil, ErrRocketLockNotFound

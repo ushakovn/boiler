@@ -214,7 +214,6 @@ var packagesByFiles = map[string][]string{
     contextPackageName,
     fmtPackageName,
     timePackageName,
-    logrusPackageName,
     squirrelPackageName,
     pgExecutorPackageName,
   },
