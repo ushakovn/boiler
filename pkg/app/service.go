@@ -13,14 +13,16 @@ import (
 type ServiceType uint32
 
 const (
-  UnknownServiceTyp ServiceType = 0
-  GrpcServiceTyp    ServiceType = 1
-  GqlgenServiceTyp  ServiceType = 2
+  UnknownServiceType ServiceType = 0
+  GrpcServiceType    ServiceType = 1
+  GqlgenServiceType  ServiceType = 2
+  HttpServiceType    ServiceType = 3
 )
 
 var knownServiceTypes = map[ServiceType]struct{}{
-  GrpcServiceTyp:   {},
-  GqlgenServiceTyp: {},
+  GrpcServiceType:   {},
+  GqlgenServiceType: {},
+  HttpServiceType:   {},
 }
 
 type Service interface {
@@ -31,7 +33,7 @@ type RegisterParams struct {
   // App context
   appCtx context.Context
   // Services types
-  serviceTypes []ServiceType
+  serviceTypes map[ServiceType]struct{}
   // gRPC params
   grpcParams *GrpcParams
   // GraphQL params
@@ -106,18 +108,5 @@ func (p *RegisterParams) SetServiceType(serviceType ServiceType) {
     // Unknown service types not allowed
     log.Fatalf("boiler: unknown service type")
   }
-  p.serviceTypes = append(p.serviceTypes, serviceType)
-}
-
-func (p *RegisterParams) serviceTypesValues() map[ServiceType]struct{} {
-  values := map[ServiceType]struct{}{}
-
-  for _, typ := range p.serviceTypes {
-    if _, ok := values[typ]; ok {
-      continue
-    }
-    values[typ] = struct{}{}
-  }
-
-  return values
+  p.serviceTypes[serviceType] = struct{}{}
 }

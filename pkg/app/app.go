@@ -179,15 +179,15 @@ func (a *App) registerServices(params *RegisterParams, services ...Service) {
 
 func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   // Collect service types
-  serviceTypes := params.serviceTypesValues()
+  serviceTypes := params.serviceTypes
 
   // Confirm service types
-  if _, ok := serviceTypes[UnknownServiceTyp]; ok {
+  if _, ok := serviceTypes[UnknownServiceType]; ok {
     log.Fatalf("boiler: encountered unknown service type")
   }
 
   // gRPC components
-  if _, ok := serviceTypes[GrpcServiceTyp]; ok {
+  if _, ok := serviceTypes[GrpcServiceType]; ok {
     p := params.Grpc()
     a.registerGrpcChannelz()
     a.registerGrpcServer()
@@ -196,7 +196,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
   }
 
   // GraphQL components
-  if _, ok := serviceTypes[GqlgenServiceTyp]; ok {
+  if _, ok := serviceTypes[GqlgenServiceType]; ok {
     p := params.Gqlgen()
     a.registerGqlgenSchemaServer(p)
     a.registerGqlgenAroundMWs()
@@ -331,6 +331,14 @@ func (a *App) GqlgenRouter() chi.Router {
   defer a.mu.Unlock()
 
   return a.gqlgenRouter
+}
+
+// HttpRouter USE FOR HttpServiceType ONLY
+func (a *App) HttpRouter() chi.Router {
+  a.mu.Lock()
+  defer a.mu.Unlock()
+
+  return a.dutyHttpRouter
 }
 
 func (a *App) registerTracer() {
