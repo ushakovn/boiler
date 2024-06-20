@@ -8,31 +8,31 @@ import (
   {{- end}}
 )
 
-func (s *Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName}}Input) ([]*models.{{$modelName}}, error) {
-  builder := br.NewSelect().
+func (s *Storage) List{{$modelName}}(ctx context.Context, params models.List{{$modelName}}Params) ([]*models.{{$modelName}}, error) {
+  builder := sql.NewSelect().
     Columns(
       {{- range .ModelFields}}
-      string({{.FieldName}}_{{$modelName}}_Field),
+      string(models.{{.FieldName}}_{{$modelName}}_Field),
       {{- end}}
     ).
-    From(string({{$modelName}}_TableName))
+    From(string(models.{{$modelName}}_TableName))
 
-  if err := input.Pagination.validate(); err != nil {
+  if err := params.Pagination.Validate(); err != nil {
     return nil, fmt.Errorf("pagination.Validate: %w", err)
   }
 
-  offset, limit := input.Pagination.orDefault().toOffsetLimit()
+  offset, limit := params.Pagination.OrDefault().ToOffsetLimit()
   builder = builder.Offset(offset).Limit(limit)
 
-  if input.Sort != nil {
-    builder = builder.OrderBy(input.Sort.{{toLowerCamelCase $modelName}}Sort())
+  if params.Sort != nil {
+    builder = builder.OrderBy(params.Sort.{{$modelName}}Sort())
   }
 
-  if filters := input.Filters; filters != nil {
+  if filters := params.Filters; filters != nil {
     {{- range $modelField := .ModelFields}}
     {{- range .ModelsFieldFilters}}
     if {{.FilterIfStmt}} {
-      builder = builder.Where(sq.{{.FilterSqOperator}}{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+      builder = builder.Where(sq.{{.FilterSqOperator}}{string(models.{{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
     }
     {{- end}}
     {{- end}}
@@ -41,20 +41,20 @@ func (s *Storage) List{{$modelName}}(ctx context.Context, input List{{$modelName
   return pg.Select[*models.{{$modelName}}](ctx, s.executor.Querier(ctx), builder)
 }
 
-func (s *Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := br.NewSelect().
+func (s *Storage) {{$modelName}}(ctx context.Context, params models.{{$modelName}}Params) (*models.{{$modelName}}, error) {
+  builder := sql.NewSelect().
     Columns(
       {{- range .ModelFields}}
-      string({{.FieldName}}_{{$modelName}}_Field),
+      string(models.{{.FieldName}}_{{$modelName}}_Field),
       {{- end}}
     ).
-    From(string({{$modelName}}_TableName))
+    From(string(models.{{$modelName}}_TableName))
 
-  if filters := input.Filters; filters != nil {
+  if filters := params.Filters; filters != nil {
     {{- range $modelField := .ModelFields}}
     {{- range .ModelFieldFilters}}
     if {{.FilterIfStmt}} {
-      builder = builder.Where(sq.Eq{string({{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
+      builder = builder.Where(sq.Eq{string(models.{{$modelField.FieldName}}_{{$modelName}}_Field): filters.{{.FilterName}}{{.FilterTypeSuffix}}})
     }
     {{- end}}
     {{- end}}
@@ -67,15 +67,15 @@ func (s *Storage) {{$modelName}}(ctx context.Context, input {{$modelName}}Input)
   return model, nil
 }
 
-func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := br.NewInsert().
-    Into(string({{$modelName}}_TableName))
+func (s *Storage) Create{{$modelName}}(ctx context.Context, params models.Create{{$modelName}}Params) (*models.{{$modelName}}, error) {
+  builder := sql.NewInsert().
+    Into(string(models.{{$modelName}}_TableName))
 
   fields := map[string]any{
     {{- range .ModelFields}}
     {{- if eq .NotNullField true}}
     {{- if eq .WithDefaultField false}}
-    string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}},
+    string(models.{{.FieldName}}_{{$modelName}}_Field): params.{{.FieldName}},
     {{- end}}
     {{- end}}
     {{- end}}
@@ -85,14 +85,14 @@ func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$model
   {{- if eq .NotNullField false}}
   {{- if eq .WithDefaultField false}}
   if {{.FieldIfStmt}} {
-    fields[string({{$modelField.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldTypeSuffix}}
+    fields[string(models.{{$modelField.FieldName}}_{{$modelName}}_Field)] = params.{{.FieldName}}{{.FieldTypeSuffix}}
   }
   {{- end}}
   {{- end}}
   {{- end}}
 
   builder = builder.SetMap(fields).
-    Suffix(suffixReturning)
+    Suffix(models.SuffixReturning)
 
   model, err := pg.Get[*models.{{$modelName}}](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
@@ -101,16 +101,16 @@ func (s *Storage) Create{{$modelName}}(ctx context.Context, input Create{{$model
   return model, nil
 }
 
-func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$modelName}}Input) (*models.{{$modelName}}, error) {
-  builder := br.NewUpdate().
-    Table(string({{$modelName}}_TableName))
+func (s *Storage) Update{{$modelName}}(ctx context.Context, params models.Update{{$modelName}}Params) (*models.{{$modelName}}, error) {
+  builder := sql.NewUpdate().
+    Table(string(models.{{$modelName}}_TableName))
 
   fields := map[string]any{}
 
-  {{- range .ModelFields}}
+  {{range .ModelFields}}
   {{- if ne .FieldBadge "pk"}}
   if {{.FieldZeroTypeIfStmt}} {
-    fields[string({{.FieldName}}_{{$modelName}}_Field)] = input.{{.FieldName}}{{.FieldZeroTypeSuffix}}
+    fields[string(models.{{.FieldName}}_{{$modelName}}_Field)] = params.{{.FieldName}}{{.FieldZeroTypeSuffix}}
   }
   {{- end}}
   {{- end}}
@@ -119,10 +119,10 @@ func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$model
     SetMap(fields).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
-    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    Where(sq.Eq{string(models.{{.FieldName}}_{{$modelName}}_Field): params.{{.FieldName}}}).
     {{- end}}
     {{- end}}
-    Suffix(suffixReturning)
+    Suffix(models.SuffixReturning)
 
   model, err := pg.Get[*models.{{$modelName}}](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
@@ -131,15 +131,15 @@ func (s *Storage) Update{{$modelName}}(ctx context.Context, input Update{{$model
   return model, nil
 }
 
-func (s *Storage) Delete{{$modelName}}(ctx context.Context, input Delete{{$modelName}}Input) (*models.{{.ModelName}}, error) {
-  builder := br.NewDelete().
-    From(string({{$modelName}}_TableName)).
+func (s *Storage) Delete{{$modelName}}(ctx context.Context, params models.Delete{{$modelName}}Params) (*models.{{.ModelName}}, error) {
+  builder := sql.NewDelete().
+    From(string(models.{{$modelName}}_TableName)).
     {{- range .ModelFields}}
     {{- if eq .FieldBadge "pk"}}
-    Where(sq.Eq{string({{.FieldName}}_{{$modelName}}_Field): input.{{.FieldName}}}).
+    Where(sq.Eq{string(models.{{.FieldName}}_{{$modelName}}_Field): params.{{.FieldName}}}).
     {{- end}}
     {{- end}}
-    Suffix(suffixReturning)
+    Suffix(models.SuffixReturning)
 
   model, err := pg.Get[*models.{{$modelName}}](ctx, s.executor.Querier(ctx), builder)
   if err != nil {

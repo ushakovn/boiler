@@ -118,7 +118,7 @@ func (g *Storage) generateStorages() error {
     return fmt.Errorf("loadSchemaDesc: %w", err)
   }
 
-  storagePath, err := createStorageFolders(g.workDirPath, "internal", "pkg", "storage")
+  dirPath, err := createStorageFolders(g.workDirPath, "internal", "pkg")
   if err != nil {
     return fmt.Errorf("g.createStorageFolders: %w", err)
   }
@@ -130,7 +130,7 @@ func (g *Storage) generateStorages() error {
   }
 
   for _, commonTemplate := range storageCommonTemplates {
-    filePath, err := createStorageFolders(storagePath, commonTemplate.filePathParts...)
+    filePath, err := createStorageFolders(dirPath, commonTemplate.filePathParts...)
     if err != nil {
       return fmt.Errorf("createStorageFolders: %w", err)
     }
@@ -143,7 +143,7 @@ func (g *Storage) generateStorages() error {
 
   for _, model := range g.schemaDesc.Models {
     for _, modelTemplate := range storageModelTemplates {
-      filePath, err := createStorageFolders(storagePath, modelTemplate.filePathParts...)
+      filePath, err := createStorageFolders(dirPath, modelTemplate.filePathParts...)
       if err != nil {
         return fmt.Errorf("createStorageFolders: %w", err)
       }
@@ -209,13 +209,15 @@ type storageTemplate struct {
 
 var storageModelTemplates = []*storageTemplate{
   {
-    templateName:     "model_options",
-    compiledTemplate: templates.StorageModelOptions,
-    fileNameBuild:    buildModelOptionsFileName,
+    templateName:     "models_params",
+    compiledTemplate: templates.StorageModelParams,
+    filePathParts:    []string{"models"},
+    fileNameBuild:    buildModelParamsFileName,
   },
   {
     templateName:     "model_methods",
     compiledTemplate: templates.StorageModelMethods,
+    filePathParts:    []string{"storage"},
     fileNameBuild:    buildModelMethodsFileName,
   },
   {
@@ -230,34 +232,37 @@ var storageCommonTemplates = []*storageTemplate{
   {
     templateName:     "storage",
     compiledTemplate: templates.StorageStorage,
+    filePathParts:    []string{"storage"},
     fileNameBuild: func(modelName string) string {
       return "storage.go"
     },
   },
   {
-    templateName:     "options",
-    compiledTemplate: templates.StorageOptions,
+    templateName:     "storage_params",
+    compiledTemplate: templates.StorageParams,
+    filePathParts:    []string{"models"},
     fileNameBuild: func(modelName string) string {
-      return "storage.options.go"
+      return "storage_params.go"
     },
   },
   {
     templateName:     "consts",
     compiledTemplate: templates.StorageConsts,
+    filePathParts:    []string{"models"},
     fileNameBuild: func(modelName string) string {
-      return "storage.consts.go"
+      return "storage_consts.go"
     },
   },
 }
 
-func buildModelOptionsFileName(modelName string) string {
+func buildModelParamsFileName(modelName string) string {
   modelName = stringer.StringToSnakeCase(modelName)
-  return fmt.Sprint(modelName, ".options.go")
+  return fmt.Sprint(modelName, "_params.go")
 }
 
 func buildModelMethodsFileName(modelName string) string {
   modelName = stringer.StringToSnakeCase(modelName)
-  return fmt.Sprint(modelName, ".methods.go")
+  return fmt.Sprint(modelName, "_methods.go")
 }
 
 func buildModelFileName(modelName string) string {

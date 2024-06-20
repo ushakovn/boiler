@@ -13,9 +13,9 @@ import (
 )
 
 type schemaDesc struct {
-  Models          []*modelDesc
-  StoragePackages []*goPackageDesc
-  OptionsPackages []*goPackageDesc
+  Models                []*modelDesc
+  StoragePackages       []*goPackageDesc
+  StorageParamsPackages []*goPackageDesc
 }
 
 type modelDesc struct {
@@ -23,7 +23,7 @@ type modelDesc struct {
   SqlTableName         string
   ModelFields          []*fieldDesc
   ModelPackages        []*goPackageDesc
-  ModelOptionsPackages []*goPackageDesc
+  ModelParamsPackages  []*goPackageDesc
   ModelMethodsPackages []*goPackageDesc
 }
 
@@ -82,9 +82,9 @@ func (g *Storage) loadSchemaDesc() error {
     modelName := buildModelName(table.Name)
     modelPackages := buildFilePackages(modelsFileName)
 
-    modelOptionsPackages := mergeGoPackages(
-      buildFilePackages(modelOptionsFileName),
-      buildCrossFilePackages(g.goModuleName, modelOptionsFileName),
+    modelParamsPackages := mergeGoPackages(
+      buildFilePackages(modelParamsFileName),
+      buildCrossFilePackages(g.goModuleName, modelParamsFileName),
     )
     modelMethodsPackages := mergeGoPackages(
       buildFilePackages(modelMethodsFileName),
@@ -97,15 +97,15 @@ func (g *Storage) loadSchemaDesc() error {
       ModelFields: fields,
 
       ModelPackages:        modelPackages,
-      ModelOptionsPackages: modelOptionsPackages,
+      ModelParamsPackages:  modelParamsPackages,
       ModelMethodsPackages: modelMethodsPackages,
     })
   }
 
   g.schemaDesc = &schemaDesc{
-    Models:          models,
-    StoragePackages: buildFilePackages(storageFileName),
-    OptionsPackages: buildFilePackages(optionsFileName),
+    Models:                models,
+    StoragePackages:       buildFilePackages(storageFileName),
+    StorageParamsPackages: buildFilePackages(storageParamsFileName),
   }
   return nil
 }
@@ -458,10 +458,10 @@ func buildFieldIfStmt(fieldName, fieldTyp string) string {
   var fieldIfStmt string
 
   if matchSliceTyp(fieldTyp) {
-    fieldIfStmt = fmt.Sprintf(templates.StorageInputIfStmtWithLen, fieldName)
+    fieldIfStmt = fmt.Sprintf(templates.StorageParamsIfStmtWithLen, fieldName)
   }
   if matchZeroTyp(fieldTyp) {
-    fieldIfStmt = fmt.Sprintf(templates.StorageInputIfStmtWithPtr, fieldName)
+    fieldIfStmt = fmt.Sprintf(templates.StorageParamsIfStmtWithPtr, fieldName)
   }
   return fieldIfStmt
 }
@@ -758,7 +758,7 @@ func buildCrossFilePackages(goModuleName, fileName string) []*goPackageDesc {
   }[fileName]
 
   var (
-    nestedFileParts   = []string{"internal", "pkg", "storage"}
+    nestedFileParts   = []string{"internal", "pkg"}
     crossFilePackages []*goPackageDesc
   )
 
@@ -799,13 +799,13 @@ func mergeGoPackages(goPackages ...[]*goPackageDesc) []*goPackageDesc {
 }
 
 const (
-  constsFileName       = "consts"
-  buildersFileName     = "builders"
-  storageFileName      = "storage"
-  optionsFileName      = "options"
-  modelsFileName       = "models"
-  modelOptionsFileName = "model_options"
-  modelMethodsFileName = "model_methods"
+  constsFileName        = "consts"
+  buildersFileName      = "builders"
+  storageFileName       = "storage"
+  storageParamsFileName = "storage_params"
+  modelsFileName        = "models"
+  modelParamsFileName   = "model_params"
+  modelMethodsFileName  = "model_methods"
 )
 
 var importPackagesByFiles = map[string][]string{
@@ -816,10 +816,10 @@ var importPackagesByFiles = map[string][]string{
     contextPackageName,
     pgExecutorPackageName,
   },
-  optionsFileName: {
+  storageParamsFileName: {
     fmtPackageName,
   },
-  modelOptionsFileName: {
+  modelParamsFileName: {
     fmtPackageName,
     timePackageName,
     zeroPackageName,
@@ -907,7 +907,7 @@ var importPackagesByNames = map[string]*goPackageDesc{
   pgBuilderPackageName: {
     CustomName:  "boiler/pg-builder",
     ImportLine:  "github.com/ushakovn/boiler/pkg/storage/postgres/builder",
-    ImportAlias: "br",
+    ImportAlias: "sql",
     IsInstall:   true,
   },
   pgErrorsPackageName: {

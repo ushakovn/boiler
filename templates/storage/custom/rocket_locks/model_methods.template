@@ -8,7 +8,7 @@ import (
   {{- end}}
 )
 
-func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockInput) (*models.RocketLock, error) {
+func (s *Storage) CreateRocketLock(ctx context.Context, params models.CreateRocketLockParams) (*models.RocketLock, error) {
   query := `INSERT INTO rocket_locks(lock_id, locked_until)
             VALUES (%s, NOW() + INTERVAL %s)
             ON CONFLICT (lock_id)
@@ -16,12 +16,12 @@ func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockIn
             WHERE rocket_locks.locked_until < NOW()
             RETURNING lock_id, locked_until`
 
-  builder := br.NewExpr(query, input.LockID, input.LockTTL)
+  builder := sql.NewExpr(query, params.LockID, params.LockTTL)
 
   model, err := pg.Get[*models.RocketLock](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
-      return nil, ErrRocketLockConflict
+      return nil, models.ErrRocketLockConflict
     }
     return nil, err
   }
@@ -29,17 +29,17 @@ func (s *Storage) CreateRocketLock(ctx context.Context, input CreateRocketLockIn
   return model, nil
 }
 
-func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockInput) (*models.RocketLock, error) {
+func (s *Storage) DeleteRocketLock(ctx context.Context, params models.DeleteRocketLockParams) (*models.RocketLock, error) {
   query := `DELETE FROM rocket_locks
             WHERE lock_id = %s
             RETURNING lock_id, locked_until`
 
-  builder := br.NewExpr(query, input.LockID)
+  builder := sql.NewExpr(query, params.LockID)
 
   model, err := pg.Get[*models.RocketLock](ctx, s.executor.Querier(ctx), builder)
   if err != nil {
     if errors.Is(err, pe.ErrModelNotFound) {
-      return nil, ErrRocketLockNotFound
+      return nil, models.ErrRocketLockNotFound
     }
     return nil, err
   }
@@ -47,17 +47,17 @@ func (s *Storage) DeleteRocketLock(ctx context.Context, input DeleteRocketLockIn
   return model, nil
 }
 
-func (s *Storage) WithRocketLock(ctx context.Context, input WithRocketLockInput, fn func(ctx context.Context) error) error {
-  if _, err := s.CreateRocketLock(ctx, CreateRocketLockInput{
-    LockID:  input.LockID,
-    LockTTL: input.LockTTL,
+func (s *Storage) WithRocketLock(ctx context.Context, params models.WithRocketLockParams, fn func(ctx context.Context) error) error {
+  if _, err := s.CreateRocketLock(ctx, models.CreateRocketLockParams{
+    LockID:  params.LockID,
+    LockTTL: params.LockTTL,
   }); err != nil {
     return fmt.Errorf("s.CreateLock: %w", err)
   }
 
   defer func() {
-    if _, err := s.DeleteRocketLock(ctx, DeleteRocketLockInput{
-      LockID: input.LockID,
+    if _, err := s.DeleteRocketLock(ctx, models.DeleteRocketLockParams{
+      LockID: params.LockID,
     }); err != nil {
       log.Errorf("rocketLocksStorage: WithLock: s.DeleteLock: %v", err)
     }

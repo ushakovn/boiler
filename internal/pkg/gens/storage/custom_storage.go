@@ -19,7 +19,7 @@ type customModelDesc struct {
   ModelName            string
   StructDescription    string
   ModelPackages        []*goPackageDesc
-  ModelOptionsPackages []*goPackageDesc
+  ModelParamsPackages  []*goPackageDesc
   ModelMethodsPackages []*goPackageDesc
 }
 
@@ -28,7 +28,7 @@ func (g *Storage) generateCustomStorages() error {
   if err != nil {
     return fmt.Errorf("g.buildCustomSchemaDesc: %w", err)
   }
-  storagePath := filepath.Join(g.workDirPath, "internal", "pkg", "storage")
+  dirPath := filepath.Join(g.workDirPath, "internal", "pkg")
 
   for _, model := range customSchema.CustomModels {
     if g.config.skipStorage(model.ModelName) {
@@ -39,7 +39,7 @@ func (g *Storage) generateCustomStorages() error {
       return fmt.Errorf("storage templates not found for custom model: %s", model.ModelName)
     }
     for _, modelTemplate := range modelTemplates {
-      filePath, err := createStorageFolders(storagePath, modelTemplate.filePathParts...)
+      filePath, err := createStorageFolders(dirPath, modelTemplate.filePathParts...)
       if err != nil {
         return fmt.Errorf("createStorageFolders: %w", err)
       }
@@ -95,9 +95,9 @@ func (g *Storage) buildCustomModelDesc(modelName string) (*customModelDesc, erro
     return nil, fmt.Errorf("struct description not found for custom model: %s", modelName)
   }
 
-  modelOptionsPackages := mergeGoPackages(
-    buildPackagesForNames(packagesNames.ModelOptions),
-    buildCrossFilePackages(g.goModuleName, modelOptionsFileName),
+  modelParamsPackages := mergeGoPackages(
+    buildPackagesForNames(packagesNames.ModelParams),
+    buildCrossFilePackages(g.goModuleName, modelParamsFileName),
   )
   modelMethodsPackages := mergeGoPackages(
     buildPackagesForNames(packagesNames.ModelMethods),
@@ -109,14 +109,14 @@ func (g *Storage) buildCustomModelDesc(modelName string) (*customModelDesc, erro
     ModelName:            modelName,
     StructDescription:    structDesc,
     ModelPackages:        modelPackages,
-    ModelOptionsPackages: modelOptionsPackages,
+    ModelParamsPackages:  modelParamsPackages,
     ModelMethodsPackages: modelMethodsPackages,
   }, nil
 }
 
 type customModelPackagesNames struct {
   Model        []string
-  ModelOptions []string
+  ModelParams  []string
   ModelMethods []string
 }
 
@@ -132,7 +132,7 @@ var rocketLockPackagesNames = &customModelPackagesNames{
   Model: []string{
     timePackageName,
   },
-  ModelOptions: []string{
+  ModelParams: []string{
     errorsPackageName,
     timePackageName,
   },
@@ -161,13 +161,15 @@ var storageTemplatesByCustomModelNames = map[string][]*storageTemplate{
 
 var rocketLockStorageTemplates = []*storageTemplate{
   {
-    templateName:     "model_options",
-    compiledTemplate: templates.StorageRocketLockModelOptions,
-    fileNameBuild:    buildModelOptionsFileName,
+    templateName:     "model_params",
+    compiledTemplate: templates.StorageRocketLockModelParams,
+    filePathParts:    []string{"models"},
+    fileNameBuild:    buildModelParamsFileName,
   },
   {
     templateName:     "model_methods",
     compiledTemplate: templates.StorageRocketLockModelMethods,
+    filePathParts:    []string{"storage"},
     fileNameBuild:    buildModelMethodsFileName,
   },
   {
@@ -180,7 +182,7 @@ var rocketLockStorageTemplates = []*storageTemplate{
     templateName:     "migration",
     compiledTemplate: templates.StorageRocketLockMigration,
 
-    filePathParts: []string{"../../../migrations"},
+    filePathParts: []string{"../../migrations"},
 
     fileNameBuild: func(modelName string) string {
       gooseFileName := goose.BuildFileName(modelName)
