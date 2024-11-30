@@ -2,10 +2,13 @@ package config
 
 import (
   "context"
+  "time"
 
   "github.com/ushakovn/boiler/pkg/config/provider"
   "github.com/ushakovn/boiler/pkg/config/types"
 )
+
+const timeout = 100 * time.Millisecond
 
 type Client interface {
   GetAppInfo() AppInfo
@@ -30,6 +33,9 @@ func (c *configClient) GetAppInfo() AppInfo {
 }
 
 func (c *configClient) GetValue(ctx context.Context, key string) types.Value {
+  ctx, cancel := context.WithTimeout(ctx, timeout)
+  defer cancel()
+
   for _, p := range c.providers {
     if value := p.Get(ctx, key); !value.IsNil() {
       return value

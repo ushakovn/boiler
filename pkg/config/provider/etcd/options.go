@@ -5,6 +5,8 @@ import (
 
   "github.com/ushakovn/boiler/pkg/env"
   v3 "go.etcd.io/etcd/client/v3"
+  "go.uber.org/zap"
+  "google.golang.org/grpc"
 )
 
 type Option func(*calledOptions)
@@ -27,7 +29,10 @@ func WithCacheTTL(ttl time.Duration) Option {
 }
 
 func WithDefaultConfig() Option {
-  const appName = "boiler"
+  const (
+    appName = "boiler"
+    timeout = 100 * time.Millisecond
+  )
 
   endpoints := env.Get(env.EtcdEndpointsKey).
     OrDefault(env.EtcdEndpointsDefault).
@@ -37,8 +42,13 @@ func WithDefaultConfig() Option {
     o.config = config{
       // Etcd client config
       client: v3.Config{
-        Username:  appName,
-        Endpoints: []string{endpoints},
+        Endpoints:   []string{endpoints},
+        DialTimeout: timeout,
+        Username:    appName,
+        DialOptions: []grpc.DialOption{
+          grpc.WithTimeout(timeout),
+        },
+        Logger: zap.NewNop(),
       },
       // Values provider config
       appName:  appName,
