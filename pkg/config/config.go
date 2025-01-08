@@ -5,6 +5,7 @@ import (
   "sync"
 
   log "github.com/sirupsen/logrus"
+  "github.com/ushakovn/boiler/pkg/config/provider/env"
   "github.com/ushakovn/boiler/pkg/config/provider/etcd"
   "github.com/ushakovn/boiler/pkg/config/provider/local"
 )
@@ -45,6 +46,7 @@ func InitClient() {
     // Use config client
     client = newClient(app,
       etcd.New(etcd.WithAppName(app.Name)),
+      env.New(),
       local.New(values),
     )
   })
