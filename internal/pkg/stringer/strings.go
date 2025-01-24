@@ -11,6 +11,7 @@ import (
 var (
   regexCamelCase      = regexp.MustCompile(`^[a-zA-Z]+[A-Z0-9]*([a-z]+[A-Z0-9]*)*$`)
   regexSnakeCase      = regexp.MustCompile(`^[a-z]+([a-z_0-9]+)*[a-z0-9]?$`)
+  regexKebabCase      = regexp.MustCompile(`^[a-z]+([a-z\-0-9]+)*[a-z0-9]?$`)
   regexCapitalizeCase = regexp.MustCompile(`^[A-Z]+(_?[A-Z]+)*$`)
 )
 
@@ -20,6 +21,10 @@ func IsCamelCase(s string) bool {
 
 func IsSnakeCase(s string) bool {
   return regexSnakeCase.MatchString(s)
+}
+
+func IsKebabCase(s string) bool {
+  return regexKebabCase.MatchString(s)
 }
 
 func IsCapitalizeCase(s string) bool {
@@ -117,6 +122,15 @@ func StringToLowerCamelCase(s string) string {
   }
   // Fallback to strcase package
   return strcase.ToLowerCamel(s)
+}
+
+func StringToKebabCase(s string) string {
+  if IsKebabCase(s) {
+    return s
+  }
+  s = StringToSnakeCase(s)
+  // Replace all underscores
+  return strings.ReplaceAll(s, "_", "-")
 }
 
 func CamelCaseToLowerCamelCase(s string) string {
