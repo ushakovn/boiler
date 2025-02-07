@@ -217,7 +217,7 @@ func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
 }
 
 func (a *App) registerGrpcServer() {
-  address := fmt.Sprint("localhost", ":", a.grpcPort)
+  address := fmt.Sprint(":", a.grpcPort)
 
   listener, err := net.Listen("tcp", address)
   if err != nil {
@@ -272,7 +272,7 @@ func (a *App) registerGrpcHttpProxyServer(params *GrpcParams) {
     // gRPC proxy server was not set
     return
   }
-  address := fmt.Sprint("localhost", ":", a.grpcHttpProxyPort)
+  address := fmt.Sprint(":", a.grpcHttpProxyPort)
 
   log.Infof("boiler: grpc http proxy running on port: %d", a.grpcHttpProxyPort)
 
@@ -285,7 +285,7 @@ func (a *App) registerGrpcHttpProxyServer(params *GrpcParams) {
 }
 
 func (a *App) registerGqlgenServer() {
-  address := fmt.Sprint("localhost", ":", a.gqlgenPort)
+  address := fmt.Sprint(":", a.gqlgenPort)
 
   log.Infof("boiler: gqlgen server running on port: %d", a.gqlgenPort)
 
@@ -364,7 +364,7 @@ func (a *App) registerObservability() {
 }
 
 func (a *App) runHttpDutyRouter() {
-  address := fmt.Sprint("localhost", ":", a.dutyHttpPort)
+  address := fmt.Sprint(":", a.dutyHttpPort)
 
   log.Infof("boiler: http duty server running on port: %d", a.dutyHttpPort)
 
@@ -393,7 +393,7 @@ func (a *App) registerGrpcSwagger(params *GrpcParams) {
 }
 
 func (a *App) registerGrpcChannelz() {
-  address := fmt.Sprint("localhost", ":", a.grpcPort)
+  address := fmt.Sprint(":", a.grpcPort)
   // Create channelz handler
   handle := channelz.CreateHandler("/debug", address)
 
