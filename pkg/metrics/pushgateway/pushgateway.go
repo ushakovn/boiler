@@ -7,6 +7,7 @@ import (
 
   validation "github.com/go-ozzo/ozzo-validation"
   "github.com/go-ozzo/ozzo-validation/is"
+  "github.com/prometheus/client_golang/prometheus"
   "github.com/prometheus/client_golang/prometheus/push"
   log "github.com/sirupsen/logrus"
 )
@@ -26,7 +27,9 @@ func (p RunParams) Validate() error {
 }
 
 func Run(ctx context.Context, params RunParams) error {
-  pusher := push.New(params.Url, params.Job)
+  pusher := push.
+    New(params.Url, params.Job).
+    Gatherer(prometheus.DefaultGatherer)
 
   if err := pusher.PushContext(ctx); err != nil {
     return fmt.Errorf("first metrics push error: %w", err)
@@ -45,14 +48,14 @@ func Run(ctx context.Context, params RunParams) error {
           log.Infof("pushgateway.Run: last metrics push was sucessfull")
         }
 
-        log.Warnf("pushgateway.Run: pusher stopped: context cancelled")
+        log.Infof("pushgateway.Run: pusher stopped: context cancelled")
         return
 
       case <-ticker.C:
         if err := pusher.PushContext(ctx); err != nil {
           log.Errorf("pushgateway.Run: ticker metrics push error: %v", err)
         } else {
-          log.Infof("pushgateway.Run: ticker metrics push was sucessfull")
+          log.Debugf("pushgateway.Run: ticker metrics push was sucessfull")
         }
       }
     }
