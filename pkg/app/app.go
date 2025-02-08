@@ -34,7 +34,6 @@ import (
 type App struct {
   // Sync
   once sync.Once
-  mu   sync.Mutex
 
   // gRPC
   grpcPort   int
@@ -327,18 +326,17 @@ func (a *App) registerGqlgenAroundMWs() {
 
 // GqlgenRouter USE IN YOUR OWN RISK
 func (a *App) GqlgenRouter() chi.Router {
-  a.mu.Lock()
-  defer a.mu.Unlock()
-
   return a.gqlgenRouter
 }
 
 // HttpRouter USE FOR HttpServiceType ONLY
 func (a *App) HttpRouter() chi.Router {
-  a.mu.Lock()
-  defer a.mu.Unlock()
-
   return a.dutyHttpRouter
+}
+
+// Closer USE FOR App ONLY
+func (a *App) Closer() closer.Closer {
+  return a.appCloser
 }
 
 func (a *App) registerTracer() {
