@@ -23,7 +23,7 @@ type closer struct {
   done  chan struct{}
 }
 
-func NewCloser(signals ...os.Signal) Closer {
+func NewCloser(ctx context.Context, signals ...os.Signal) Closer {
   c := &closer{
     done: make(chan struct{}),
   }
@@ -33,8 +33,12 @@ func NewCloser(signals ...os.Signal) Closer {
       defer close(ch)
 
       signal.Notify(ch, signals...)
-      <-ch
-      signal.Stop(ch)
+      defer signal.Stop(ch)
+
+      select {
+      case <-ch:
+      case <-ctx.Done():
+      }
 
       c.CloseAll()
     }(c)

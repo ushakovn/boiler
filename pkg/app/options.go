@@ -1,6 +1,7 @@
 package app
 
 import (
+  "context"
   "net/http"
 
   "github.com/99designs/gqlgen/graphql"
@@ -17,6 +18,9 @@ import (
 type Option func(o *calledAppOptions)
 
 type calledAppOptions struct {
+  // Common
+  appCtx context.Context
+
   // gRPC
   grpcServePort     int
   grpcHttpProxyPort int
@@ -46,6 +50,9 @@ func defaultOptions() []Option {
     defaultDutyHttpPort      = 8092
   )
   options := []Option{
+    // Common options
+    WithContext(context.Background()),
+
     // Port options
     WithGrpcServePort(defaultGrpcPort),
     WithGrpcHttpProxyPort(defaultGrpcHttpProxyPort),
@@ -172,5 +179,11 @@ func WithGqlgenResponseMiddlewares(middlewares ...graphql.ResponseMiddleware) Op
 func WithDutyHttpServePort(port int) Option {
   return func(o *calledAppOptions) {
     o.dutyHttpServePort = port
+  }
+}
+
+func WithContext(ctx context.Context) Option {
+  return func(o *calledAppOptions) {
+    o.appCtx = ctx
   }
 }

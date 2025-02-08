@@ -79,11 +79,8 @@ func NewApp(calls ...Option) *App {
   // Create duty HTTP router
   dutyHttpRouter := chi.NewRouter()
 
-  // Create app context
-  appCtx := context.Background()
-
   // Create app closer
-  appCloser := closer.NewCloser(
+  appCloser := closer.NewCloser(options.appCtx,
     syscall.SIGTERM,
     syscall.SIGKILL,
     syscall.SIGINT,
@@ -106,7 +103,7 @@ func NewApp(calls ...Option) *App {
     dutyHttpPort:   options.dutyHttpServePort,
     dutyHttpRouter: dutyHttpRouter,
 
-    appCtx:    appCtx,
+    appCtx:    options.appCtx,
     appCloser: appCloser,
   }
 }
@@ -134,7 +131,8 @@ func (a *App) Run(services ...Service) {
   }()
 
   a.once.Do(func() {
-    a.registerApp(a.registerParams(), services...)
+    params := a.registerParams()
+    a.registerApp(params, services...)
 
     log.Infof("boiler: app bootstrapped")
 
