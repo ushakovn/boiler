@@ -5,57 +5,59 @@ import (
   "fmt"
   "time"
 
-  validation "github.com/go-ozzo/ozzo-validation"
-  "github.com/go-ozzo/ozzo-validation/is"
   "github.com/prometheus/client_golang/prometheus"
   "github.com/prometheus/client_golang/prometheus/push"
   log "github.com/sirupsen/logrus"
 )
 
-type RunParams struct {
+type Pusher struct {
+  duration   time.Duration
+  prometheus *push.Pusher
+}
+
+type Config struct {
   Url      string
   Job      string
   Duration time.Duration
 }
 
-func (p RunParams) Validate() error {
-  return validation.ValidateStruct(&p,
-    validation.Field(p.Url, is.URL),
-    validation.Field(p.Job, validation.Required),
-    validation.Field(p.Duration, validation.Required),
-  )
+func NewPusher(config Config) *Pusher {
+  return &Pusher{
+    duration: config.Duration,
+
+    prometheus: push.
+      New(config.Url, config.Job).
+      Gatherer(prometheus.DefaultGatherer),
+  }
 }
 
-func Run(ctx context.Context, params RunParams) error {
-  pusher := push.
-    New(params.Url, params.Job).
-    Gatherer(prometheus.DefaultGatherer)
+func (p *Pusher) Push(ctx context.Context) error {
+  if err := p.prometheus.PushContext(ctx); err != nil {
+    return fmt.Errorf("metrics push error: %w", err)
+  }
+  return nil
+}
 
-  if err := pusher.PushContext(ctx); err != nil {
+func (p *Pusher) Run(ctx context.Context) error {
+  if err := p.prometheus.PushContext(ctx); err != nil {
     return fmt.Errorf("first metrics push error: %w", err)
   }
 
   go func() {
-    ticker := time.NewTicker(params.Duration)
+    ticker := time.NewTicker(p.duration)
     defer ticker.Stop()
 
     for {
       select {
       case <-ctx.Done():
-        if err := pusher.PushContext(ctx); err != nil {
-          log.Errorf("pushgateway.Run: last metrics push error: %v", err)
-        } else {
-          log.Infof("pushgateway.Run: last metrics push was sucessfull")
-        }
-
         log.Infof("pushgateway.Run: pusher stopped: context cancelled")
         return
 
       case <-ticker.C:
-        if err := pusher.PushContext(ctx); err != nil {
-          log.Errorf("pushgateway.Run: ticker metrics push error: %v", err)
+        if err := p.prometheus.PushContext(ctx); err != nil {
+          log.Errorf("pushgateway.Run: metrics push error: %v", err)
         } else {
-          log.Debugf("pushgateway.Run: ticker metrics push was sucessfull")
+          log.Debugf("pushgateway.Run: metrics push was sucessfull")
         }
       }
     }

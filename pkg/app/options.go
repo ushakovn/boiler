@@ -7,6 +7,7 @@ import (
   "github.com/99designs/gqlgen/graphql"
   mw "github.com/grpc-ecosystem/go-grpc-middleware"
   metrics "github.com/ushakovn/boiler/pkg/metrics/middlewares"
+  "github.com/ushakovn/boiler/pkg/metrics/pushgateway"
   recover "github.com/ushakovn/boiler/pkg/recover/middlewares"
   tracing "github.com/ushakovn/boiler/pkg/tracing/middlewares"
   "google.golang.org/grpc"
@@ -40,6 +41,14 @@ type calledAppOptions struct {
 
   // Duty HTTP
   dutyHttpServePort int
+
+  // Observability
+  observability observabilityOptions
+}
+
+type observabilityOptions struct {
+  // Metrics
+  metricsPusher *pushgateway.Pusher
 }
 
 func defaultOptions() []Option {
@@ -185,5 +194,11 @@ func WithDutyHttpServePort(port int) Option {
 func WithContext(ctx context.Context) Option {
   return func(o *calledAppOptions) {
     o.appCtx = ctx
+  }
+}
+
+func WithMetricsPusher(config pushgateway.Config) Option {
+  return func(o *calledAppOptions) {
+    o.observability.metricsPusher = pushgateway.NewPusher(config)
   }
 }

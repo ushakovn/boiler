@@ -55,6 +55,9 @@ type App struct {
   dutyHttpPort   int
   dutyHttpRouter chi.Router
 
+  // Observability
+  observability observabilityOptions
+
   // Shutdown
   appCtx    context.Context
   appCloser closer.Closer
@@ -103,6 +106,8 @@ func NewApp(calls ...Option) *App {
     dutyHttpPort:   options.dutyHttpServePort,
     dutyHttpRouter: dutyHttpRouter,
 
+    observability: options.observability,
+
     appCtx:    options.appCtx,
     appCloser: appCloser,
   }
@@ -146,7 +151,7 @@ func (a *App) waitAppShutdown() {
 
 func (a *App) registerApp(params *RegisterParams, services ...Service) {
   a.registerServices(params, services...)
-  a.registerServicesComponents(params, services...)
+  a.registerServicesComponents(params)
 }
 
 func (a *App) registerParams() *RegisterParams {
@@ -174,7 +179,7 @@ func (a *App) registerServices(params *RegisterParams, services ...Service) {
   log.Infof("boiler: app services registered")
 }
 
-func (a *App) registerServicesComponents(params *RegisterParams, _ ...Service) {
+func (a *App) registerServicesComponents(params *RegisterParams) {
   // Collect service types
   serviceTypes := params.serviceTypes
 
@@ -350,6 +355,25 @@ func (a *App) registerMetrics() {
   mw.InitMetrics()
 
   log.Infof("boiler: metrics handler registered")
+
+  if pusher := a.observability.metricsPusher; pusher != nil {
+    // Enabled metrics pusher
+    err := pusher.Run(a.appCtx)
+    if err != nil {
+      log.Errorf("boiler: metrics pusher: run failed: %v", err)
+    }
+
+    a.appCloser.Add(func(ctx context.Context) error {
+      // Last push before
+      err = pusher.Push(ctx)
+      if err != nil {
+        return fmt.Errorf("boiler: metrics pusher: last push failed: %v", err)
+      }
+      return nil
+    })
+
+    log.Infof("boiler: metrics pusher registered")
+  }
 }
 
 func (a *App) registerObservability() {
