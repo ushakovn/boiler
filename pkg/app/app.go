@@ -167,6 +167,7 @@ func (a *App) registerParams() *RegisterParams {
     appCtx:       a.appCtx,
     grpcParams:   grpcParams,
     gqlgenParams: gqlgenParams,
+    serviceTypes: make(map[ServiceType]struct{}),
   }
 }
 
